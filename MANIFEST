@@ -15,6 +15,7 @@ Makefile.PL
 MANIFEST
 mkconsts
 mkpod
+ppport.h
 README
 t/btree.t
 t/db-3.0.t

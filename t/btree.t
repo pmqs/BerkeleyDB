@@ -819,7 +819,7 @@ EOM
 			-Mode => 0640 );
 	' ;
 
-    main::ok 206, $@ eq "" ;
+    main::ok 206, $@ eq "" && $X ;
 
     my $ret = eval '$h{"fred"} = 3 ; return $h{"fred"} ' ;
     main::ok 207, $@ eq "" ;
@@ -838,6 +838,8 @@ EOM
     main::ok 213, $@ eq "" ;
     main::ok 214, $ret eq "[[10]]" ;
 
+    undef $X;
+    untie %h;
     unlink "SubDB.pm", "dbbtree.tmp" ;
 
 }

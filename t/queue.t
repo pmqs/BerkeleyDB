@@ -670,7 +670,7 @@ EOM
     my $X ;
     my $rec_len = 34 ;
     eval '
-	$X = tie(@h, "SubDB", -Filename => "dbbtree.tmp", 
+	$X = tie(@h, "SubDB", -Filename => "dbqueue.tmp", 
 			-Flags => DB_CREATE,
 			-Mode => 0640 ,
 	                -Len       => $rec_len,
@@ -697,7 +697,9 @@ EOM
     main::ok 192, $@ eq "" ;
     main::ok 193, $ret eq "[[10]]" ;
 
-    unlink "SubDB.pm", "dbbtree.tmp" ;
+    undef $X ;
+    untie @h ;
+    unlink "SubDB.pm", "dbqueue.tmp" ;
 
 }
 

@@ -1,10 +1,10 @@
                                    BerkeleyDB
 
-                                  Version 0.17
+                                  Version 0.18
 
-                                22nd October 2001
+                                6th January 2002
 
-	Copyright (c) 1997-2001 Paul Marquess. All rights reserved. This
+	Copyright (c) 1997-2002 Paul Marquess. All rights reserved. This
 	program is free software; you can redistribute it and/or modify
 	it under the same terms as Perl itself.
 
@@ -124,18 +124,18 @@ If you get an error like this when building this module:
   ...
 
 This error usually happens when if you only have Berkeley DB version 1
-on your system or you have both version 1 and version 2 (or 3) of Berkeley
-DB installed on your system. When building BerkeleyDB it attempts 
-to use the db.h for Berkeley DB version 1. This perl module can only
-be built with Berkeley DB version 2 or 3.
+on your system or you have both version 1 and version 2 (or 3, or 4) of
+Berkeley DB installed on your system. When building BerkeleyDB it
+attempts to use the db.h for Berkeley DB version 1. This perl module
+can only be built with Berkeley DB version 2, 3 or 4.
 
 This symptom can imply:
 
- 1. You don't have Berkeley DB version 2 or 3 installed on your system
+ 1. You don't have Berkeley DB version 2, 3 or 4 installed on your system
     at all.
     Solution: get & install Berkeley DB.
 
- 2. You do have Berkeley DB 2 or 3 installed, but it isn't in a standard
+ 2. You do have Berkeley DB 2, 3 or 4 installed, but it isn't in a standard
     place.
     Solution: Edit config.in and set the LIB and INCLUDE variables
               to point to the directories where libdb.a and db.h are
@@ -159,10 +159,10 @@ when you run the test harness:
   ...
 
 This error usually happens when you have both version 1 and version
-2 (or 3) of Berkeley DB installed on your system and BerkeleyDB attempts
-to build using the db.h for Berkeley DB version 2/3 and the version 1
+2, 3 or 4 of Berkeley DB installed on your system and BerkeleyDB attempts
+to build using the db.h for Berkeley DB version 2/3/4 and the version 1
 library. Unfortunately the two versions aren't compatible with each
-other. BerkeleyDB can only be built with Berkeley DB version 2 or 3.
+other. BerkeleyDB can only be built with Berkeley DB version 2, 3 or 4.
 
 Solution: Setting the LIB & INCLUDE variables in config.in to point to the
           correct directories can sometimes be enough to fix this
@@ -302,7 +302,7 @@ be used to build this module. Follow the instructions in "BUILDING THE
 MODULE", remembering to set the INCLUDE and LIB variables in config.in.
 
 
-The second approach will work with both Berkeley DB 2.x and 3.x.
+The second approach will work with Berkeley DB 2.x or better.
 Start by building Berkeley DB as a shared library. This is from
 the Berkeley DB build instructions:
 

@@ -609,7 +609,7 @@ EOM
     my @h ;
     my $X ;
     eval '
-	$X = tie(@h, "SubDB", -Filename => "dbbtree.tmp", 
+	$X = tie(@h, "SubDB", -Filename => "dbrecno.tmp", 
 			-Flags => DB_CREATE,
 			-Mode => 0640 );
 	' ;
@@ -633,7 +633,9 @@ EOM
     main::ok 190, $@ eq "" ;
     main::ok 191, $ret eq "[[10]]" ;
 
-    unlink "SubDB.pm", "dbbtree.tmp" ;
+    undef $X;
+    untie @h;
+    unlink "SubDB.pm", "dbrecno.tmp" ;
 
 }
 

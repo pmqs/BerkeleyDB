@@ -2,7 +2,7 @@
 package BerkeleyDB;
 
 
-#     Copyright (c) 1997-2001 Paul Marquess. All rights reserved.
+#     Copyright (c) 1997-2002 Paul Marquess. All rights reserved.
 #     This program is free software; you can redistribute it and/or
 #     modify it under the same terms as Perl itself.
 #
@@ -14,14 +14,26 @@ BEGIN { require 5.004_04 }
 
 use strict;
 use Carp;
-use vars qw($VERSION @ISA @EXPORT $AUTOLOAD);
+use vars qw($VERSION @ISA @EXPORT $AUTOLOAD
+		$use_XSLoader);
 
-$VERSION = '0.17';
+$VERSION = '0.18';
 
 require Exporter;
-require DynaLoader;
+#require DynaLoader;
 require AutoLoader;
 use IO ;
+
+BEGIN {
+    $use_XSLoader = 1 ;
+    { local $SIG{__DIE__} ; eval { require XSLoader } ; }
+ 
+    if ($@) {
+        $use_XSLoader = 0 ;
+        require DynaLoader;
+        @ISA = qw(DynaLoader);
+    }
+}
 
 @ISA = qw(Exporter DynaLoader);
 # Items to export into callers namespace by default. Note: do not export
@@ -343,7 +355,11 @@ sub AUTOLOAD {
     goto &{$AUTOLOAD};
 }         
 
-bootstrap BerkeleyDB $VERSION;
+#bootstrap BerkeleyDB $VERSION;
+if ($use_XSLoader)
+  { XSLoader::load("BerkeleyDB", $VERSION)}
+else
+  { bootstrap BerkeleyDB $VERSION }  
 
 # Preloaded methods go here.
 
@@ -407,15 +423,6 @@ sub env_remove
 					Config		=> undef,
 					}, @_) ;
 
-    if (defined $got->{ErrFile}) {
-	if (!isaFilehandle($got->{ErrFile})) {
-	    my $handle = new IO::File ">$got->{ErrFile}"
-		or croak "Cannot open file $got->{ErrFile}: $!\n" ;
-	    $got->{ErrFile} = $handle ;
-	}
-    }
-
-    
     if (defined $got->{Config}) {
     	croak("Config parameter must be a hash reference")
             if ! ref $got->{Config} eq 'HASH' ;
@@ -477,7 +484,7 @@ sub new
     #			[ -Home		=> $path, ]
     #			[ -Mode		=> mode, ]
     #			[ -Config	=> { name => value, name => value }
-    #			[ -ErrFile   	=> filename or filehandle, ]
+    #			[ -ErrFile   	=> filename, ]
     #			[ -ErrPrefix 	=> "string", ]
     #			[ -Flags	=> DB_INIT_LOCK| ]
     #			[ -Cachesize	=> number ]
@@ -500,11 +507,13 @@ sub new
 					}, @_) ;
 
     if (defined $got->{ErrFile}) {
-	if (!isaFilehandle($got->{ErrFile})) {
-	    my $handle = new IO::File ">$got->{ErrFile}"
-		or croak "Cannot open file $got->{ErrFile}: $!\n" ;
-	    $got->{ErrFile} = $handle ;
-	}
+    	croak("ErrFile parameter must be a file name")
+            if ref $got->{ErrFile} ;
+	#if (!isaFilehandle($got->{ErrFile})) {
+	#    my $handle = new IO::File ">$got->{ErrFile}"
+#		or croak "Cannot open file $got->{ErrFile}: $!\n" ;
+#	    $got->{ErrFile} = $handle ;
+#	}
     }
 
     

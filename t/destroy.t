@@ -20,7 +20,7 @@ my $home = "./fred" ;
 umask(0);
 
 {
-    # let object destroction kill everything
+    # let object destruction kill everything
 
     my $lex = new LexFile $Dfile ;
     my %hash ;
@@ -81,6 +81,7 @@ umask(0);
     #untie %hash ;
 
 }
+
 {
     my $lex = new LexFile $Dfile ;
     my %hash ;

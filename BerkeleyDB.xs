@@ -6,7 +6,7 @@
 
  All comments/suggestions/problems are welcome
 
-     Copyright (c) 1997-2001 Paul Marquess. All rights reserved.
+     Copyright (c) 1997-2002 Paul Marquess. All rights reserved.
      This program is free software; you can redistribute it and/or
      modify it under the same terms as Perl itself.
 
@@ -23,31 +23,35 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 #define PERL_POLLUTE
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
+#include "ppport.h"
+
+
+/* XSUB.h defines a macro called abort 				*/
+/* This clashes with the txn abort method in Berkeley DB 4.x	*/
+/* This is a problem with ActivePerl (at least)			*/
+
+#ifdef _WIN32
+#  ifdef abort
+#    undef abort
+#  endif
+#  ifdef fopen
+#    undef fopen
+#  endif
+#  ifdef fclose
+#    undef fclose
+#  endif
+#endif
 
 /* Being the Berkeley DB we prefer the <sys/cdefs.h> (which will be
  * shortly #included by the <db.h>) __attribute__ to the possibly
  * already defined __attribute__, for example by GNUC or by Perl. */
 
 #undef __attribute__
-
-#ifndef PERL_VERSION
-#    include "patchlevel.h"
-#    define PERL_REVISION	5
-#    define PERL_VERSION	PATCHLEVEL
-#    define PERL_SUBVERSION	SUBVERSION
-#endif
-
-#if PERL_REVISION == 5 && (PERL_VERSION < 4 || (PERL_VERSION == 4 && PERL_SUBVERSION <= 75 ))
-
-#    define PL_sv_undef		sv_undef
-#    define PL_na		na
-#    define PL_dirty		dirty
-
-#endif
 
 #ifdef USE_PERLIO
 #    define GetFILEptr(sv) PerlIO_findFILE(IoOFP(sv_2io(sv)))
@@ -86,38 +90,6 @@ extern "C" {
 #if DB_VERSION_MAJOR >= 4
 #  define AT_LEAST_DB_4
 #endif
-
-/* need to define DEFSV & SAVE_DEFSV for older version of Perl */
-#ifndef DEFSV
-#    define DEFSV GvSV(defgv)
-#endif
-
-#ifndef SAVE_DEFSV
-#    define SAVE_DEFSV SAVESPTR(GvSV(defgv))
-#endif
-
-#ifndef pTHX
-#    define pTHX
-#    define pTHX_
-#    define aTHX
-#    define aTHX_
-#endif
-
-#ifndef dTHR
-#    define dTHR
-#endif
-
-#ifndef newSVpvn
-#    define newSVpvn(a,b)       newSVpv(a,b)
-#endif
-
-#ifndef PTR2IV
-#    define PTR2IV(d)	(IV)(d) 
-#endif /* PTR2IV */
-
-#ifndef INT2PTR
-#    define INT2PTR(any,d)	(any)(d) 
-#endif /* INT2PTR */
 
 #ifdef __cplusplus
 }
@@ -183,7 +155,7 @@ typedef struct {
 	int		Status ;
 	/* char		ErrBuff[1000] ; */
 	SV *		ErrPrefix ;
-	SV *		ErrHandle ;
+	FILE *		ErrHandle ;
 	DB_ENV *	Env ;
 	int		open_dbs ;
 	int		TxnMgrStatus ;
@@ -1120,6 +1092,11 @@ my_db_open(
     if (Status)
         return RETVAL ;
 
+#ifdef AT_LEAST_DB_3_3
+    if (! env)
+	dbp->set_alloc(dbp, safemalloc, MyRealloc, safefree) ;
+#endif
+
     if (info->re_source) {
         Status = dbp->set_re_source(dbp, info->re_source) ;
 	Trace(("set_re_source [%s] returned %s\n",
@@ -1259,9 +1236,6 @@ my_db_open(
 
 	Trace(("db_opened ok\n"));
 	RETVAL = db ;
-#ifdef AT_LEAST_DB_3_3
-	dbp->set_alloc(dbp, safemalloc, MyRealloc, safefree) ;
-#endif
 	RETVAL->dbp  = dbp ;
 #if DB_VERSION_MAJOR == 2
     	RETVAL->type = dbp->type ;
@@ -1367,6 +1341,7 @@ _db_appinit(self, ref)
 	    HV *	hash ;
 	    SV *	sv ;
 	    char *	home = NULL ;
+	    char *	errfile = NULL ;
 	    char * 	server = NULL ;
 	    char **	config = NULL ;
 	    int		flags = 0 ;
@@ -1419,13 +1394,14 @@ _db_appinit(self, ref)
 	    if (RETVAL->ErrPrefix)
 	        RETVAL->Env->db_errpfx = SvPVX(RETVAL->ErrPrefix) ;
 
-	    if ((sv = readHash(hash, "ErrFile")) && sv != &PL_sv_undef) {
-		env->db_errfile = GetFILEptr(sv);
-		RETVAL->ErrHandle = newRV(sv) ;
+	    SetValue_pv(errfile,      "ErrFile", char *) ;
+	    if (errfile) {
+	    	RETVAL->ErrHandle = env->db_errfile = fopen(errfile, "w");
+	    	if (RETVAL->ErrHandle == NULL)
+		    croak("Cannot open file %s: %s\n", errfile,  Strerror(errno));
 	    }
-	    /* SetValue_io(RETVAL->Env.db_errfile, "ErrFile") ; */
+	    
 	    SetValue_iv(env->db_verbose, "Verbose") ;
-	    /* env->db_errbuf = RETVAL->ErrBuff ; */
 	    env->db_errcall = db_errcall_cb ;
 	    RETVAL->active = TRUE ;
 	    status = db_appinit(home, config, env, flags) ;
@@ -1434,7 +1410,7 @@ _db_appinit(self, ref)
 	        hash_store_iv("BerkeleyDB::Term::Env", (char *)RETVAL, 1) ;
 	    else {
                 if (RETVAL->ErrHandle)
-                    SvREFCNT_dec(RETVAL->ErrHandle) ;
+                    fclose(RETVAL->ErrHandle) ;
                 if (RETVAL->ErrPrefix)
                     SvREFCNT_dec(RETVAL->ErrPrefix) ;
                 Safefree(RETVAL->Env) ;
@@ -1495,13 +1471,15 @@ _db_appinit(self, ref)
 	    if (RETVAL->ErrPrefix)
 	        env->set_errpfx(env, SvPVX(RETVAL->ErrPrefix)) ;
 
-	    if ((sv = readHash(hash, "ErrFile")) && sv != &PL_sv_undef) {
-		env->set_errfile(env, GetFILEptr(sv)) ;
-		RETVAL->ErrHandle = newRV(sv) ;
+	    SetValue_pv(errfile,      "ErrFile", char *) ;
+	    if (errfile) {
+	    	RETVAL->ErrHandle = fopen(errfile, "w");
+	    	if (RETVAL->ErrHandle == NULL)
+		    croak("Cannot open file %s: %s\n", errfile,  Strerror(errno));
+	    	env->set_errfile(env, RETVAL->ErrHandle) ;
 	    }
-	    /* SetValue_iv(RETVAL->Env.db_verbose, "Verbose") ; */ /* TODO */
+
 	    SetValue_iv(mode, "Mode") ;
-	    /* RETVAL->Env.db_errbuf = RETVAL->ErrBuff ; */
 	    env->set_errcall(env, db_errcall_cb) ;
 	    RETVAL->active = TRUE ;
 #ifdef IS_DB_3_0_x
@@ -1517,7 +1495,7 @@ _db_appinit(self, ref)
 	  else {
 	      (env->close)(env, 0) ;
               if (RETVAL->ErrHandle)
-                  SvREFCNT_dec(RETVAL->ErrHandle) ;
+                  fclose(RETVAL->ErrHandle) ;
               if (RETVAL->ErrPrefix)
                   SvREFCNT_dec(RETVAL->ErrPrefix) ;
               Safefree(RETVAL) ;
@@ -1760,7 +1738,7 @@ _DESTROY(env)
 	      (env->Env->close)(env->Env, 0) ;
 #endif
           if (env->ErrHandle)
-              SvREFCNT_dec(env->ErrHandle) ;
+              fclose(env->ErrHandle) ;
           if (env->ErrPrefix)
               SvREFCNT_dec(env->ErrPrefix) ;
 #if DB_VERSION_MAJOR == 2
@@ -1870,7 +1848,7 @@ set_mutexlocks(env, do_lock)
 	    softCrash("$env->set_setmutexlocks needs Berkeley DB 3.0 or better") ;
 #else
 #  ifdef AT_LEAST_DB_4
-	    RETVAL = env->Status = env->Env->set_flags(env->Env, DB_NOLOCKING, 1);
+	    RETVAL = env->Status = env->Env->set_flags(env->Env, DB_NOLOCKING, do_lock);
 #  else
 #    if defined(AT_LEAST_DB_3_2_6) || defined(IS_DB_3_0_x)
 	    RETVAL = env->Status = env->Env->set_mutexlocks(env->Env, do_lock);
@@ -2269,7 +2247,7 @@ _db_open_queue(self, ref)
 	    SetValue_iv(info.flags, "Property") ;
 	    if ((sv = readHash(hash, "Len")) && sv != &PL_sv_undef) {
 		info.re_len = SvIV(sv) ; ;
-		flagSet_DB2(info.flags, DB_PAD) ;
+		flagSet_DB2(info.flags, DB_FIXEDLEN) ;
 	    }
 	    if ((sv = readHash(hash, "Pad")) && sv != &PL_sv_undef) {
 		info.re_pad = (u_int32_t)SvPOK(sv) ? *SvPV(sv,PL_na) : SvIV(sv) ; ;
