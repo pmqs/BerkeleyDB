@@ -12,7 +12,7 @@
 #INCLUDE	= ./libraries/2.7.5
 #INCLUDE	= ./libraries/3.0.55
 #INCLUDE	= ./libraries/3.1.17
-INCLUDE	= ./libraries/3.2.7
+INCLUDE	= ./libraries/3.2.8
 
 # 2. Where is libdb?
 #
@@ -24,7 +24,7 @@ INCLUDE	= ./libraries/3.2.7
 #LIB	= ./libraries/2.7.5
 #LIB	= ./libraries/3.0.55
 #LIB	= ./libraries/3.1.17
-LIB	= ./libraries/3.2.7
+LIB	= ./libraries/3.2.8
 
 # 3. Is the library called libdb?
 #

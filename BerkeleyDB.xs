@@ -52,7 +52,7 @@ extern "C" {
 #include <db.h>
 
 #if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR == 0)
-#  define IS_DB_3_0
+#  define IS_DB_3_0_x
 #endif
 
 #if DB_VERSION_MAJOR >= 3
@@ -65,6 +65,12 @@ extern "C" {
 
 #if DB_VERSION_MAJOR > 3 || (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 2)
 #  define AT_LEAST_DB_3_2
+#endif
+
+#if DB_VERSION_MAJOR > 3 || \
+    (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR > 2) ||\
+    (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR == 2 && DB_VERSION_PATCH >= 6)
+#  define AT_LEAST_DB_3_2_6
 #endif
 
 /* need to define DEFSV & SAVE_DEFSV for older version of Perl */
@@ -90,6 +96,14 @@ extern "C" {
 #ifndef newSVpvn
 #    define newSVpvn(a,b)       newSVpv(a,b)
 #endif
+
+#ifndef PTR2IV
+#    define PTR2IV(d)	(IV)(d) 
+#endif /* PTR2IV */
+
+#ifndef INT2PTR
+#    define INT2PTR(any,d)	(any)(d) 
+#endif /* INT2PTR */
 
 #ifdef __cplusplus
 }
@@ -279,7 +293,7 @@ typedef PerlIO *      		IO_or_NULL ;
 typedef int			DualType ;
 
 static void
-hash_delete(char * hash, IV key);
+hash_delete(char * hash, char * key);
 
 #ifdef TRACE
 #  define Trace(x)	printf x
@@ -335,9 +349,9 @@ hash_delete(char * hash, IV key);
 #define DBT_clear(x)	Zero(&x, 1, DBT) ;
 
 #if 1
-#define getInnerObject(x) SvIV(*av_fetch((AV*)SvRV(x), 0, FALSE))
+#define getInnerObject(x) (*av_fetch((AV*)SvRV(x), 0, FALSE))
 #else
-#define getInnerObject(x) SvIV((SV*)SvRV(sv))
+#define getInnerObject(x) ((SV*)SvRV(sv))
 #endif
 
 #define my_sv_setpvn(sv, d, s) (s ? sv_setpvn(sv, d, s) : sv_setpv(sv, "") )
@@ -353,20 +367,20 @@ hash_delete(char * hash, IV key);
 #define SetValue_pvx(i, k, t) if ((sv = readHash(hash, k)) && sv != &PL_sv_undef) \
 				i = (t)SvPVX(sv)
 #define SetValue_ov(i,k,t) if ((sv = readHash(hash, k)) && sv != &PL_sv_undef) {\
-				IV tmp = getInnerObject(sv) ;	\
-				i = (t) tmp ;			\
+				IV tmp = SvIV(getInnerObject(sv)) ;	\
+				i = INT2PTR(t, tmp) ;			\
 			  }
 
 #define SetValue_ovx(i,k,t) if ((sv = readHash(hash, k)) && sv != &PL_sv_undef) {\
 				HV * hv = (HV *)GetInternalObject(sv);		\
 				SV ** svp = hv_fetch(hv, "db", 2, FALSE);\
 				IV tmp = SvIV(*svp);			\
-				i = (t) tmp ;				\
+				i = INT2PTR(t, tmp) ;				\
 			  }
 
 #define SetValue_ovX(i,k,t) if ((sv = readHash(hash, k)) && sv != &PL_sv_undef) {\
 				IV tmp = SvIV(GetInternalObject(sv));\
-				i = (t) tmp ;				\
+				i = INT2PTR(t, tmp) ;				\
 			  }
 
 #define LastDBerror DB_RUNRECOVERY
@@ -526,7 +540,7 @@ close_everything(void)
 	int  closed = 0 ;
 	Trace(("BerkeleyDB::Term::close_all_txns dirty=%d\n", PL_dirty)) ;
 	while ( he = hv_iternext(hv) ) {
-	    tid = * (BerkeleyDB__Txn__Raw *) (IV) hv_iterkey(he, &len) ;
+	    tid = * (BerkeleyDB__Txn__Raw *) hv_iterkey(he, &len) ;
 	    Trace(("  Aborting Transaction [%d] in [%d] Active [%d]\n", tid->txn, tid, tid->active));
 	    if (tid->active) {
 	        txn_abort(tid->txn);
@@ -549,7 +563,7 @@ close_everything(void)
 	int  closed = 0 ;
 	Trace(("BerkeleyDB::Term::close_all_cursors \n")) ;
 	while ( he = hv_iternext(hv) ) {
-	    db = * (BerkeleyDB__Cursor*) (IV) hv_iterkey(he, &len) ;
+	    db = * (BerkeleyDB__Cursor*) hv_iterkey(he, &len) ;
 	    Trace(("  Closing Cursor [%d] in [%d] Active [%d]\n", db->cursor, db, db->active));
 	    if (db->active) {
     	        ((db->cursor)->c_close)(db->cursor) ;
@@ -572,7 +586,7 @@ close_everything(void)
 	int  closed = 0 ;
 	Trace(("BerkeleyDB::Term::close_all_dbs\n" )) ;
 	while ( he = hv_iternext(hv) ) {
-	    db = * (BerkeleyDB*) (IV) hv_iterkey(he, &len) ;
+	    db = * (BerkeleyDB*) hv_iterkey(he, &len) ;
 	    Trace(("  Closing Database [%d] in [%d] Active [%d]\n", db->dbp, db, db->active));
 	    if (db->active) {
 	        (db->dbp->close)(db->dbp, 0) ;
@@ -595,7 +609,7 @@ close_everything(void)
 	int  closed = 0 ;
 	Trace(("BerkeleyDB::Term::close_all_envs\n")) ;
 	while ( he = hv_iternext(hv) ) {
-	    env = * (BerkeleyDB__Env*) (IV) hv_iterkey(he, &len) ;
+	    env = * (BerkeleyDB__Env*) hv_iterkey(he, &len) ;
 	    Trace(("  Closing Environment [%d] in [%d] Active [%d]\n", env->Env, env, env->active));
 	    if (env->active) {
 #if DB_VERSION_MAJOR == 2
@@ -641,7 +655,7 @@ destroyDB(BerkeleyDB db)
     if (db->filter_store_value)
           SvREFCNT_dec(db->filter_store_value) ;
 #endif
-    hash_delete("BerkeleyDB::Term::Db", (IV)db) ;
+    hash_delete("BerkeleyDB::Term::Db", (char *)db) ;
     if (db->filename)
              Safefree(db->filename) ;
     Safefree(db) ;
@@ -785,12 +799,12 @@ static int
 btree_compare(DB_callback const DBT * key1, const DBT * key2 )
 {
     dSP ;
-    void * data1, * data2 ;
+    char * data1, * data2 ;
     int retval ;
     int count ;
 
-    data1 = key1->data ;
-    data2 = key2->data ;
+    data1 = (char*) key1->data ;
+    data2 = (char*) key2->data ;
 
 #ifndef newSVpvn
     /* As newSVpv will assume that the data pointer is a null terminated C
@@ -832,7 +846,7 @@ static int
 dup_compare(DB_callback const DBT * key1, const DBT * key2 )
 {
     dSP ;
-    void * data1, * data2 ;
+    char * data1, * data2 ;
     int retval ;
     int count ;
 
@@ -842,8 +856,8 @@ dup_compare(DB_callback const DBT * key1, const DBT * key2 )
     if (CurrentDB->dup_compare == NULL)
         softCrash("in dup_compare: no callback specified for database '%s'", CurrentDB->filename) ;
 
-    data1 = key1->data ;
-    data2 = key2->data ;
+    data1 = (char*) key1->data ;
+    data2 = (char*) key2->data ;
 
 #ifndef newSVpvn
     /* As newSVpv will assume that the data pointer is a null terminated C
@@ -885,12 +899,12 @@ static size_t
 btree_prefix(DB_callback const DBT * key1, const DBT * key2 )
 {
     dSP ;
-    void * data1, * data2 ;
+    char * data1, * data2 ;
     int retval ;
     int count ;
 
-    data1 = key1->data ;
-    data2 = key2->data ;
+    data1 = (char*) key1->data ;
+    data2 = (char*) key2->data ;
 
 #ifndef newSVpvn
     /* As newSVpv will assume that the data pointer is a null terminated C
@@ -1004,14 +1018,14 @@ readHash(HV * hash, char * key)
 }
 
 static void
-hash_delete(char * hash, IV key)
+hash_delete(char * hash, char * key)
 {
     HV * hv = perl_get_hv(hash, TRUE);
     (void) hv_delete(hv, (char*)&key, sizeof(key), G_DISCARD);
 }
 
 static void
-hash_store_iv(char * hash, IV key, IV value)
+hash_store_iv(char * hash, char * key, IV value)
 {
     HV * hv = perl_get_hv(hash, TRUE);
     SV ** ret = hv_store(hv, (char*)&key, sizeof(key), newSViv(value), 0);
@@ -1211,7 +1225,7 @@ my_db_open(
 	RETVAL->filename = my_strdup(file) ;
 	RETVAL->Status = Status ;
 	RETVAL->active = TRUE ;
-	hash_store_iv("BerkeleyDB::Term::Db", (IV)RETVAL, 1) ;
+	hash_store_iv("BerkeleyDB::Term::Db", (char *)RETVAL, 1) ;
 	Trace(("  storing %d %d in BerkeleyDB::Term::Db\n", RETVAL, dbp)) ;
 	if (dbenv) {
 	    RETVAL->parent_env = dbenv ;
@@ -2267,7 +2281,7 @@ _db_appinit(self, ref)
 	    status = db_appinit(home, config, env, flags) ;
 	    Trace(("  status = %d env %d Env %d\n", status, RETVAL, env)) ;
 	    if (status == 0)
-	        hash_store_iv("BerkeleyDB::Term::Env", (IV)RETVAL, 1) ;
+	        hash_store_iv("BerkeleyDB::Term::Env", (char *)RETVAL, 1) ;
 	    else {
                 if (RETVAL->ErrHandle)
                     SvREFCNT_dec(RETVAL->ErrHandle) ;
@@ -2326,7 +2340,7 @@ _db_appinit(self, ref)
 	    /* RETVAL->Env.db_errbuf = RETVAL->ErrBuff ; */
 	    env->set_errcall(env, db_errcall_cb) ;
 	    RETVAL->active = TRUE ;
-#ifdef IS_DB_3_0
+#ifdef IS_DB_3_0_x
 	    status = (env->open)(env, home, config, flags, mode) ;
 #else /* > 3.0 */
 	    status = (env->open)(env, home, flags, mode) ;
@@ -2335,7 +2349,7 @@ _db_appinit(self, ref)
 	  }
 
 	  if (status == 0)
-	      hash_store_iv("BerkeleyDB::Term::Env", (IV)RETVAL, 1) ;
+	      hash_store_iv("BerkeleyDB::Term::Env", (char *)RETVAL, 1) ;
 	  else {
 	      (env->close)(env, 0) ;
               if (RETVAL->ErrHandle)
@@ -2379,7 +2393,7 @@ _txn_begin(env, pid=NULL, flags=0)
 	      RETVAL->txn  = txn ;
 	      RETVAL->active = TRUE ;
 	      Trace(("_txn_begin created txn [%d] in [%d]\n", txn, RETVAL));
-	      hash_store_iv("BerkeleyDB::Term::Txn", (IV)RETVAL, 1) ;
+	      hash_store_iv("BerkeleyDB::Term::Txn", (char *)RETVAL, 1) ;
 	    }
 	    else
 		RETVAL = NULL ;
@@ -2514,7 +2528,7 @@ db_appexit(env)
 	    RETVAL = (env->Env->close)(env->Env, 0) ;
 #endif
 	    env->active = FALSE ;
-	    hash_delete("BerkeleyDB::Term::Env", (IV)env) ;
+	    hash_delete("BerkeleyDB::Term::Env", (char *)env) ;
 	OUTPUT:
 	    RETVAL
 
@@ -2540,7 +2554,7 @@ _DESTROY(env)
           Safefree(env->Env) ;
 #endif
           Safefree(env) ;
-	  hash_delete("BerkeleyDB::Term::Env", (IV)env) ;
+	  hash_delete("BerkeleyDB::Term::Env", (char *)env) ;
 	  Trace(("End of BerkeleyDB::Env::DESTROY %d\n", RETVAL)) ;
 
 BerkeleyDB::TxnMgr::Raw
@@ -2553,7 +2567,7 @@ _TxnMgr(env)
 	CODE:
 	    ZMALLOC(RETVAL, BerkeleyDB_TxnMgr_type) ;
 	    RETVAL->env  = env ;
-	    /* hash_store_iv("BerkeleyDB::Term::TxnMgr", (IV)txn, 1) ; */
+	    /* hash_store_iv("BerkeleyDB::Term::TxnMgr", (char *)txn, 1) ; */
 	OUTPUT:
 	    RETVAL
 
@@ -2612,9 +2626,9 @@ set_mutexlocks(env, do_lock)
 #ifndef AT_LEAST_DB_3
 	    softCrash("$env->set_setmutexlocks needs Berkeley DB 3.0 or better") ;
 #else
-#if defined(IS_DB_3_0) || defined(AT_LEAST_DB_3_2)
+#if defined(AT_LEAST_DB_3_2_6) || defined(IS_DB_3_0_x)
 	    RETVAL = env->Status = env->Env->set_mutexlocks(env->Env, do_lock);
-#else /* DB 3.1 */
+#else /* DB 3.1 or 3.2.3 */
 	    RETVAL = env->Status = db_env_set_mutexlocks(do_lock);
 #endif
 #endif
@@ -2773,7 +2787,7 @@ _db_open_unknown(ref)
 	    ZMALLOC(db, BerkeleyDB_type) ;
 
 	    RETVAL = my_db_open(db, ref, ref_dbenv, dbenv, file, subname, DB_UNKNOWN, flags, mode, &info) ;
-	    XPUSHs(sv_2mortal(newSViv((IV)RETVAL)));
+	    XPUSHs(sv_2mortal(newSViv(PTR2IV(RETVAL))));
 	    if (RETVAL)
 	        XPUSHs(sv_2mortal(newSVpv(Names[RETVAL->type], 0))) ;
 	    else
@@ -3087,7 +3101,7 @@ db_close(db,flags=0)
 	    if (db->parent_env && db->parent_env->open_dbs)
 		-- db->parent_env->open_dbs ;
 	    db->active = FALSE ;
-	    hash_delete("BerkeleyDB::Term::Db", (IV)db) ;
+	    hash_delete("BerkeleyDB::Term::Db", (char *)db) ;
 	    -- db->open_cursors ;
 	    Trace(("end of BerkeleyDB::Common::db_close\n"));
 	OUTPUT:
@@ -3146,7 +3160,7 @@ _db_cursor(db, flags=0)
 	      RETVAL->filter_store_value  = db->filter_store_value ;
 #endif
               /* RETVAL->info ; */
-	      hash_store_iv("BerkeleyDB::Term::Cursor", (IV)RETVAL, 1) ;
+	      hash_store_iv("BerkeleyDB::Term::Cursor", (char *)RETVAL, 1) ;
 	  }
 	}
 	OUTPUT:
@@ -3175,7 +3189,8 @@ _db_join(db, cursors, flags=0)
 	  cursor_list = (DBC **)safemalloc(sizeof(DBC*) * (count + 1));
 	  for (i = 0 ; i < count ; ++i) {
 	      SV * obj = (SV*) * av_fetch(cursors, i, FALSE) ;
-	      BerkeleyDB__Cursor cur = (BerkeleyDB__Cursor) getInnerObject(obj) ;
+	      IV tmp = SvIV(getInnerObject(obj)) ;
+	      BerkeleyDB__Cursor cur = INT2PTR(BerkeleyDB__Cursor, tmp);
 	      cursor_list[i] = cur->cursor ;
 	  }
 	  cursor_list[i] = NULL ;
@@ -3210,7 +3225,7 @@ _db_join(db, cursors, flags=0)
 	      RETVAL->filter_store_value  = db->filter_store_value ;
 #endif
               /* RETVAL->info ; */
-	      hash_store_iv("BerkeleyDB::Term::Cursor", (IV)RETVAL, 1) ;
+	      hash_store_iv("BerkeleyDB::Term::Cursor", (char *)RETVAL, 1) ;
 	  }
 	  safefree(cursor_list) ;
 #endif /* Berkeley DB >= 2.5.2 */
@@ -3520,7 +3535,7 @@ _c_dup(db, flags=0)
 	      RETVAL->filter_store_value  = db->filter_store_value ;
 #endif /* DBM_FILTERING */
               /* RETVAL->info ; */
-	      hash_store_iv("BerkeleyDB::Term::Cursor", (IV)RETVAL, 1) ;
+	      hash_store_iv("BerkeleyDB::Term::Cursor", (char *)RETVAL, 1) ;
 	  }
 #endif	
 	}
@@ -3533,7 +3548,7 @@ _c_close(db)
 	INIT:
 	  CurrentDB = db->parent_db ;
 	  ckActive_Cursor(db->active) ;
-	  hash_delete("BerkeleyDB::Term::Cursor", (IV)db) ;
+	  hash_delete("BerkeleyDB::Term::Cursor", (char *)db) ;
 	CODE:
 	  RETVAL =  db->Status =
     	          ((db->cursor)->c_close)(db->cursor) ;
@@ -3549,7 +3564,7 @@ _DESTROY(db)
 	CODE:
 	  CurrentDB = db->parent_db ;
 	  Trace(("In BerkeleyDB::Cursor::_DESTROY db %d dirty=%d active=%d\n", db, PL_dirty, db->active));
-	  hash_delete("BerkeleyDB::Term::Cursor", (IV)db) ;
+	  hash_delete("BerkeleyDB::Term::Cursor", (char *)db) ;
 	  if (db->active)
     	      ((db->cursor)->c_close)(db->cursor) ;
 	  if (db->parent_db->open_cursors)
@@ -3660,7 +3675,7 @@ _txn_begin(txnmgr, pid=NULL, flags=0)
 	      RETVAL->txn  = txn ;
 	      RETVAL->active = TRUE ;
 	      Trace(("_txn_begin created txn [%d] in [%d]\n", txn, RETVAL));
-	      hash_store_iv("BerkeleyDB::Term::Txn", (IV)RETVAL, 1) ;
+	      hash_store_iv("BerkeleyDB::Term::Txn", (char *)RETVAL, 1) ;
 	    }
 	    else
 		RETVAL = NULL ;
@@ -3767,7 +3782,7 @@ _DESTROY(tid)
 	  if (tid->active)
 	    txn_abort(tid->txn) ;
           RETVAL = (int)tid ;
-	  hash_delete("BerkeleyDB::Term::Txn", (IV)tid) ;
+	  hash_delete("BerkeleyDB::Term::Txn", (char *)tid) ;
           Safefree(tid) ;
 	  Trace(("End of BerkeleyDB::Txn::DESTROY\n")) ;
 	OUTPUT:
@@ -3799,7 +3814,7 @@ _txn_commit(tid, flags=0)
 	u_int32_t	flags
 	INIT:
 	    ckActive_Transaction(tid->active) ;
-	    hash_delete("BerkeleyDB::Term::Txn", (IV)tid) ;
+	    hash_delete("BerkeleyDB::Term::Txn", (char *)tid) ;
 	    tid->active = FALSE ;
 
 #define _txn_abort(t) (t->Status = txn_abort(t->txn))
@@ -3808,7 +3823,7 @@ _txn_abort(tid)
 	BerkeleyDB::Txn	tid
 	INIT:
 	    ckActive_Transaction(tid->active) ;
-	    hash_delete("BerkeleyDB::Term::Txn", (IV)tid) ;
+	    hash_delete("BerkeleyDB::Term::Txn", (char *)tid) ;
 	    tid->active = FALSE ;
 
 #define xx_txn_id(t) txn_id(t->txn)

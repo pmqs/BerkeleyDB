@@ -8,6 +8,17 @@ BEGIN { die "BerkeleyDB needs Perl 5.004_04 or greater" if $] < 5.004_04 ; }
 
 use strict ;
 use ExtUtils::MakeMaker ;
+use Config ;
+
+# Check for the presence of sfio
+if ($Config{'d_sfio'}) {
+   print <<EOM;
+
+WARNING: Perl seems to have been built with SFIO support enabled.
+         Please read the SFIO Notes in the README file.
+
+EOM
+}
 
 my $LIB_DIR ;
 my $INC_DIR ;

@@ -72,7 +72,7 @@ T_AV
             croak(\"$var is not an array reference\")
 
 T_RAW
-        $var = ($type)SvIV($arg)
+        $var = INT2PTR($type,SvIV($arg)
 
 T_U_INT
         $var = SvUV($arg)
@@ -82,7 +82,7 @@ T_SV_REF_NULL
 	    $var = NULL ;
         else if (sv_derived_from($arg, \"${ntype}\")) {
             IV tmp = SvIV((SV *)GetInternalObject($arg));
-            $var =  ($type) tmp;
+            $var =  INT2PTR($type, tmp);
         }
         else
             croak(\"$var is not of type ${ntype}\")
@@ -94,7 +94,7 @@ T_HV_REF_NULL
             HV * hv = (HV *)GetInternalObject($arg);
             SV ** svp = hv_fetch(hv, \"db\", 2, FALSE);
             IV tmp = SvIV(*svp);
-            $var =  ($type) tmp;
+            $var =  INT2PTR($type, tmp);
         }
         else
             croak(\"$var is not of type ${ntype}\")
@@ -104,7 +104,7 @@ T_HV_REF
             HV * hv = (HV *)GetInternalObject($arg);
             SV ** svp = hv_fetch(hv, \"db\", 2, FALSE);
             IV tmp = SvIV(*svp);
-            $var =  ($type) tmp;
+            $var =  INT2PTR($type, tmp);
         }
         else
             croak(\"$var is not of type ${ntype}\")
@@ -113,7 +113,7 @@ T_HV_REF
 T_P_REF
         if (sv_derived_from($arg, \"${ntype}\")) {
             IV tmp = SvIV((SV*)SvRV($arg));
-            $var = ($type) tmp;
+            $var = INT2PTR($type, tmp);
         }
         else
             croak(\"$var is not of type ${ntype}\")
@@ -124,7 +124,7 @@ T_INNER
 	    HV * hv = (HV *)SvRV($arg);
             SV ** svp = hv_fetch(hv, \"db\", 2, FALSE);
             IV tmp = SvIV(*svp);
-            $var =  ($type) tmp;
+            $var =  INT2PTR($type, tmp);
 	}
 
 T_PV_NULL
@@ -147,7 +147,7 @@ T_PTROBJ_NULL
 	    $var = NULL ;
         else if (sv_derived_from($arg, \"${ntype}\")) {
             IV tmp = SvIV((SV*)SvRV($arg));
-            $var = ($type) tmp;
+            $var = INT2PTR($type, tmp);
         }
         else
             croak(\"$var is not of type ${ntype}\")
@@ -157,7 +157,7 @@ T_PTROBJ_SELF
 	    $var = NULL ;
         else if (sv_derived_from($arg, \"${ntype}\")) {
             IV tmp = SvIV((SV*)SvRV($arg));
-            $var = ($type) tmp;
+            $var = INT2PTR($type, tmp);
         }
         else
             croak(\"$var is not of type ${ntype}\")
@@ -166,8 +166,8 @@ T_PTROBJ_AV
         if ($arg == &PL_sv_undef || $arg == NULL)
             $var = NULL ;
         else if (sv_derived_from($arg, \"${ntype}\")) {
-            IV tmp = getInnerObject($arg) ;
-            $var = ($type) tmp;
+            IV tmp = SvIV(getInnerObject($arg)) ;
+            $var = INT2PTR($type, tmp);
         }
         else
             croak(\"$var is not of type ${ntype}\")
@@ -234,19 +234,19 @@ T_dbtdatum_btree
 OUTPUT
 
 T_RAW
-        sv_setiv($arg, (IV)$var);
+        sv_setiv($arg, PTR2IV($var));
 
 T_SV_REF_NULL
-	sv_setiv($arg, (IV)$var);
+	sv_setiv($arg, PTR2IV($var));
 
 T_HV_REF_NULL
-	sv_setiv($arg, (IV)$var);
+	sv_setiv($arg, PTR2IV($var));
 
 T_HV_REF
-	sv_setiv($arg, (IV)$var);
+	sv_setiv($arg, PTR2IV($var));
 
 T_P_REF
-	sv_setiv($arg, (IV)$var);
+	sv_setiv($arg, PTR2IV($var));
 
 T_DUAL
 	setDUALerrno($arg, $var) ;

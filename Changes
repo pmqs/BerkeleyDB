@@ -110,3 +110,9 @@ Revision history for Perl extension BerkeleyDB.
 	  error in c_close. The correct behaviour is that the cursor
 	  should be closed before committing/aborting the transaction.
 
+0.14 21st January 2001
+        * Silenced the warnings when build with a 64-bit Perl.
+        * Can now build with DB 3.2.3h (part of MySQL). The test harness
+          takes an age to do the queue test, but it does eventually pass.
+        * Mentioned the problems that occur when perl is built with sfio.
+
