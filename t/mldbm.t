@@ -5,22 +5,22 @@ use strict ;
 BEGIN 
 {
     if ($] < 5.005) {
-	print "1..0 # This is Perl $], skipping test\n" ;
+	print "1..0 # Skip: this is Perl $], skipping test\n" ;
 	exit 0 ;
     }
 
     eval { require Data::Dumper ; };
     if ($@) {
-	print "1..0 # Data::Dumper is not installed on this system.\n";
+	print "1..0 # Skip: Data::Dumper is not installed on this system.\n";
 	exit 0 ;
     }
     if ($Data::Dumper::VERSION < 2.08) {
-	print "1..0 # Data::Dumper 2.08 or better required (found $Data::Dumper::VERSION).\n";
+	print "1..0 # Skip: Data::Dumper 2.08 or better required (found $Data::Dumper::VERSION).\n";
 	exit 0 ;
     }
     eval { require MLDBM ; };
     if ($@) {
-	print "1..0 # MLDBM is not installed on this system.\n";
+	print "1..0 # Skip: MLDBM is not installed on this system.\n";
 	exit 0 ;
     }
 }

@@ -14,7 +14,7 @@ BEGIN {
 use BerkeleyDB; 
 use t::util ;
 
-print "1..46\n";
+print "1..52\n";
 
 my $Dfile = "dbhash.tmp";
 unlink $Dfile;
@@ -207,11 +207,55 @@ umask(0) ;
    $db->filter_store_key (sub { $_ = $h{$_} }) ;
 
    eval '$h{1} = 1234' ;
-   ok 46, $@ =~ /^BerkeleyDB Aborting: recursion detected in filter_store_key at/ ;
-   #print "[$@]\n" ;
+   ok 46, $@ =~ /^recursion detected in filter_store_key at/ ;
    
    undef $db ;
    untie %h;
    unlink $Dfile;
 }
 
+{
+   # Check that DBM Filter can cope with read-only $_
+
+   #use warnings ;
+   use strict ;
+   my (%h, $db) ;
+   unlink $Dfile;
+
+   ok 47, $db = tie %h, 'BerkeleyDB::Hash', 
+    		-Filename   => $Dfile, 
+	        -Flags      => DB_CREATE; 
+
+   $db->filter_fetch_key   (sub { }) ;
+   $db->filter_store_key   (sub { }) ;
+   $db->filter_fetch_value (sub { }) ;
+   $db->filter_store_value (sub { }) ;
+
+   $_ = "original" ;
+
+   $h{"fred"} = "joe" ;
+   ok(48, $h{"fred"} eq "joe");
+
+   eval { grep { $h{$_} } (1, 2, 3) };
+   ok (49, ! $@);
+
+
+   # delete the filters
+   $db->filter_fetch_key   (undef);
+   $db->filter_store_key   (undef);
+   $db->filter_fetch_value (undef);
+   $db->filter_store_value (undef);
+
+   $h{"fred"} = "joe" ;
+
+   ok(50, $h{"fred"} eq "joe");
+
+   ok(51, $db->FIRSTKEY() eq "fred") ;
+   
+   eval { grep { $h{$_} } (1, 2, 3) };
+   ok (52, ! $@);
+
+   undef $db ;
+   untie %h;
+   unlink $Dfile;
+}
