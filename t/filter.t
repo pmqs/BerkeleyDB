@@ -14,7 +14,7 @@ BEGIN {
 use BerkeleyDB; 
 use File::Path qw(rmtree);
 
-print "1..36\n";
+print "1..46\n";
 
 {
     package LexFile ;
@@ -49,91 +49,126 @@ unlink $Dfile;
 umask(0) ;
 
 
-# Check for invalid parameters
 {
-    # Check for invalid parameters
-    my $db ;
-    eval ' $db = new BerkeleyDB::Hash  -Stupid => 3 ; ' ;
-    ok 1, $@ =~ /unknown key value\(s\) Stupid/  ;
+   # DBM Filter tests
+   use strict ;
+   my (%h, $db) ;
+   my ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
+   unlink $Dfile;
 
-    eval ' $db = new BerkeleyDB::Hash -Bad => 2, -Mode => 0345, -Stupid => 3; ' ;
-    ok 2, $@ =~ /unknown key value\(s\) (Bad |Stupid ){2}/  ;
-
-    eval ' $db = new BerkeleyDB::Hash -Env => 2 ' ;
-    ok 3, $@ =~ /^Env not of type BerkeleyDB::Env/ ;
-
-    eval ' $db = new BerkeleyDB::Hash -Txn => "fred" ' ;
-    ok 4, $@ =~ /^Txn not of type BerkeleyDB::Txn/ ;
-
-    my $obj = bless [], "main" ;
-    eval ' $db = new BerkeleyDB::Hash -Env => $obj ' ;
-    ok 5, $@ =~ /^Env not of type BerkeleyDB::Env/ ;
-}
-
-
-{
-    my %hash ;
-    my $db ;
-    my $lex = new LexFile $Dfile ;
-    my ($read_key, $write_key, $read_value, $write_value) = ("") x 4 ;
-
-    ok 6, $db = tie %hash, 'BerkeleyDB::Hash', 
+   sub checkOutput
+   {
+       my($fk, $sk, $fv, $sv) = @_ ;
+       return
+           $fetch_key eq $fk && $store_key eq $sk && 
+	   $fetch_value eq $fv && $store_value eq $sv &&
+	   $_ eq 'original' ;
+   }
+   
+    ok 1, $db = tie %h, 'BerkeleyDB::Hash', 
     		-Filename   => $Dfile, 
-	        -Flags      => DB_CREATE, 
-	        -ReadKey    => sub { $read_key = $_ },
-	        -WriteKey   => sub { $write_key = $_ },
-	        -ReadValue  => sub { $read_value = $_ },
-	        -WriteValue => sub { $write_value = $_ };
+	        -Flags      => DB_CREATE; 
 
-    $hash{"fred"} = "joe" ;
-    ok 7, $write_key eq "fred" ;
-    ok 8, $write_value eq "joe" ;
-    ok 9, $read_key eq "" ;
-    ok 10, $read_value eq "" ;
+   $db->filter_fetch_key   (sub { $fetch_key = $_ }) ;
+   $db->filter_store_key   (sub { $store_key = $_ }) ;
+   $db->filter_fetch_value (sub { $fetch_value = $_}) ;
+   $db->filter_store_value (sub { $store_value = $_ }) ;
 
-    ($read_key, $write_key, $read_value, $write_value) = ("") x 4 ;
-    ok 11, $db->db_put("abc", "def") == 0 ;
-    ok 12, $write_key eq "abc" ;
-    ok 13, $write_value eq "def" ;
-    ok 14, $read_key eq "" ;
-    ok 15, $read_value eq "" ;
+   $_ = "original" ;
 
-    ($read_key, $write_key, $read_value, $write_value) = ("") x 4 ;
-    ok 16, $hash{"fred"} eq "joe" ;
-    ok 17, $write_key eq "fred" ;
-    ok 18, $write_value eq "" ;
-    ok 19, $read_key eq "" ;
-    ok 20, $read_value eq "joe" ;
+   $h{"fred"} = "joe" ;
+   #                   fk   sk     fv   sv
+   ok 2, checkOutput( "", "fred", "", "joe") ;
 
-    ($read_key, $write_key, $read_value, $write_value) = ("") x 4 ;
-    my $value = "xyz" ;
-    ok 21, $db->db_get("abc", $value) == 0 ;
-    ok 22, $value eq "def" ;
-    ok 23, $write_key eq "abc" ;
-    ok 24, $write_value eq "" ;
-    ok 25, $read_key eq "" ;
-    ok 26, $read_value eq "def" ;
+   ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
+   ok 3, $h{"fred"} eq "joe";
+   #                   fk    sk     fv    sv
+   ok 4, checkOutput( "", "fred", "joe", "") ;
 
-    my $cursor = $db->db_cursor() ;
-    my $key = "ABC";
-    $value = "DEF" ;
-    ($read_key, $write_key, $read_value, $write_value) = ("") x 4 ;
-    ok 27, $cursor->c_get($key, $value, DB_FIRST) == 0 ;
-    ok 28, $write_key eq "ABC" ;
-    ok 29, $write_value eq "" ;
-    ok 30, $key ne "" && $read_key eq $key ;
-    ok 31, $value ne "" && $read_value eq $value ;
-    
+   ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
+   ok 5, $db->FIRSTKEY() eq "fred" ;
+   #                    fk     sk  fv  sv
+   ok 6, checkOutput( "fred", "", "", "") ;
+
+   # replace the filters, but remember the previous set
+   my ($old_fk) = $db->filter_fetch_key   
+   			(sub { $_ = uc $_ ; $fetch_key = $_ }) ;
+   my ($old_sk) = $db->filter_store_key   
+   			(sub { $_ = lc $_ ; $store_key = $_ }) ;
+   my ($old_fv) = $db->filter_fetch_value 
+   			(sub { $_ = "[$_]"; $fetch_value = $_ }) ;
+   my ($old_sv) = $db->filter_store_value 
+   			(sub { s/o/x/g; $store_value = $_ }) ;
+   
+   ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
+   $h{"Fred"} = "Joe" ;
+   #                   fk   sk     fv    sv
+   ok 7, checkOutput( "", "fred", "", "Jxe") ;
+
+   ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
+   ok 8, $h{"Fred"} eq "[Jxe]";
+   #                   fk   sk     fv    sv
+   ok 9, checkOutput( "", "fred", "[Jxe]", "") ;
+
+   ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
+   ok 10, $db->FIRSTKEY() eq "FRED" ;
+   #                   fk   sk     fv    sv
+   ok 11, checkOutput( "FRED", "", "", "") ;
+
+   # put the original filters back
+   $db->filter_fetch_key   ($old_fk);
+   $db->filter_store_key   ($old_sk);
+   $db->filter_fetch_value ($old_fv);
+   $db->filter_store_value ($old_sv);
+
+   ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
+   $h{"fred"} = "joe" ;
+   ok 12, checkOutput( "", "fred", "", "joe") ;
+
+   ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
+   ok 13, $h{"fred"} eq "joe";
+   ok 14, checkOutput( "", "fred", "joe", "") ;
+
+   ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
+   ok 15, $db->FIRSTKEY() eq "fred" ;
+   ok 16, checkOutput( "fred", "", "", "") ;
+
+   # delete the filters
+   $db->filter_fetch_key   (undef);
+   $db->filter_store_key   (undef);
+   $db->filter_fetch_value (undef);
+   $db->filter_store_value (undef);
+
+   ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
+   $h{"fred"} = "joe" ;
+   ok 17, checkOutput( "", "", "", "") ;
+
+   ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
+   ok 18, $h{"fred"} eq "joe";
+   ok 19, checkOutput( "", "", "", "") ;
+
+   ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
+   ok 20, $db->FIRSTKEY() eq "fred" ;
+   ok 21, checkOutput( "", "", "", "") ;
+
+   undef $db ;
+   untie %h;
+   unlink $Dfile;
 }
 
 {    
-    # closure
+    # DBM Filter with a closure
 
-    my %hash ;
-    my $db ;
-    my $lex = new LexFile $Dfile ;
+    use strict ;
+    my (%h, $db) ;
+
+    unlink $Dfile;
+    ok 22, $db = tie %h, 'BerkeleyDB::Hash', 
+    		-Filename   => $Dfile, 
+	        -Flags      => DB_CREATE; 
 
     my %result = () ;
+
     sub Closure
     {
         my ($name) = @_ ;
@@ -146,18 +181,64 @@ umask(0) ;
 		   }
     }
 
-    ok 32, $db = tie %hash, 'BerkeleyDB::Hash', 
-    		-Filename   => $Dfile, 
-	        -Flags      => DB_CREATE, 
-	        -WriteKey   => Closure("abc"), 
-	        -WriteValue => Closure("def") ;
+    $db->filter_store_key(Closure("store key"))  ;
+    $db->filter_store_value(Closure("store value")) ;
+    $db->filter_fetch_key(Closure("fetch key")) ;
+    $db->filter_fetch_value(Closure("fetch value")) ;
 
-    $hash{"fred"} = "joe" ;
-    ok 33, $result{"abc"} eq "abc - 1: [fred]" ;
-    ok 34, $result{"def"} eq "def - 1: [joe]" ;
-    $hash{"jim"}  = "john" ;
-    ok 35, $result{"abc"} eq "abc - 2: [fred jim]" ;
-    ok 36, $result{"def"} eq "def - 2: [joe john]" ;
+    $_ = "original" ;
+
+    $h{"fred"} = "joe" ;
+    ok 23, $result{"store key"} eq "store key - 1: [fred]" ;
+    ok 24, $result{"store value"} eq "store value - 1: [joe]" ;
+    ok 25, ! defined $result{"fetch key"}  ;
+    ok 26, ! defined $result{"fetch value"}  ;
+    ok 27, $_ eq "original"  ;
+
+    ok 28, $db->FIRSTKEY() eq "fred"  ;
+    ok 29, $result{"store key"} eq "store key - 1: [fred]" ;
+    ok 30, $result{"store value"} eq "store value - 1: [joe]" ;
+    ok 31, $result{"fetch key"} eq "fetch key - 1: [fred]" ;
+    ok 32, ! defined $result{"fetch value"}  ;
+    ok 33, $_ eq "original"  ;
+
+    $h{"jim"}  = "john" ;
+    ok 34, $result{"store key"} eq "store key - 2: [fred jim]" ;
+    ok 35, $result{"store value"} eq "store value - 2: [joe john]" ;
+    ok 36, $result{"fetch key"} eq "fetch key - 1: [fred]" ;
+    ok 37, ! defined $result{"fetch value"}  ;
+    ok 38, $_ eq "original"  ;
+
+    ok 39, $h{"fred"} eq "joe" ;
+    ok 40, $result{"store key"} eq "store key - 3: [fred jim fred]" ;
+    ok 41, $result{"store value"} eq "store value - 2: [joe john]" ;
+    ok 42, $result{"fetch key"} eq "fetch key - 1: [fred]" ;
+    ok 43, $result{"fetch value"} eq "fetch value - 1: [joe]" ;
+    ok 44, $_ eq "original" ;
+
+    undef $db ;
+    untie %h;
+    unlink $Dfile;
 }		
 
-# check that filters still work when a user-defined sort key is being used.
+{
+   # DBM Filter recursion detection
+   use strict ;
+   my (%h, $db) ;
+   unlink $Dfile;
+
+    ok 45, $db = tie %h, 'BerkeleyDB::Hash', 
+    		-Filename   => $Dfile, 
+	        -Flags      => DB_CREATE; 
+
+   $db->filter_store_key (sub { $_ = $h{$_} }) ;
+
+   eval '$h{1} = 1234' ;
+   ok 46, $@ =~ /^BerkeleyDB Aborting: recursion detected in filter_store_key at/ ;
+   #print "[$@]\n" ;
+   
+   undef $db ;
+   untie %h;
+   unlink $Dfile;
+}
+

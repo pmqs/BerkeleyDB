@@ -2,22 +2,21 @@
 package BerkeleyDB;
 
 
-#     Copyright (c) 1997,8 Paul Marquess. All rights reserved.
+#     Copyright (c) 1997-1999 Paul Marquess. All rights reserved.
 #     This program is free software; you can redistribute it and/or
 #     modify it under the same terms as Perl itself.
 #
-# SCCS: %I%, %G%  
 
 # The documentation for this module is at the bottom of this file,
 # after the line __END__.
 
-BEGIN { require 5.004_02 }
+BEGIN { require 5.004_04 }
 
 use strict;
 use Carp;
 use vars qw($VERSION @ISA @EXPORT $AUTOLOAD);
 
-$VERSION = '0.06';
+$VERSION = '0.07';
 
 require Exporter;
 require DynaLoader;
@@ -29,40 +28,24 @@ use IO ;
 # names by default without a very good reason. Use EXPORT_OK instead.
 # Do not simply export all your public functions/methods/constants.
 @EXPORT = qw(
-	DBM_INSERT
-	DBM_REPLACE
-	DBM_SUFFIX
 	DB_AFTER
-	DB_AM_DUP
-	DB_AM_INMEM
-	DB_AM_LOCKING
-	DB_AM_LOGGING
-	DB_AM_MLOCAL
-	DB_AM_PGDEF
-	DB_AM_RDONLY
-	DB_AM_RECOVER
-	DB_AM_SWAP
-	DB_AM_THREAD
 	DB_APPEND
 	DB_ARCH_ABS
 	DB_ARCH_DATA
 	DB_ARCH_LOG
 	DB_BEFORE
 	DB_BTREE
-	DB_BTREEMAGIC
-	DB_BTREEOLDVER
-	DB_BTREEVERSION
-	DB_BT_RECNUM
 	DB_CHECKPOINT
+	DB_CONSUME
 	DB_CREATE
+	DB_CURLSN
 	DB_CURRENT
-	DB_DBT_INTERNAL
 	DB_DBT_MALLOC
 	DB_DBT_PARTIAL
 	DB_DBT_USERMEM
-	DB_DELETED
 	DB_DELIMITER
 	DB_DUP
+	DB_DUPSORT
 	DB_ENV_APPINIT
 	DB_ENV_STANDALONE
 	DB_ENV_THREAD
@@ -71,28 +54,26 @@ use IO ;
 	DB_FIRST
 	DB_FIXEDLEN
 	DB_FLUSH
-	DB_GET_RECNO
+	DB_FORCE
 	DB_GET_BOTH
+	DB_GET_RECNO
 	DB_HASH
-	DB_HASHMAGIC
-	DB_HASHOLDVER
-	DB_HASHVERSION
-	DB_HS_DIRTYMETA
 	DB_INCOMPLETE
+	DB_INIT_CDB
 	DB_INIT_LOCK
 	DB_INIT_LOG
 	DB_INIT_MPOOL
 	DB_INIT_TXN
+	DB_JOIN_ITEM
 	DB_KEYEMPTY
 	DB_KEYEXIST
 	DB_KEYFIRST
 	DB_KEYLAST
 	DB_LAST
-	DB_LOCKMAGIC
-	DB_LOCKVERSION
 	DB_LOCK_CONFLICT
 	DB_LOCK_DEADLOCK
 	DB_LOCK_DEFAULT
+	DB_LOCK_GET
 	DB_LOCK_NORUN
 	DB_LOCK_NOTGRANTED
 	DB_LOCK_NOTHELD
@@ -102,9 +83,6 @@ use IO ;
 	DB_LOCK_RIW_N
 	DB_LOCK_RW_N
 	DB_LOCK_YOUNGEST
-	DB_LOGMAGIC
-	DB_LOGOLDVER
-	DB_LOGVERSION
 	DB_MAX_PAGES
 	DB_MAX_RECORDS
 	DB_MPOOL_CLEAN
@@ -123,7 +101,10 @@ use IO ;
 	DB_NOSYNC
 	DB_NOTFOUND
 	DB_PAD
+	DB_POSITION
 	DB_PREV
+	DB_PRIVATE
+	DB_QUEUE
 	DB_RDONLY
 	DB_RECNO
 	DB_RECNUM
@@ -132,11 +113,6 @@ use IO ;
 	DB_RECOVER_FATAL
 	DB_REGISTERED
 	DB_RENUMBER
-	DB_RE_DELIMITER
-	DB_RE_FIXEDLEN
-	DB_RE_PAD
-	DB_RE_RENUMBER
-	DB_RE_SNAPSHOT
 	DB_RMW
 	DB_RUNRECOVERY
 	DB_SEQUENTIAL
@@ -148,8 +124,6 @@ use IO ;
 	DB_TEMPORARY
 	DB_THREAD
 	DB_TRUNCATE
-	DB_TXNMAGIC
-	DB_TXNVERSION
 	DB_TXN_BACKWARD_ROLL
 	DB_TXN_CKP
 	DB_TXN_FORWARD_ROLL
@@ -161,6 +135,8 @@ use IO ;
 	DB_TXN_LOG_UNDO
 	DB_TXN_LOG_UNDOREDO
 	DB_TXN_NOSYNC
+	DB_TXN_NOWAIT
+	DB_TXN_SYNC
 	DB_TXN_OPENFILES
 	DB_TXN_REDO
 	DB_TXN_UNDO
@@ -169,12 +145,8 @@ use IO ;
 	DB_VERSION_MAJOR
 	DB_VERSION_MINOR
 	DB_VERSION_PATCH
+	DB_WRITECURSOR
 
-	DB_REGION_ANON
-	DB_REGION_INIT
-	DB_REGION_NAME
-	DB_TSL_SPINS
-	
 );
 
 sub AUTOLOAD {
@@ -244,29 +216,6 @@ sub ParseParameters($@)
     return \%got ;
 }
 
-package BerkeleyDB::Term ;
-
-END
-{
-if (1) { ###
-    my $ref ;
-#print "BerkeleyDB::Term::END cursors\n" ;
-##    foreach $ref ( keys %{ $BerkeleyDB::Term::opened{cur} } )
-##	{ cur_close($ref) }
-
-##print "BerkeleyDB::Term::END dbs\n" ;
-close_dbs() ;
-##    foreach $ref ( keys %BerkeleyDB::Term::Db )
-##	{ print "closing $ref\n" ; db_close($ref) }
-###print "BerkeleyDB::Term::END envs\n" ;
-##    foreach $ref ( keys %{ $BerkeleyDB::Term::opened{txn_mgr} } )
-##	{ txnmgr_close($ref) }
-###print "BerkeleyDB::Term::END txn_mgr\n" ;
-##    foreach $ref ( keys %{ $BerkeleyDB::Term::opened{env} } )
-##	{ env_close($ref) }
-##print "---end of BerkeleyDB::Term::END\n" ;
-}
-}
 
 package BerkeleyDB::Env ;
 
@@ -287,6 +236,7 @@ sub new
     #
     #	$env = new BerkeleyDB::Env
     #			[ -Home		=> $path, ]
+    #			[ -Mode		=> mode, ]
     #			[ -Config	=> { name => value, name => value }
     #			[ -ErrFile   	=> filename or filehandle, ]
     #			[ -ErrPrefix 	=> "string", ]
@@ -297,6 +247,7 @@ sub new
     my $pkg = shift ;
     my $got = BerkeleyDB::ParseParameters({
 					Home		=> undef,
+					Mode		=> 0666,
 					ErrFile  	=> undef,
 					ErrPrefix 	=> undef,
 					Flags     	=> 0,
@@ -327,7 +278,29 @@ sub new
 	    if @BerkeleyDB::a ;
     }
 
-    return _db_appinit($pkg, $got) ;
+    my ($addr) = _db_appinit($pkg, $got) ;
+    my $obj ;
+    $obj = bless [$addr] , $pkg if $addr ;
+    return $obj ;
+}
+
+
+sub TxnMgr
+{
+    my $env = shift ;
+    my ($addr) = $env->_TxnMgr() ;
+    my $obj ;
+    $obj = bless [$addr, $env] , "BerkeleyDB::TxnMgr" if $addr ;
+    return $obj ;
+}
+
+sub txn_begin
+{
+    my $env = shift ;
+    my ($addr) = $env->_txn_begin(@_) ;
+    my $obj ;
+    $obj = bless [$addr, $env] , "BerkeleyDB::Txn" if $addr ;
+    return $obj ;
 }
 
 package BerkeleyDB::Hash ;
@@ -359,6 +332,7 @@ sub new
 			Ffactor		=> 0,
 			Nelem 		=> 0,
 			Hash 		=> undef,
+			DupCompare	=> undef,
 
 			# BerkeleyDB specific
 			ReadKey		=> undef,
@@ -376,34 +350,17 @@ sub new
     croak("-Tie needs a reference to a hash")
 	if defined $got->{Tie} and $got->{Tie} !~ /HASH/ ;
 
-    return  _db_open_hash($self, $got);
+    my ($addr) = _db_open_hash($self, $got);
+    my $obj ;
+    if ($addr) {
+        $obj = bless [$addr] , $self ;
+	push @{ $obj }, $got->{Env} if $got->{Env} ;
+        $obj->Txn($got->{Txn}) if $got->{Txn} ;
+    }
+    return $obj ;
 }
 
 *TIEHASH = \&new ;
-
-package BerkeleyDB::Common ;
-
-#sub Tie
-#{
-#    # Usage:
-#    #
-#    #   $db->Tie \%hash ;
-#    #
-#
-#    my $self = shift ;
-#
-##print "Tie method REF=[$self] [" . (ref $self) . "]\n" ;
-#
-#    croak("usage \$x->Tie \\%hash\n") unless @_ ;
-#    my $ref  = shift ; 
-#
-#    croak("Tie needs a reference to a hash")
-#	if defined $ref and $ref !~ /HASH/ ;
-#
-#    #tie %{ $ref }, ref($self), $self ; 
-#    tie %{ $ref }, "BerkeleyDB::_tiedHash", $self ; 
-#    return undef ;
-#}
 
  
 package BerkeleyDB::Btree ;
@@ -434,6 +391,7 @@ sub new
 			# Btree specific
 			Minkey		=> 0,
 			Compare		=> undef,
+			DupCompare	=> undef,
 			Prefix 		=> undef,
 		      }, @_) ;
 
@@ -446,7 +404,14 @@ sub new
     croak("-Tie needs a reference to a hash")
 	if defined $got->{Tie} and $got->{Tie} !~ /HASH/ ;
 
-    return _db_open_btree($self, $got);
+    my ($addr) = _db_open_btree($self, $got);
+    my $obj ;
+    if ($addr) {
+        $obj = bless [$addr] , $self ;
+	push @{ $obj }, $got->{Env} if $got->{Env} ;
+        $obj->Txn($got->{Txn}) if $got->{Txn} ;
+    }
+    return $obj ;
 }
 
 *BerkeleyDB::Btree::TIEHASH = \&BerkeleyDB::Btree::new ;
@@ -500,7 +465,14 @@ sub new
 
     $got->{Fname} = $got->{Filename} if defined $got->{Filename} ;
 
-    return _db_open_recno($self, $got);
+    my ($addr) = _db_open_recno($self, $got);
+    my $obj ;
+    if ($addr) {
+        $obj = bless [$addr] , $self ;
+	push @{ $obj }, $got->{Env} if $got->{Env} ;
+        $obj->Txn($got->{Txn}) if $got->{Txn} ;
+    }	
+    return $obj ;
 }
 
 *BerkeleyDB::Recno::TIEARRAY = \&BerkeleyDB::Recno::new ;
@@ -551,7 +523,6 @@ sub new
 ##     $got->{Source} = $got->{Filename} if defined $got->{Filename} ;
 ##     delete $got->{Filename} ;
 ##     $got->{Fname} = $got->{Btree} if defined $got->{Btree} ;
-##     #return _db_open_text($self, $got);
 ##     return BerkeleyDB::Recno::_db_open_recno($self, $got);
 ## }
 ## 
@@ -596,7 +567,11 @@ sub new
 
     my ($addr, $type) = _db_open_unknown($got);
     my $obj ;
-    $obj = bless \$addr, "BerkeleyDB::$type" if $addr ;
+    if ($addr) {
+        $obj = bless [$addr], "BerkeleyDB::$type" ;
+	push @{ $obj }, $got->{Env} if $got->{Env} ;
+        $obj->Txn($got->{Txn}) if $got->{Txn} ;
+    }	
     return $obj ;
 }
 
@@ -624,7 +599,7 @@ sub Tie
 
     my $self = shift ;
 
-#print "Tie method REF=[$self] [" . (ref $self) . "]\n" ;
+    #print "Tie method REF=[$self] [" . (ref $self) . "]\n" ;
 
     croak("usage \$x->Tie \\%hash\n") unless @_ ;
     my $ref  = shift ; 
@@ -711,7 +686,7 @@ sub Tie
 
     my $self = shift ;
 
-#print "Tie method REF=[$self] [" . (ref $self) . "]\n" ;
+    #print "Tie method REF=[$self] [" . (ref $self) . "]\n" ;
 
     croak("usage \$x->Tie \\%hash\n") unless @_ ;
     my $ref  = shift ; 
@@ -806,12 +781,21 @@ sub PUSH
     {
         my ($key, $value) = (0, 0) ;
         my $cursor = $self->db_cursor() ;
-        $cursor->c_get($key, $value, BerkeleyDB::DB_LAST()) ;
+        if ($cursor->c_get($key, $value, BerkeleyDB::DB_LAST()) == 0)
+	{
+            foreach $value (@_)
+	    {
+	        ++ $key ;
+	        $self->db_put($key, $value) ;
+	    }
+	}
 
-        foreach $value (@_)
-        {
-	    $cursor->c_put($key, $value, BerkeleyDB::DB_AFTER()) ;
-        }
+# can use this when DB_APPEND is fixed.
+#        foreach $value (@_)
+#        {
+#	    my $status = $cursor->c_put($key, $value, BerkeleyDB::DB_AFTER()) ;
+#print "[$status]\n" ;
+#        }
     }
 }
 
@@ -829,7 +813,7 @@ sub POP
 sub SPLICE
 {
     my $self = shift;
-    die "SPLICE is not implemented yet" ;
+    croak "SPLICE is not implemented yet" ;
 }
 
 *shift = \&SHIFT ;
@@ -837,10 +821,11 @@ sub SPLICE
 *push = \&PUSH ;
 *pop = \&POP ;
 *clear = \&CLEAR ;
+*length = \&FETCHSIZE ;
 
 sub STORESIZE
 {
-    die "STORESIZE is not implemented yet" ;
+    croak "STORESIZE is not implemented yet" ;
 #print "STORESIZE @_\n" ;
 #    my $self = shift;
 #    my $length = shift ;
@@ -868,6 +853,174 @@ sub STORESIZE
 #    my $self = shift ;
 #    print "BerkeleyDB::_tieArray::DESTROY\n" ;
 #}
+
+
+package BerkeleyDB::Common ;
+
+
+use Carp ;
+
+sub DESTROY
+{
+    my $self = shift ;
+    $self->_DESTROY() ;
+}
+
+sub Txn
+{
+    my $self = shift ;
+    my $txn  = shift ;
+    #print "BerkeleyDB::Common::Txn db [$self] txn [$txn]\n" ;
+    if ($txn) {
+        $self->_Txn($txn) ;
+        push @{ $txn }, $self ;
+    }
+    else {
+        $self->_Txn() ;
+    }
+    #print "end BerkeleyDB::Common::Txn \n";
+}
+
+
+sub get_dup
+{
+    croak "Usage: \$db->get_dup(key [,flag])\n"
+        unless @_ == 2 or @_ == 3 ;
+ 
+    my $db        = shift ;
+    my $key       = shift ;
+    my $flag	  = shift ;
+    my $value 	  = 0 ;
+    my $origkey   = $key ;
+    my $wantarray = wantarray ;
+    my %values	  = () ;
+    my @values    = () ;
+    my $counter   = 0 ;
+    my $status    = 0 ;
+    my $cursor    = $db->db_cursor() ;
+ 
+    # iterate through the database until either EOF ($status == 0)
+    # or a different key is encountered ($key ne $origkey).
+    for ($status = $cursor->c_get($key, $value, BerkeleyDB::DB_SET()) ;
+	 $status == 0 and $key eq $origkey ;
+         $status = $cursor->c_get($key, $value, BerkeleyDB::DB_NEXT()) ) {
+        # save the value or count number of matches
+        if ($wantarray) {
+	    if ($flag)
+                { ++ $values{$value} }
+	    else
+                { push (@values, $value) }
+	}
+        else
+            { ++ $counter }
+     
+    }
+ 
+    return ($wantarray ? ($flag ? %values : @values) : $counter) ;
+}
+
+sub db_cursor
+{
+    my $db = shift ;
+    my ($addr) = $db->_db_cursor() ;
+    my $obj ;
+    $obj = bless [$addr, $db] , "BerkeleyDB::Cursor" if $addr ;
+    return $obj ;
+}
+
+sub db_join
+{
+    croak 'Usage: $db->BerkeleyDB::Common::db_join([cursors], flags=0)'
+	if @_ < 2 || @_ > 3 ;
+    my $db = shift ;
+    my ($addr) = $db->_db_join(@_) ;
+    my $obj ;
+    $obj = bless [$addr, $db] , "BerkeleyDB::Cursor" if $addr ;
+    return $obj ;
+}
+
+package BerkeleyDB::Cursor ;
+
+sub DESTROY
+{
+    my $self = shift ;
+    $self->_DESTROY() ;
+}
+
+package BerkeleyDB::TxnMgr ;
+
+sub DESTROY
+{
+    my $self = shift ;
+    $self->_DESTROY() ;
+}
+
+sub txn_begin
+{
+    my $txnmgr = shift ;
+    my ($addr) = $txnmgr->_txn_begin(@_) ;
+    my $obj ;
+    $obj = bless [$addr, $txnmgr] , "BerkeleyDB::Txn" if $addr ;
+    return $obj ;
+}
+
+package BerkeleyDB::Txn ;
+
+sub Txn
+{
+    my $self = shift ;
+    my $db ;
+    # keep a reference to each db in the txn object
+    foreach $db (@_) {
+        $db->_Txn($self) ;
+	push @{ $self}, $db ;
+    }
+}
+
+sub txn_commit
+{
+    my $self = shift ;
+    $self->disassociate() ;
+    my $status = $self->_txn_commit() ;
+    return $status ;
+}
+
+sub txn_abort
+{
+    my $self = shift ;
+    $self->disassociate() ;
+    my $status = $self->_txn_abort() ;
+    return $status ;
+}
+
+sub disassociate
+{
+    my $self = shift ;
+    my $db ;
+    while ( @{ $self } > 2) {
+        $db = pop @{ $self } ;
+        $db->Txn() ;
+    }
+    #print "end disassociate\n" ;
+}
+
+
+sub DESTROY
+{
+    my $self = shift ;
+
+    $self->disassociate() ;
+    # first close the close the transaction
+    $self->_DESTROY() ;
+}
+
+package BerkeleyDB::Term ;
+
+END
+{
+    close_everything() ;
+}
+
 
 package BerkeleyDB ;
 

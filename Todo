@@ -1,6 +1,7 @@
 
-  * get Makefile.PL and/or BerkeleyDB.xs to check that a recent enough
-    version of DB is being used.
+  * add the examples from the pod into the test harness.
+
+  * add support for the join functionality.
 
   * use '~' magic to store the inner data.
 
@@ -41,26 +42,26 @@ Possibles
 
   * allow recno to allow base offset for arrays to be either 0 or 1.
 
-  * To make it easier to interface to databases that expect key/values
-    to be NULL terminated or as an alternative to MLDBM, add a key/value
-    filter interface
-
-        -Filter =>
-            {
-                -ReadKey => sub { ... },
-                -WriteRey
-                -ReadData
-                -WriteData
-                -ReadAny
-                -WriteAny
-            }
-
-        arrange for the key/value to be available in $_
-	e.g. to have a C friendly database use
-
-        -Filter => {
-            -ReadAny    => sub { s/\0$// },
-            -WriteAny    => sub { $_ .= '\0' }
-            } ;
+  * when duplicate keys are enabled, allow db_put($key, [$val1, $val2,...]) 
 
 
+2.x -> 3.x Upgrade
+==================
+
+Environment Verbose
+Env->open mode
+DB cache size extra parameter
+DB->open subdatabases
+An empty environment causes DB->open to fail
+where is __db.001 coming from?
+Change db_strerror for 0 to ""?
+Queue
+db_stat for Hash & Queue
+No TxnMgr
+
+    $env = BerkeleyDB::Env::Create
+    $env = create BerkeleyDB::Env
+    $status = $env->open()
+
+    $db = BerkeleyDB::Hash::Create
+    $status = $db->open()

@@ -49,10 +49,14 @@ WriteMakefile(
 
 sub MY::postamble {
 	'
+$(NAME).pod:	$(NAME).pod.P t/examples.t.T mkpod
+	perl ./mkpod
+
 $(NAME).xs:	typemap
 	@$(TOUCH) $(NAME).xs
 
 Makefile:	config.in 
+
 
 ' ;
 }
@@ -98,8 +102,8 @@ sub ParseCONFIG
     die "The following keys are missing from $CONFIG file: [@missing]\n" 
         if @missing = keys %Parsed ;
 
-    $INC_DIR = $Info{'INCLUDE'} ;
-    $LIB_DIR = $Info{'LIB'} ;
+    $INC_DIR =  $ENV{'BERKELEYDB_INCLUDE'} || $Info{'INCLUDE'} ;
+    $LIB_DIR =  $ENV{'BERKELEYDB_LIB'} || $Info{'LIB'} ;
     $DB_NAME = $Info{'DBNAME'} if defined $Info{'DBNAME'} ;
     print "Looks Good.\n" ;
 

@@ -9,7 +9,7 @@
 #    installed on your system.
 
 #INCLUDE	= /usr/local/include
-INCLUDE	= ../latest
+INCLUDE	= /usr/local/BerkeleyDB/include
 
 # 2. Where is libdb?
 #
@@ -17,7 +17,7 @@ INCLUDE	= ../latest
 #    installed on your system.
 
 #LIB	= /usr/local/lib
-LIB	= ../latest
+LIB	= /usr/local/BerkeleyDB/lib
 
 # 3. Is the library called libdb?
 #
@@ -26,11 +26,11 @@ LIB	= ../latest
 #    the correct one. Renaming one (or creating a symbolic link) to
 #    include the version number of the library can help.
 #
-#    For example, if you have Berkeley DB 2.3.12 you could rename the
-#    Berkeley DB library from libdb.a to libdb-2.3.12.a and change the
+#    For example, if you have Berkeley DB 2.6.4  you could rename the
+#    Berkeley DB library from libdb.a to libdb-2.6.4.a  and change the
 #    DBNAME line below to look like this:
 #
-#        DBNAME = -ldb-2.3.12
+#        DBNAME = -ldb-2.6.4 
 #
 #    Note: If you are building this module with Win32, -llibdb will be
 #    used by default.
@@ -39,6 +39,6 @@ LIB	= ../latest
 #    below (by removing the leading #) and edit the line to use the name
 #    you have picked.
 
-#DBNAME = -ldb-2.3.16
+#DBNAME = -ldb-2.6.4 
 
 # end of file config.in

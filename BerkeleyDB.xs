@@ -4,11 +4,9 @@
  
  written by Paul Marquess <Paul.Marquess@btinternet.com>
 
- SCCS: %I%, %G%  
-
  All comments/suggestions/problems are welcome
  
-     Copyright (c) 1997/8 Paul Marquess. All rights reserved.
+     Copyright (c) 1997-1999 Paul Marquess. All rights reserved.
      This program is free software; you can redistribute it and/or
      modify it under the same terms as Perl itself.
 
@@ -36,6 +34,21 @@ extern "C" {
 
 #undef __attribute__
 
+#ifndef PERL_VERSION
+#include "patchlevel.h"
+#define PERL_REVISION	5
+#define PERL_VERSION	PATCHLEVEL
+#define PERL_SUBVERSION	SUBVERSION
+#endif
+
+#if PERL_REVISION == 5 && (PERL_VERSION < 4 || (PERL_VERSION == 4 && PERL_SUBVERSION <= 75 ))
+
+#    define PL_sv_undef		sv_undef
+#    define PL_na		na
+#    define PL_dirty		dirty
+
+#endif
+
 #include <db.h>
 
 /* need to define DEFSV & SAVE_DEFSV for older version of Perl */
@@ -47,27 +60,98 @@ extern "C" {
 #define SAVE_DEFSV SAVESPTR(GvSV(defgv))
 #endif
 
+#ifndef pTHX
+#    define pTHX
+#    define pTHX_
+#    define aTHX
+#    define aTHX_
+#endif
+ 
+#ifndef newSVpvn
+#    define newSVpvn(a,b)       newSVpv(a,b)
+#endif
+
 #ifdef __cplusplus
 }
 #endif
 
-/* #define TRACE */
+#define DBM_FILTERING
+#define STRICT_CLOSE
 /* #define ALLOW_RECNO_OFFSET */
-#define ALLOW_KV_FILTER
+/* #define TRACE  */
+ 
+#if DB_VERSION_MAJOR == 2 && ! defined(DB_LOCK_DEADLOCK)
+#  define DB_LOCK_DEADLOCK	EAGAIN
+#endif /* DB_VERSION_MAJOR == 2 */
+
+#if DB_VERSION_MAJOR == 2 
+#  define DB_QUEUE		4
+#endif /* DB_VERSION_MAJOR == 2 */
+
+#if DB_VERSION_MAJOR > 2
+typedef struct {
+        int              db_lorder;     
+        size_t           db_cachesize; 
+        size_t           db_pagesize; 
+ 
+                                     
+        void *(*db_malloc) __P((size_t));
+        int (*dup_compare)          
+            __P((const DBT *, const DBT *));
+ 
+        u_int32_t        bt_maxkey;
+        u_int32_t        bt_minkey;    
+        int (*bt_compare)             
+            __P((const DBT *, const DBT *));
+        size_t (*bt_prefix)          
+            __P((const DBT *, const DBT *));
+ 
+        u_int32_t        h_ffactor;
+        u_int32_t        h_nelem; 
+        u_int32_t      (*h_hash) 
+            __P((const void *, u_int32_t));
+ 
+        int              re_pad;
+        int              re_delim;     
+        u_int32_t        re_len;      
+        char            *re_source;  
+ 
+#define DB_DELIMITER            0x0001 
+#define DB_FIXEDLEN             0x0008
+#define DB_PAD                  0x0010
+        u_int32_t        flags;
+} DB_INFO ;
+
+#endif /* DB_VERSION_MAJOR > 2 */
+
+typedef struct {
+	int		Status ;
+	/* char		ErrBuff[1000] ; */
+	SV *		ErrPrefix ;
+	SV *		ErrHandle ;
+	DB_ENV *	Env ;
+	int		open_dbs ;
+	int		TxnMgrStatus ;
+	int		active ;
+	bool		txn_enabled ;
+	} BerkeleyDB_ENV_type ;
 
 
 typedef struct {
         DBTYPE  	type ;
-	SV *		ref2env ;
+	bool		recno_or_queue ;
+	char *		filename ;
+	BerkeleyDB_ENV_type * parent_env ;
         DB *    	dbp ;
-	SV *		ref2db ;
         SV *    	compare ;
+        SV *    	dup_compare ;
         SV *    	prefix ;
         SV *   	 	hash ;
 	int		Status ;
         DB_INFO *	info ;
         DBC *   	cursor ;
 	DB_TXN *	txn ;
+	int		open_cursors ;
 	u_int32_t	partial ;
 	u_int32_t	dlen ;
 	u_int32_t	doff ;
@@ -75,28 +159,48 @@ typedef struct {
 #ifdef ALLOW_RECNO_OFFSET
 	int		array_base ;
 #endif
-#ifdef ALLOW_KV_FILTER
-	int		filtering ;
-        SV *    	readKey ;
-        SV *    	writeKey ;
-        SV *    	readValue ;
-        SV *    	writeValue ;
+#ifdef DBM_FILTERING
+        SV *    filter_fetch_key ;
+        SV *    filter_store_key ;
+        SV *    filter_fetch_value ;
+        SV *    filter_store_value ;
+        int     filtering ;
 #endif
         } BerkeleyDB_type;
 
+
 typedef struct {
+        DBTYPE  	type ;
+	bool		recno_or_queue ;
+	char *		filename ;
+        DB *    	dbp ;
+        SV *    	compare ;
+        SV *    	dup_compare ;
+        SV *    	prefix ;
+        SV *   	 	hash ;
 	int		Status ;
-	/* char		ErrBuff[1000] ; */
-	SV *		ErrPrefix ;
-	SV *		ErrHandle ;
-	DB_ENV		Env ;
-	int		TxnMgrStatus ;
+        DB_INFO *	info ;
+        DBC *   	cursor ;
+	DB_TXN *	txn ;
+	BerkeleyDB_type *		parent_db ;
+	u_int32_t	partial ;
+	u_int32_t	dlen ;
+	u_int32_t	doff ;
 	int		active ;
-	} BerkeleyDB_ENV_type ;
+#ifdef ALLOW_RECNO_OFFSET
+	int		array_base ;
+#endif
+#ifdef DBM_FILTERING
+        SV *    filter_fetch_key ;
+        SV *    filter_store_key ;
+        SV *    filter_fetch_value ;
+        SV *    filter_store_value ;
+        int     filtering ;
+#endif
+        } BerkeleyDB_Cursor_type;
 
 typedef struct {
 	BerkeleyDB_ENV_type *	env ;
-	SV *			ref2env ;
 	} BerkeleyDB_TxnMgr_type ;
 
 #if 1
@@ -110,22 +214,34 @@ typedef DB_TXN                BerkeleyDB_Txn_type ;
 #endif
 
 typedef BerkeleyDB_ENV_type *	BerkeleyDB__Env ;
+typedef BerkeleyDB_ENV_type *	BerkeleyDB__Env__Raw ;
 typedef BerkeleyDB_ENV_type *	BerkeleyDB__Env__Inner ;
 typedef BerkeleyDB_type * 	BerkeleyDB ;
+typedef void * 			BerkeleyDB__Raw ;
 typedef BerkeleyDB_type *	BerkeleyDB__Common ;
+typedef BerkeleyDB_type *	BerkeleyDB__Common__Raw ;
 typedef BerkeleyDB_type *	BerkeleyDB__Common__Inner ;
 typedef BerkeleyDB_type * 	BerkeleyDB__Hash ;
+typedef BerkeleyDB_type * 	BerkeleyDB__Hash__Raw ;
 typedef BerkeleyDB_type * 	BerkeleyDB__Btree ;
+typedef BerkeleyDB_type * 	BerkeleyDB__Btree__Raw ;
 typedef BerkeleyDB_type * 	BerkeleyDB__Recno ;
-typedef BerkeleyDB_type   	BerkeleyDB__Cursor_type ;
-typedef BerkeleyDB_type * 	BerkeleyDB__Cursor ;
+typedef BerkeleyDB_type * 	BerkeleyDB__Recno__Raw ;
+typedef BerkeleyDB_Cursor_type   	BerkeleyDB__Cursor_type ;
+typedef BerkeleyDB_Cursor_type * 	BerkeleyDB__Cursor ;
+typedef BerkeleyDB_Cursor_type * 	BerkeleyDB__Cursor__Raw ;
 typedef BerkeleyDB_TxnMgr_type * BerkeleyDB__TxnMgr ;
+typedef BerkeleyDB_TxnMgr_type * BerkeleyDB__TxnMgr__Raw ;
 typedef BerkeleyDB_TxnMgr_type * BerkeleyDB__TxnMgr__Inner ;
 typedef BerkeleyDB_Txn_type *	BerkeleyDB__Txn ;
+typedef BerkeleyDB_Txn_type *	BerkeleyDB__Txn__Raw ;
 typedef BerkeleyDB_Txn_type *	BerkeleyDB__Txn__Inner ;
+#if 0
 typedef DB_LOG *      		BerkeleyDB__Log ;
 typedef DB_LOCKTAB *  		BerkeleyDB__Lock ;
+#endif
 typedef DBT 			DBTKEY ;
+typedef DBT 			DBT_OPT ;
 typedef DBT 			DBT_B ;
 typedef DBT 			DBTKEY_B ;
 typedef DBT 			DBTVALUE ;
@@ -134,42 +250,46 @@ typedef PerlIO *      		IO_or_NULL ;
 typedef int			DualType ;
 
 #ifdef TRACE
-#define Trace(x)	printf x 
+#  define Trace(x)	printf x 
 #else
-#define Trace(x)	
+#  define Trace(x)	
 #endif
 
 #ifdef ALLOW_RECNO_OFFSET
-#define RECNO_BASE	db->array_base
+#  define RECNO_BASE	db->array_base
 #else
-#define RECNO_BASE	1
+#  define RECNO_BASE	1
+#endif
+
+#if DB_VERSION_MAJOR == 2 
+#  define flagSet_DB2(i, f) i |= f
+#else
+#  define flagSet_DB2(i, f)
 #endif
 
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 5
-#define flagSet(bitmask)        (flags & (bitmask))  
+#  define flagSet(bitmask)        (flags & (bitmask))  
 #else   
-#define flagSet(bitmask)	((flags & DB_OPFLAGS_MASK) == (bitmask))
+#  define flagSet(bitmask)	((flags & DB_OPFLAGS_MASK) == (bitmask))
 #endif
 
-#ifdef ALLOW_KV_FILTER
-#define ckFilter(arg,type,name)                         \
-        if (db->type) {                                 \
-            /* printf("filtering %s\n", name) ; */      \
-            if (db->filtering)                          \
-                croak("recursion detected") ;           \
-            db->filtering = TRUE ;                      \
-            SAVE_DEFSV ;   /* save $_ */                \
-            /* DEFSV = sv_2mortal(newSVsv(arg)) ; */            \
-            DEFSV = arg ;                               \
-                                                        \
-            PUSHMARK(sp) ;                              \
-                                                        \
+#ifdef DBM_FILTERING
+#define ckFilter(arg,type,name)                                 \
+        if (db->type) {                                         \
+            SV * save_defsv ;                                   \
+            /* printf("filtering %s\n", name) ;*/               \
+            if (db->filtering)                                  \
+                softCrash("recursion detected in %s", name) ;       \
+            db->filtering = TRUE ;                              \
+            save_defsv = newSVsv(DEFSV) ;                       \
+            sv_setsv(DEFSV, arg) ;                              \
+            PUSHMARK(sp) ;                                      \
             (void) perl_call_sv(db->type, G_DISCARD|G_NOARGS);  \
-            SPAGAIN ;                                   \
-            /* sv_setsv(arg, DEFSV) ; */                \
-            arg =  DEFSV ;                              \
-            PUTBACK ;                                   \
-            db->filtering = FALSE ;                     \
+            sv_setsv(arg, DEFSV) ;                              \
+            sv_setsv(DEFSV, save_defsv) ;                       \
+            SvREFCNT_dec(save_defsv) ;                          \
+            db->filtering = FALSE ;                             \
+            /*printf("end of filtering %s\n", name) ;*/         \
         }
 #else
 #define ckFilter(type, sv, name)
@@ -180,51 +300,56 @@ typedef int			DualType ;
 #define ZMALLOC(to, typ) ((to = (typ *)safemalloc(sizeof(typ))), \
 				Zero(to,1,typ))
 
+#define STRDUP(from) (from ? strcpy((char *)safemalloc(strlen(from)),from) : NULL)
+
+#define DBT_clear(x)	Zero(&x, 1, DBT) ;
+
+#if 1
+#define getInnerObject(x) SvIV(*av_fetch((AV*)SvRV(x), 0, FALSE))
+#else
+#define getInnerObject(x) SvIV((SV*)SvRV(sv))
+#endif
+
 #define my_sv_setpvn(sv, d, s) (s ? sv_setpvn(sv, d, s) : sv_setpv(sv, "") )
 
-#define SetValue_iv(i, k) if ((sv = readHash(hash, k)) && sv != &sv_undef) \
+#define SetValue_iv(i, k) if ((sv = readHash(hash, k)) && sv != &PL_sv_undef) \
 				i = SvIV(sv)
-#define SetValue_io(i, k) if ((sv = readHash(hash, k)) && sv != &sv_undef) \
+#define SetValue_io(i, k) if ((sv = readHash(hash, k)) && sv != &PL_sv_undef) \
 				i = IoOFP(sv_2io(sv))
-#define SetValue_sv(i, k) if ((sv = readHash(hash, k)) && sv != &sv_undef) \
+#define SetValue_sv(i, k) if ((sv = readHash(hash, k)) && sv != &PL_sv_undef) \
 				i = sv
-#define SetValue_pv(i, k,t) if ((sv = readHash(hash, k)) && sv != &sv_undef) \
-				i = (t)SvPV(sv,na)
-#define SetValue_pvx(i, k, t) if ((sv = readHash(hash, k)) && sv != &sv_undef) \
+#define SetValue_pv(i, k,t) if ((sv = readHash(hash, k)) && sv != &PL_sv_undef) \
+				i = (t)SvPV(sv,PL_na)
+#define SetValue_pvx(i, k, t) if ((sv = readHash(hash, k)) && sv != &PL_sv_undef) \
 				i = (t)SvPVX(sv)
-#define SetValue_ov(i,k,t) if ((sv = readHash(hash, k)) && sv != &sv_undef) {\
-				IV tmp = SvIV((SV*)SvRV(sv));	\
+#define SetValue_ov(i,k,t) if ((sv = readHash(hash, k)) && sv != &PL_sv_undef) {\
+				IV tmp = getInnerObject(sv) ;	\
 				i = (t) tmp ;			\
 			  }
 
-#define SetValue_ovx(i,k,t) if ((sv = readHash(hash, k)) && sv != &sv_undef) {\
+#define SetValue_ovx(i,k,t) if ((sv = readHash(hash, k)) && sv != &PL_sv_undef) {\
 				HV * hv = (HV *)GetInternalObject(sv);		\
 				SV ** svp = hv_fetch(hv, "db", 2, FALSE);\
 				IV tmp = SvIV(*svp);			\
 				i = (t) tmp ;				\
 			  }
 
-#define SetValue_ovX(i,k,t) if ((sv = readHash(hash, k)) && sv != &sv_undef) {\
+#define SetValue_ovX(i,k,t) if ((sv = readHash(hash, k)) && sv != &PL_sv_undef) {\
 				IV tmp = SvIV(GetInternalObject(sv));\
 				i = (t) tmp ;				\
 			  }
 
-#define LastDBerror DB_NOTFOUND
+#define LastDBerror DB_RUNRECOVERY
 
 #define setDUALerrno(var, err)					\
 		sv_setnv(var, (double)err) ;			\
-		sv_setpv(var, (err < LastDBerror		\
-				? "Unknown"			\
-				: err == 0 ? ""			\
-				    : err < 0 			\
-					? db_err_str[abs(err)] 	\
-					: Strerror(err))) ;	\
-		SvNOK_on(var); 					
+		sv_setpv(var, db_strerror(err)) ;		\
+		SvNOK_on(var);
 
 #define OutputValue(arg, name)                                  \
         { if (RETVAL == 0) {                                    \
               my_sv_setpvn(arg, name.data, name.size) ;         \
-              ckFilter(arg, readValue,"readValue") ;            \
+              ckFilter(arg, filter_fetch_value,"filter_fetch_value") ;            \
           }                                                     \
         }
 
@@ -237,26 +362,26 @@ typedef int			DualType ;
                 else {                                          \
                     my_sv_setpvn(arg, name.data, name.size) ;   \
                 }                                               \
-                ckFilter(arg, readValue, "readValue");          \
+                ckFilter(arg, filter_fetch_value, "filter_fetch_value");          \
           }                                                     \
         }
 
 #define OutputKey(arg, name)                                    \
         { if (RETVAL == 0) 					\
           {                                                     \
-                if (db->type != DB_RECNO) {                     \
+                if (!db->recno_or_queue) {                     	\
                     my_sv_setpvn(arg, name.data, name.size);    \
                 }                                               \
                 else                                            \
                     sv_setiv(arg, (I32)*(I32*)name.data - RECNO_BASE);   \
-                ckFilter(arg, readKey, "readKey") ;            \
+                ckFilter(arg, filter_fetch_key, "filter_fetch_key") ;            \
           }                                                     \
         }
 
 #define OutputKey_B(arg, name)                                  \
         { if (RETVAL == 0) 					\
           {                                                     \
-                if (db->type == DB_RECNO || 			\
+                if (db->recno_or_queue ||			\
 			(db->type == DB_BTREE && 		\
 			    flagSet(DB_GET_RECNO))){		\
                     sv_setiv(arg, (I32)(*(I32*)name.data) - RECNO_BASE); \
@@ -264,7 +389,7 @@ typedef int			DualType ;
                 else {                                          \
                     my_sv_setpvn(arg, name.data, name.size);    \
                 }                                               \
-                ckFilter(arg, readKey, "readKey") ;            \
+                ckFilter(arg, filter_fetch_key, "filter_fetch_key") ;            \
           }                                                     \
         }
 
@@ -275,8 +400,8 @@ typedef int			DualType ;
 
 #define ckActive(active, type) 					\
     {								\
-	if (!active)  						\
-	    croak("%s is already closed", type) ;		\
+	if (!active)						\
+	    softCrash("%s is already closed", type) ;		\
     }
 
 #define ckActive_Environment(a)	ckActive(a, "Environment")
@@ -291,25 +416,183 @@ static db_recno_t zero = 0 ;
 static BerkeleyDB	CurrentDB ;
 static DBTKEY	empty ;
 static char	ErrBuff[1000] ;
-static char *   db_err_str[] = {
-	"",
-	"Sync didn't finish",			/* DB_INCOMPLETE 	*/
-	"The key/data pair was deleted or was never created by the user",
-						/* DB_KEYEMPTY		*/
-	"The key/data pair already exists",	/* DB_KEYEXIST 		*/
-	"Locker killed to resolve deadlock",	/* DB_LOCK_DEADLOCK 	*/
-	"Lock unavailable, no-wait set",	/* DB_LOCK_NOTGRANTED 	*/
-	"Lock not held by locker",		/* DB_LOCK_NOTHELD	*/
-	"Key/data pair not found (EOF)",	/* DB_NOTFOUND		*/
-#if 0
-	"Recovery file marked deleted",		/* DB_DELETED		*/
-	"Page needs to be split",		/* DB_NEEDSPLIT		*/
-	"Entry was previously registered",	/* DB_REGISTERED	*/
-	"Database needs byte swapping",		/* DB_SWAPBYTES		*/
-	"Encountered ckp record in log",	/* DB_TXN_CKP		*/
-#endif
-			
-	} ;
+
+#if DB_VERSION_MAJOR == 2
+static char *
+db_strerror(int err)
+{
+    if (err == 0)
+        return "" ;
+
+    if (err > 0)	
+        return Strerror(err) ;
+
+    switch (err) {
+	case DB_INCOMPLETE:
+		return ("DB_INCOMPLETE: Sync was unable to complete");
+	case DB_KEYEMPTY:
+		return ("DB_KEYEMPTY: Non-existent key/data pair");
+	case DB_KEYEXIST:
+		return ("DB_KEYEXIST: Key/data pair already exists");
+	case DB_LOCK_DEADLOCK:
+		return (
+		    "DB_LOCK_DEADLOCK: Locker killed to resolve a deadlock");
+	case DB_LOCK_NOTGRANTED:
+		return ("DB_LOCK_NOTGRANTED: Lock not granted");
+	case DB_LOCK_NOTHELD:
+		return ("DB_LOCK_NOTHELD: Lock not held by locker");
+	case DB_NOTFOUND:
+		return ("DB_NOTFOUND: No matching key/data pair found");
+	case DB_RUNRECOVERY:
+		return ("DB_RUNRECOVERY: Fatal error, run database recovery");
+	default:
+		return "Unknown Error" ;
+    
+    }
+}					
+#endif 	/* DB_VERSION_MAJOR == 2 */
+
+static char *
+my_db_strerror(int err)
+{
+    static char buffer[1000] ;
+    SV * sv = perl_get_sv(ERR_BUFF, FALSE) ;
+    sprintf(buffer, "%d: %s", err, db_strerror(err)) ;
+    if (err && sv) {
+        strcat(buffer, ", ") ;
+	strcat(buffer, SvPVX(sv)) ;
+    }
+    return buffer;
+}
+
+static void
+close_everything()
+{
+    Trace(("close_everything\n")) ;
+    /* Abort All Transactions */
+    {
+	BerkeleyDB__Txn__Raw 	tid ;
+	HE * he ;
+	I32 len ;
+	HV * hv = perl_get_hv("BerkeleyDB::Term::Txn", TRUE);
+	I32 ret = hv_iterinit(hv) ;
+	int  all = 0 ;
+	int  closed = 0 ;
+	Trace(("BerkeleyDB::Term::close_all_txns dirty=%d\n", PL_dirty)) ;
+	while ( he = hv_iternext(hv) ) {
+	    tid = * (BerkeleyDB__Txn__Raw *) (IV) hv_iterkey(he, &len) ;
+	    Trace(("  Aborting Transaction [%d] in [%d] Active [%d]\n", tid->txn, tid, tid->active));
+	    if (tid->active) {
+	        txn_abort(tid->txn);
+		++ closed ;
+	    }
+	    tid->active = FALSE ;
+	    ++ all ;
+	}
+	Trace(("End of BerkeleyDB::Term::close_all_txns aborted %d of %d transactios\n",closed, all)) ;
+    }
+
+    /* Close All Cursors */
+    {
+	BerkeleyDB__Cursor db ;
+	HE * he ;
+	I32 len ;
+	HV * hv = perl_get_hv("BerkeleyDB::Term::Cursor", TRUE);
+	I32 ret = hv_iterinit(hv) ;
+	int  all = 0 ;
+	int  closed = 0 ;
+	Trace(("BerkeleyDB::Term::close_all_cursors dirty=%d\n", PL_dirty)) ;
+	while ( he = hv_iternext(hv) ) {
+	    db = * (BerkeleyDB__Cursor*) (IV) hv_iterkey(he, &len) ;
+	    Trace(("  Closing Cursor [%d] in [%d] Active [%d]\n", db->cursor, db, db->active));
+	    if (db->active) {
+    	        ((db->cursor)->c_close)(db->cursor) ;
+		++ closed ;
+	    }
+	    db->active = FALSE ;
+	    ++ all ;
+	}
+	Trace(("End of BerkeleyDB::Term::close_all_cursors closed %d of %d cursors\n",closed, all)) ;
+    }
+
+    /* Close All Databases */
+    {
+	BerkeleyDB db ;
+	HE * he ;
+	I32 len ;
+	HV * hv = perl_get_hv("BerkeleyDB::Term::Db", TRUE);
+	I32 ret = hv_iterinit(hv) ;
+	int  all = 0 ;
+	int  closed = 0 ;
+	Trace(("BerkeleyDB::Term::close_all_dbs dirty=%d\n", PL_dirty)) ;
+	while ( he = hv_iternext(hv) ) {
+	    db = * (BerkeleyDB*) (IV) hv_iterkey(he, &len) ;
+	    Trace(("  Closing Database [%d] in [%d] Active [%d]\n", db->dbp, db, db->active));
+	    if (db->active) {
+	        (db->dbp->close)(db->dbp, 0) ;
+		++ closed ;
+	    }
+	    db->active = FALSE ;
+	    ++ all ;
+	}
+	Trace(("End of BerkeleyDB::Term::close_all_dbs closed %d of %d dbs\n",closed, all)) ;
+    }
+
+    /* Close All Environments */
+    { 
+	BerkeleyDB__Env env ;
+	HE * he ;
+	I32 len ;
+	HV * hv = perl_get_hv("BerkeleyDB::Term::Env", TRUE);
+	I32 ret = hv_iterinit(hv) ;
+	int  all = 0 ;
+	int  closed = 0 ;
+	Trace(("BerkeleyDB::Term::close_all_envs dirty=%d\n", PL_dirty)) ;
+	while ( he = hv_iternext(hv) ) {
+	    env = * (BerkeleyDB__Env*) (IV) hv_iterkey(he, &len) ;
+	    Trace(("  Closing Environment [%d] in [%d] Active [%d]\n", env->Env, env, env->active));
+	    if (env->active) {
+#if DB_VERSION_MAJOR == 2
+                db_appexit(env->Env) ;
+#else	      
+	        env->Env->close(env->Env, 0) ;
+#endif	      
+		++ closed ;
+	    }
+	    env->active = FALSE ;
+	    ++ all ;
+	}
+	Trace(("End of BerkeleyDB::Term::close_all_envs closed %d of %d dbs\n",closed, all)) ;
+    }
+
+    Trace(("end close_everything\n")) ;
+
+}
+
+static void
+softCrash(pTHX_ const char *pat, ...)
+{
+    char buffer1 [500] ;
+    char buffer2 [500] ;
+    va_list args;
+    va_start(args, pat);
+
+    Trace(("softCrash: %s\n", pat)) ;
+
+#define ABORT_PREFIX "BerkeleyDB Aborting: "
+
+    /* buffer = (char*) safemalloc(strlen(pat) + strlen(ABORT_PREFIX) + 1) ; */
+    strcpy(buffer1, ABORT_PREFIX) ;
+    strcat(buffer1, pat) ;
+
+    vsprintf(buffer2, buffer1, args) ;
+
+    croak(buffer2);
+
+    /* NOTREACHED */
+    va_end(args);
+}
+
 
 
 static I32
@@ -321,8 +604,8 @@ BerkeleyDB db ;
     int		RETVAL = 0 ;
     DBC *   	cursor ;
 
-    key.flags = 0 ;
-    value.flags = 0 ;
+    DBT_clear(key) ;
+    DBT_clear(value) ;
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
     if ( ((db->dbp)->cursor)(db->dbp, db->txn, &cursor) == 0 )
 #else
@@ -351,13 +634,13 @@ BerkeleyDB  db ;
 I32      value ;
 {
     Trace(("GetRecnoKey start value = %d\n", value)) ;
-    if (db->type == DB_RECNO && value < 0) {
+    if (db->recno_or_queue && value < 0) {
 	/* Get the length of the array */
 	I32 length = GetArrayLength(db) ;
 
 	/* check for attempt to write before start of array */
 	if (length + value + RECNO_BASE <= 0)
-	    croak("Modification of non-creatable array value attempted, subscript %ld", (long)value) ;
+	    softCrash("Modification of non-creatable array value attempted, subscript %ld", (long)value) ;
 
 	value = length + value + RECNO_BASE ;
     }
@@ -381,7 +664,7 @@ BerkeleyDB  db ;
 I32      value ;
 {
     if (value + RECNO_BASE < 1)
-	croak("key value %d < base (%d)", (value), RECNO_BASE?0:1) ;
+	softCrash("key value %d < base (%d)", (value), RECNO_BASE?0:1) ;
     return value + RECNO_BASE ;
 }
 
@@ -427,70 +710,6 @@ SV * sv ;
     return info ;
 }
 
-static void
-destroy_env(env)
-BerkeleyDB__Env env ;
-{
-      Trace(("start destroy_env %d\n", env)) ;
-      db_appexit(&env->Env) ;
-      if (env->ErrHandle)
-          SvREFCNT_dec(env->ErrHandle) ;
-      if (env->ErrPrefix)
-          SvREFCNT_dec(env->ErrPrefix) ;
-      Trace(("end destroy_env\n")) ;
-}
-
-#if 0
-static void
-destroy_txnmgr(txnmgr)
-BerkeleyDB__TxnMgr txnmgr ;
-{
-      Trace(("start destroy_txnmgr %d\n", txnmgr)) ;
-      if (txnmgr->ref2env)
-          SvREFCNT_dec(txnmgr->ref2env) ;
-      Trace(("end destroy_txnmgr\n")) ;
-}
-#endif
-
-static void
-destroy_db(db)
-BerkeleyDB db ;
-{
-      Trace(("start destroy_db %d\n", db)) ;
-      ((db->dbp)->close)(db->dbp, 0) ;
-      if (db->hash)
-        SvREFCNT_dec(db->hash) ;
-      if (db->compare)
-        SvREFCNT_dec(db->compare) ;
-      if (db->prefix)
-        SvREFCNT_dec(db->prefix) ;
-      if (db->ref2env)
-          SvREFCNT_dec(db->ref2env) ;
-#ifdef ALLOW_KV_FILTER
-      if (db->readKey)
-          SvREFCNT_dec(db->readKey) ;
-      if (db->writeKey)
-          SvREFCNT_dec(db->writeKey) ;
-      if (db->readValue)
-          SvREFCNT_dec(db->readValue) ;
-      if (db->writeValue)
-          SvREFCNT_dec(db->writeValue) ;
-#endif
-
-      Trace(("end destroy_db\n")) ;
-}
-
-static void
-destroy_cursor(c)
-BerkeleyDB__Cursor c;
-{
-    Trace(("start destroy_cursor %d\n", c)) ;
-    ((c->cursor)->c_close)(c->cursor) ;
-    if (c->ref2db)
-       SvREFCNT_dec(c->ref2db) ;
-    Trace(("end destroy_cursor\n")) ;
-}
-
 static int
 btree_compare(key1, key2)
 const DBT * key1 ;
@@ -504,6 +723,7 @@ const DBT * key2 ;
     data1 = key1->data ;
     data2 = key2->data ;
 
+#ifndef newSVpvn
     /* As newSVpv will assume that the data pointer is a null terminated C 
        string if the size parameter is 0, make sure that data points to an 
        empty string if the length is 0
@@ -512,14 +732,15 @@ const DBT * key2 ;
         data1 = "" ; 
     if (key2->size == 0)
         data2 = "" ;
+#endif
 
     ENTER ;
     SAVETMPS;
 
     PUSHMARK(SP) ;
     EXTEND(SP,2) ;
-    PUSHs(sv_2mortal(newSVpv(data1,key1->size)));
-    PUSHs(sv_2mortal(newSVpv(data2,key2->size)));
+    PUSHs(sv_2mortal(newSVpvn(data1,key1->size)));
+    PUSHs(sv_2mortal(newSVpvn(data2,key2->size)));
     PUTBACK ;
 
     count = perl_call_sv(CurrentDB->compare, G_SCALAR); 
@@ -527,7 +748,63 @@ const DBT * key2 ;
     SPAGAIN ;
 
     if (count != 1)
-        croak ("BerkeleyDB btree_compare: expected 1 return value from compare sub, got %d\n", count) ;
+        softCrash ("in btree_compare - expected 1 return value from compare sub, got %d", count) ;
+
+    retval = POPi ;
+
+    PUTBACK ;
+    FREETMPS ;
+    LEAVE ;
+    return (retval) ;
+
+}
+
+static int
+dup_compare(key1, key2)
+const DBT * key1 ;
+const DBT * key2 ;
+{
+    dSP ;
+    void * data1, * data2 ;
+    int retval ;
+    int count ;
+    
+    Trace(("In dup_compare [%*s] [%*s]\n", 
+    		key1->size, (char*)key1->data, key2->size, (char*)key2->data)) ;
+    if (!CurrentDB)
+	softCrash("Internal Error - No CurrentDB in dup_compare") ;
+    if (CurrentDB->dup_compare == NULL)
+        softCrash("in dup_compare: no callback specified for database '%s'", CurrentDB->filename) ;
+
+    data1 = key1->data ;
+    data2 = key2->data ;
+
+#ifndef newSVpvn
+    /* As newSVpv will assume that the data pointer is a null terminated C 
+       string if the size parameter is 0, make sure that data points to an 
+       empty string if the length is 0
+    */
+    if (key1->size == 0)
+        data1 = "" ; 
+    if (key2->size == 0)
+        data2 = "" ;
+#endif
+
+    ENTER ;
+    SAVETMPS;
+
+    PUSHMARK(SP) ;
+    EXTEND(SP,2) ;
+    PUSHs(sv_2mortal(newSVpvn(data1,key1->size)));
+    PUSHs(sv_2mortal(newSVpvn(data2,key2->size)));
+    PUTBACK ;
+
+    count = perl_call_sv(CurrentDB->dup_compare, G_SCALAR); 
+
+    SPAGAIN ;
+
+    if (count != 1)
+        softCrash ("dup_compare: expected 1 return value from compare sub, got %d", count) ;
 
     retval = POPi ;
 
@@ -551,6 +828,7 @@ const DBT * key2 ;
     data1 = key1->data ;
     data2 = key2->data ;
 
+#ifndef newSVpvn
     /* As newSVpv will assume that the data pointer is a null terminated C 
        string if the size parameter is 0, make sure that data points to an 
        empty string if the length is 0
@@ -559,14 +837,15 @@ const DBT * key2 ;
         data1 = "" ;
     if (key2->size == 0)
         data2 = "" ;
+#endif
 
     ENTER ;
     SAVETMPS;
 
     PUSHMARK(SP) ;
     EXTEND(SP,2) ;
-    PUSHs(sv_2mortal(newSVpv(data1,key1->size)));
-    PUSHs(sv_2mortal(newSVpv(data2,key2->size)));
+    PUSHs(sv_2mortal(newSVpvn(data1,key1->size)));
+    PUSHs(sv_2mortal(newSVpvn(data2,key2->size)));
     PUTBACK ;
 
     count = perl_call_sv(CurrentDB->prefix, G_SCALAR); 
@@ -574,7 +853,7 @@ const DBT * key2 ;
     SPAGAIN ;
 
     if (count != 1)
-        croak ("BerkeleyDB btree_prefix: expected 1 return value from prefix sub, got %d\n", count) ;
+        softCrash ("btree_prefix: expected 1 return value from prefix sub, got %d", count) ;
  
     retval = POPi ;
  
@@ -594,15 +873,17 @@ size_t size ;
     int retval ;
     int count ;
 
+#ifndef newSVpvn
     if (size == 0)
         data = "" ;
+#endif
 
     ENTER ;
     SAVETMPS;
 
     PUSHMARK(SP) ;
 
-    XPUSHs(sv_2mortal(newSVpv((char*)data,size)));
+    XPUSHs(sv_2mortal(newSVpvn((char*)data,size)));
     PUTBACK ;
 
     count = perl_call_sv(CurrentDB->hash, G_SCALAR); 
@@ -610,7 +891,7 @@ size_t size ;
     SPAGAIN ;
 
     if (count != 1)
-        croak ("BerkeleyDB hash_cb: expected 1 return value from hash sub, got %d\n", count) ;
+        softCrash ("hash_cb: expected 1 return value from hash sub, got %d", count) ;
 
     retval = POPi ;
 
@@ -643,7 +924,7 @@ char *buffer ;
 
 #endif
 
-    SV * sv = perl_get_sv(ERR_BUFF, FALSE) ;
+    SV * sv = perl_get_sv(ERR_BUFF, GV_ADD|GV_ADDMULTI) ;
     if (sv) {
         if (db_errpfx)
 	    sv_setpvf(sv, "%s: %s", db_errpfx, buffer) ;
@@ -694,12 +975,13 @@ IV value ;
 }
 
 static BerkeleyDB
-my_db_open(db, ref, ref_dbenv, dbenv, file, type, flags, mode, info)
+my_db_open(db, ref, ref_dbenv, dbenv, file, subname, type, flags, mode, info)
 BerkeleyDB	db ;
 SV * 		ref;
 SV *		ref_dbenv ;
 BerkeleyDB__Env	dbenv ;
 const char *	file;
+const char *	subname;
 DBTYPE		type;
 int		flags;
 int		mode;
@@ -710,59 +992,172 @@ DB_INFO * 	info ;
     DB *	dbp ;
     int		Status ;
 
-    Trace(("_db_open(dbenv[%lu] ref_dbenv [%lu] file[%s] type[%d] flags[%d] mode[%d]\n", 
-		dbenv, ref_dbenv, file, type, flags, mode)) ;
+    Trace(("_db_open(dbenv[%lu] ref_dbenv [%lu] file[%s] subname [%s] type[%d] flags[%d] mode[%d]\n", 
+		dbenv, ref_dbenv, file, subname, type, flags, mode)) ;
 
     CurrentDB = db ;
     if (dbenv) 
-	env = &dbenv->Env ;
+	env = dbenv->Env ;
 
+#if DB_VERSION_MAJOR == 2
+    if (subname)
+        softCrash("Subname needs Berkeley DB 3 or better") ;
+#endif
+
+#if DB_VERSION_MAJOR > 2
+    Status = db_create(&dbp, env, 0) ;
+    Trace(("db_create returned %s\n", my_db_strerror(Status))) ;
+    if (Status) 
+        return RETVAL ;
+
+    if (info->re_source) {
+        Status = dbp->set_re_source(dbp, info->re_source) ;
+	Trace(("set_re_source [%s] returned %s\n",
+		info->re_source, my_db_strerror(Status)));
+        if (Status) 
+            return RETVAL ;
+    }	
+
+    if (info->db_cachesize) {
+        Status = dbp->set_cachesize(dbp, 0, info->db_cachesize, 0) ;
+	Trace(("set_cachesize [%d] returned %s\n",
+		info->db_cachesize, my_db_strerror(Status)));
+        if (Status) 
+            return RETVAL ;
+    }	
+
+    if (info->db_lorder) {
+        Status = dbp->set_lorder(dbp, info->db_lorder) ;
+	Trace(("set_lorder [%d] returned %s\n",
+		info->db_lorder, my_db_strerror(Status)));
+        if (Status) 
+            return RETVAL ;
+    }	
+
+    if (info->db_pagesize) {
+        Status = dbp->set_pagesize(dbp, info->db_pagesize) ;
+	Trace(("set_pagesize [%d] returned %s\n",
+		info->db_pagesize, my_db_strerror(Status)));
+        if (Status) 
+            return RETVAL ;
+    }	
+
+    if (info->h_ffactor) {
+        Status = dbp->set_h_ffactor(dbp, info->h_ffactor) ;
+	Trace(("set_h_ffactor [%d] returned %s\n",
+		info->h_ffactor, my_db_strerror(Status)));
+        if (Status) 
+            return RETVAL ;
+    }	
+
+    if (info->h_nelem) {
+        Status = dbp->set_h_nelem(dbp, info->h_nelem) ;
+	Trace(("set_h_nelem [%d] returned %s\n",
+		info->h_nelem, my_db_strerror(Status)));
+        if (Status) 
+            return RETVAL ;
+    }	
+
+    if (info->bt_minkey) {
+        Status = dbp->set_bt_minkey(dbp, info->bt_minkey) ;
+	Trace(("set_bt_minkey [%d] returned %s\n",
+		info->bt_minkey, my_db_strerror(Status)));
+        if (Status) 
+            return RETVAL ;
+    }	
+
+    if (info->bt_compare) {
+        Status = dbp->set_bt_compare(dbp, info->bt_compare) ;
+	Trace(("set_bt_compare [%d] returned %s\n",
+		info->bt_compare, my_db_strerror(Status)));
+        if (Status) 
+            return RETVAL ;
+    }	
+
+    if (info->h_hash) {
+        Status = dbp->set_h_hash(dbp, info->h_hash) ;
+	Trace(("set_h_hash [%d] returned %s\n",
+		info->h_hash, my_db_strerror(Status)));
+        if (Status) 
+            return RETVAL ;
+    }	
+
+    if (info->dup_compare) {
+        Status = dbp->set_dup_compare(dbp, info->dup_compare) ;
+	Trace(("set_dup_compare [%d] returned %s\n",
+		info->dup_compare, my_db_strerror(Status)));
+        if (Status) 
+            return RETVAL ;
+    }	
+
+    if (info->bt_prefix) {
+        Status = dbp->set_bt_prefix(dbp, info->bt_prefix) ;
+	Trace(("set_bt_prefix [%d] returned %s\n",
+		info->bt_prefix, my_db_strerror(Status)));
+        if (Status) 
+            return RETVAL ;
+    }	
+
+    if (info->re_len) {
+        Status = dbp->set_re_len(dbp, info->re_len) ;
+	Trace(("set_re_len [%d] returned %s\n",
+		info->re_len, my_db_strerror(Status)));
+        if (Status) 
+            return RETVAL ;
+    }	
+
+    if (info->re_delim) {
+        Status = dbp->set_re_delim(dbp, info->re_delim) ;
+	Trace(("set_re_delim [%d] returned %s\n",
+		info->re_delim, my_db_strerror(Status)));
+        if (Status) 
+            return RETVAL ;
+    }	
+
+    if (info->re_pad) {
+        Status = dbp->set_re_pad(dbp, info->re_pad) ;
+	Trace(("set_re_pad [%d] returned %s\n",
+		info->re_pad, my_db_strerror(Status)));
+        if (Status) 
+            return RETVAL ;
+    }	
+
+    if (info->flags) {
+        Status = dbp->set_flags(dbp, info->flags) ;
+	Trace(("set_flags [%d] returned %s\n",
+		info->flags, my_db_strerror(Status)));
+        if (Status) 
+            return RETVAL ;
+    }	
+
+    if ((Status = dbp->open(dbp, file, subname, type, flags, mode)) == 0) {
+#else /* DB_VERSION_MAJOR == 2 */
     if ((Status = db_open(file, type, flags, mode, env, info, &dbp)) == 0) {
+#endif /* DB_VERSION_MAJOR == 2 */
+
 	Trace(("db_opened\n"));
 	RETVAL = db ;
 	RETVAL->dbp  = dbp ;
     	RETVAL->type = dbp->type ;
+    	RETVAL->recno_or_queue = (dbp->type == DB_RECNO || 
+	                          dbp->type == DB_QUEUE) ;
+	RETVAL->filename = STRDUP(file) ;
 	RETVAL->Status = Status ;
 	RETVAL->active = TRUE ;
-	hash_store_iv("BerkeleyDB::Term::Db", (IV)dbp, 1) ;
-	Trace(("  storing %d in BerkeleyDB::Term::Db\n", dbp)) ;
+	hash_store_iv("BerkeleyDB::Term::Db", (IV)RETVAL, 1) ;
+	Trace(("  storing %d %d in BerkeleyDB::Term::Db\n", RETVAL, dbp)) ;
 	if (dbenv) {
-	    RETVAL->ref2env = newRV(ref_dbenv) ;
+	    RETVAL->parent_env = dbenv ;
 	    dbenv->Status = Status ;
+	    ++ dbenv->open_dbs ;
 	}
-#ifdef ALLOW_KV_FILTER
-        {
-            SV * sv ;
-	    HV * hash = (HV*) SvRV(ref) ;
-            if ((sv = readHash(hash, "ReadKey")) && sv != &sv_undef)
-                db->readKey = newSVsv(sv) ;
-            if ((sv = readHash(hash, "WriteKey")) && sv != &sv_undef)
-                db->writeKey = newSVsv(sv) ;
-            if ((sv = readHash(hash, "ReadValue")) && sv != &sv_undef)
-                db->readValue = newSVsv(sv) ;
-            if ((sv = readHash(hash, "WriteValue")) && sv != &sv_undef)
-                db->writeValue = newSVsv(sv) ;
-        }	    
-#endif	    
     }
     else { 
-	Trace(("status = %d\n", Status)) ; 
+        Trace(("db open returned %s\n", my_db_strerror(Status))) ;
     }
 
     return RETVAL ;
 }
-
-
-static int
-not_here(s)
-char *s;
-{
-    croak("%s not implemented on this architecture", s);
-    return -1;
-}
-
-
-
 
 static double
 constant(name, arg)
@@ -778,87 +1173,9 @@ int arg;
     case 'C':
 	break;
     case 'D':
-	if (strEQ(name, "DBM_INSERT"))
-#ifdef DBM_INSERT
-	    return DBM_INSERT;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DBM_REPLACE"))
-#ifdef DBM_REPLACE
-	    return DBM_REPLACE;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DBM_SUFFIX"))
-#ifdef DBM_SUFFIX
-	    return DBM_SUFFIX;
-#else
-	    goto not_there;
-#endif
 	if (strEQ(name, "DB_AFTER"))
 #ifdef DB_AFTER
 	    return DB_AFTER;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_AM_DUP"))
-#ifdef DB_AM_DUP
-	    return DB_AM_DUP;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_AM_INMEM"))
-#ifdef DB_AM_INMEM
-	    return DB_AM_INMEM;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_AM_LOCKING"))
-#ifdef DB_AM_LOCKING
-	    return DB_AM_LOCKING;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_AM_LOGGING"))
-#ifdef DB_AM_LOGGING
-	    return DB_AM_LOGGING;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_AM_MLOCAL"))
-#ifdef DB_AM_MLOCAL
-	    return DB_AM_MLOCAL;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_AM_PGDEF"))
-#ifdef DB_AM_PGDEF
-	    return DB_AM_PGDEF;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_AM_RDONLY"))
-#ifdef DB_AM_RDONLY
-	    return DB_AM_RDONLY;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_AM_RECOVER"))
-#ifdef DB_AM_RECOVER
-	    return DB_AM_RECOVER;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_AM_SWAP"))
-#ifdef DB_AM_SWAP
-	    return DB_AM_SWAP;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_AM_THREAD"))
-#ifdef DB_AM_THREAD
-	    return DB_AM_THREAD;
 #else
 	    goto not_there;
 #endif
@@ -894,33 +1211,15 @@ int arg;
 #endif
 	if (strEQ(name, "DB_BTREE"))
 	    return DB_BTREE;
-	if (strEQ(name, "DB_BTREEMAGIC"))
-#ifdef DB_BTREEMAGIC
-	    return DB_BTREEMAGIC;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_BTREEOLDVER"))
-#ifdef DB_BTREEOLDVER
-	    return DB_BTREEOLDVER;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_BTREEVERSION"))
-#ifdef DB_BTREEVERSION
-	    return DB_BTREEVERSION;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_BT_RECNUM"))
-#ifdef DB_BT_RECNUM
-	    return DB_BT_RECNUM;
-#else
-	    goto not_there;
-#endif
 	if (strEQ(name, "DB_CHECKPOINT"))
 #ifdef DB_CHECKPOINT
 	    return DB_CHECKPOINT;
+#else
+	    goto not_there;
+#endif
+	if (strEQ(name, "DB_CONSUME"))
+#ifdef DB_CONSUME
+	    return DB_CONSUME;
 #else
 	    goto not_there;
 #endif
@@ -930,15 +1229,15 @@ int arg;
 #else
 	    goto not_there;
 #endif
-	if (strEQ(name, "DB_CURRENT"))
-#ifdef DB_CURRENT
-	    return DB_CURRENT;
+	if (strEQ(name, "DB_CURSLN"))
+#ifdef DB_CURSLN
+	    return DB_CURSLN;
 #else
 	    goto not_there;
 #endif
-	if (strEQ(name, "DB_DBT_INTERNAL"))
-#ifdef DB_DBT_INTERNAL
-	    return DB_DBT_INTERNAL;
+	if (strEQ(name, "DB_CURRENT"))
+#ifdef DB_CURRENT
+	    return DB_CURRENT;
 #else
 	    goto not_there;
 #endif
@@ -960,12 +1259,6 @@ int arg;
 #else
 	    goto not_there;
 #endif
-	if (strEQ(name, "DB_DELETED"))
-#ifdef DB_DELETED
-	    return DB_DELETED;
-#else
-	    goto not_there;
-#endif
 	if (strEQ(name, "DB_DELIMITER"))
 #ifdef DB_DELIMITER
 	    return DB_DELIMITER;
@@ -975,6 +1268,12 @@ int arg;
 	if (strEQ(name, "DB_DUP"))
 #ifdef DB_DUP
 	    return DB_DUP;
+#else
+	    goto not_there;
+#endif
+	if (strEQ(name, "DB_DUPSORT"))
+#ifdef DB_DUPSORT
+	    return DB_DUPSORT;
 #else
 	    goto not_there;
 #endif
@@ -1026,6 +1325,12 @@ int arg;
 #else
 	    goto not_there;
 #endif
+	if (strEQ(name, "DB_FORCE"))
+#ifdef DB_FORCE
+	    return DB_FORCE;
+#else
+	    goto not_there;
+#endif
 	if (strEQ(name, "DB_GET_BOTH"))
 #ifdef DB_GET_BOTH
 	    return DB_GET_BOTH;
@@ -1040,30 +1345,6 @@ int arg;
 #endif
 	if (strEQ(name, "DB_HASH"))
 	    return DB_HASH;
-	if (strEQ(name, "DB_HASHMAGIC"))
-#ifdef DB_HASHMAGIC
-	    return DB_HASHMAGIC;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_HASHOLDVER"))
-#ifdef DB_HASHOLDVER
-	    return DB_HASHOLDVER;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_HASHVERSION"))
-#ifdef DB_HASHVERSION
-	    return DB_HASHVERSION;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_HS_DIRTYMETA"))
-#ifdef DB_HS_DIRTYMETA
-	    return DB_HS_DIRTYMETA;
-#else
-	    goto not_there;
-#endif
 	if (strEQ(name, "DB_INCOMPLETE"))
 #ifdef DB_INCOMPLETE
 	    return DB_INCOMPLETE;
@@ -1100,6 +1381,12 @@ int arg;
 #else
 	    goto not_there;
 #endif
+	if (strEQ(name, "DB_JOIN_ITEM"))
+#ifdef DB_JOIN_ITEM
+	    return DB_JOIN_ITEM;
+#else
+	    goto not_there;
+#endif
 	if (strEQ(name, "DB_KEYEMPTY"))
 #ifdef DB_KEYEMPTY
 	    return DB_KEYEMPTY;
@@ -1130,18 +1417,6 @@ int arg;
 #else
 	    goto not_there;
 #endif
-	if (strEQ(name, "DB_LOCKMAGIC"))
-#ifdef DB_LOCKMAGIC
-	    return DB_LOCKMAGIC;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_LOCKVERSION"))
-#ifdef DB_LOCKVERSION
-	    return DB_LOCKVERSION;
-#else
-	    goto not_there;
-#endif
 	if (strEQ(name, "DB_LOCK_CONFLICT"))
 #ifdef DB_LOCK_CONFLICT
 	    return DB_LOCK_CONFLICT;
@@ -1157,6 +1432,12 @@ int arg;
 	if (strEQ(name, "DB_LOCK_DEFAULT"))
 #ifdef DB_LOCK_DEFAULT
 	    return DB_LOCK_DEFAULT;
+#else
+	    goto not_there;
+#endif
+	if (strEQ(name, "DB_LOCK_GET"))
+#ifdef DB_LOCK_GET
+	    return DB_LOCK_GET;
 #else
 	    goto not_there;
 #endif
@@ -1211,24 +1492,6 @@ int arg;
 	if (strEQ(name, "DB_LOCK_YOUNGEST"))
 #ifdef DB_LOCK_YOUNGEST
 	    return DB_LOCK_YOUNGEST;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_LOGMAGIC"))
-#ifdef DB_LOGMAGIC
-	    return DB_LOGMAGIC;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_LOGOLDVER"))
-#ifdef DB_LOGOLDVER
-	    return DB_LOGOLDVER;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_LOGVERSION"))
-#ifdef DB_LOGVERSION
-	    return DB_LOGVERSION;
 #else
 	    goto not_there;
 #endif
@@ -1340,9 +1603,27 @@ int arg;
 #else
 	    goto not_there;
 #endif
+	if (strEQ(name, "DB_POSITION"))
+#ifdef DB_POSITION
+	    return DB_POSITION;
+#else
+	    goto not_there;
+#endif
 	if (strEQ(name, "DB_PREV"))
 #ifdef DB_PREV
 	    return DB_PREV;
+#else
+	    goto not_there;
+#endif
+	if (strEQ(name, "DB_PRIVATE"))
+#ifdef DB_PRIVATE
+	    return DB_PRIVATE;
+#else
+	    goto not_there;
+#endif
+	if (strEQ(name, "DB_QUEUE"))
+#if DB_VERSION_MAJOR > 2
+	    return DB_QUEUE;
 #else
 	    goto not_there;
 #endif
@@ -1378,57 +1659,9 @@ int arg;
 #else
 	    goto not_there;
 #endif
-	if (strEQ(name, "DB_REGION_ANON"))
-#ifdef DB_REGION_ANON
-	    return DB_REGION_ANON;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_REGION_INIT"))
-#ifdef DB_REGION_INIT
-	    return DB_REGION_INIT;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_REGION_NAME"))
-#ifdef DB_REGION_NAME
-	    return DB_REGION_NAME;
-#else
-	    goto not_there;
-#endif
 	if (strEQ(name, "DB_REGISTERED"))
 #ifdef DB_REGISTERED
 	    return DB_REGISTERED;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_RE_DELIMITER"))
-#ifdef DB_RE_DELIMITER
-	    return DB_RE_DELIMITER;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_RE_FIXEDLEN"))
-#ifdef DB_RE_FIXEDLEN
-	    return DB_RE_FIXEDLEN;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_RE_PAD"))
-#ifdef DB_RE_PAD
-	    return DB_RE_PAD;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_RE_RENUMBER"))
-#ifdef DB_RE_RENUMBER
-	    return DB_RE_RENUMBER;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_RE_SNAPSHOT"))
-#ifdef DB_RE_SNAPSHOT
-	    return DB_RE_SNAPSHOT;
 #else
 	    goto not_there;
 #endif
@@ -1504,24 +1737,6 @@ int arg;
 #else
 	    goto not_there;
 #endif
-	if (strEQ(name, "DB_TSL_SPINS"))
-#ifdef DB_TSL_SPINS
-	    return DB_TSL_SPINS;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_TXNMAGIC"))
-#ifdef DB_TXNMAGIC
-	    return DB_TXNMAGIC;
-#else
-	    goto not_there;
-#endif
-	if (strEQ(name, "DB_TXNVERSION"))
-#ifdef DB_TXNVERSION
-	    return DB_TXNVERSION;
-#else
-	    goto not_there;
-#endif
 	if (strEQ(name, "DB_TXN_BACKWARD_ROLL"))
 #ifdef DB_TXN_BACKWARD_ROLL
 	    return DB_TXN_BACKWARD_ROLL;
@@ -1588,6 +1803,18 @@ int arg;
 #else
 	    goto not_there;
 #endif
+	if (strEQ(name, "DB_TXN_SYNC"))
+#ifdef DB_TXN_SYNC
+	    return DB_TXN_SYNC;
+#else
+	    goto not_there;
+#endif
+	if (strEQ(name, "DB_TXN_NOWAIT"))
+#ifdef DB_TXN_NOWAIT
+	    return DB_TXN_NOWAIT;
+#else
+	    goto not_there;
+#endif
 	if (strEQ(name, "DB_TXN_OPENFILES"))
 #ifdef DB_TXN_OPENFILES
 	    return DB_TXN_OPENFILES;
@@ -1633,6 +1860,12 @@ int arg;
 	if (strEQ(name, "DB_VERSION_PATCH"))
 #ifdef DB_VERSION_PATCH
 	    return DB_VERSION_PATCH;
+#else
+	    goto not_there;
+#endif
+	if (strEQ(name, "DB_WRIRECURSOR"))
+#ifdef DB_WRIRECURSOR
+	    return DB_WRIRECURSOR;
 #else
 	    goto not_there;
 #endif
@@ -1774,11 +2007,12 @@ int
 db_value_set(value, which)
 	int value
 	int which
+        NOT_IMPLEMENTED_YET
 
 MODULE = BerkeleyDB::Env		PACKAGE = BerkeleyDB::Env PREFIX = env_
 
 
-BerkeleyDB::Env 
+BerkeleyDB::Env::Raw 
 _db_appinit(self, ref)
 	char *		self
 	SV * 		ref
@@ -1789,7 +2023,9 @@ _db_appinit(self, ref)
 	    char *	home = NULL ;
 	    char **	config = NULL ;
 	    int		flags = 0 ;
+	    int		mode = 0 ;
 	    SV *	errprefix = NULL;
+	    DB_ENV *	env ;
 	    int status ;
 
 	    Trace(("in _db_appinit [%s] %d\n", self, ref)) ;
@@ -1811,9 +2047,14 @@ _db_appinit(self, ref)
 	        printf("    config = [%s]\n", config[i]) ;
 	      }
 	    }
-#endif
+#endif /* TRACE */
 	    ZMALLOC(RETVAL, BerkeleyDB_ENV_type) ;
-
+	    if (flags & DB_INIT_TXN)
+	        RETVAL->txn_enabled = TRUE ;
+#if DB_VERSION_MAJOR == 2 
+	  ZMALLOC(RETVAL->Env, DB_ENV) ;
+	  env = RETVAL->Env ;
+	  {
 	    /* Take a copy of the error prefix */
 	    if (errprefix) {
 	        Trace(("copying errprefix\n" )) ;
@@ -1821,25 +2062,153 @@ _db_appinit(self, ref)
 		SvPOK_only(RETVAL->ErrPrefix) ;
 	    }
 	    if (RETVAL->ErrPrefix)
-	        RETVAL->Env.db_errpfx = SvPVX(RETVAL->ErrPrefix) ;
+	        RETVAL->Env->db_errpfx = SvPVX(RETVAL->ErrPrefix) ;
 
-	    if ((sv = readHash(hash, "ErrFile")) && sv != &sv_undef) {
-		RETVAL->Env.db_errfile = IoOFP(sv_2io(sv)) ;
+	    if ((sv = readHash(hash, "ErrFile")) && sv != &PL_sv_undef) {
+		env->db_errfile = IoOFP(sv_2io(sv)) ;
 		RETVAL->ErrHandle = newRV(sv) ;
 	    }
 	    /* SetValue_io(RETVAL->Env.db_errfile, "ErrFile") ; */
-	    SetValue_iv(RETVAL->Env.db_verbose, "Verbose") ;
-	    /* RETVAL->Env.db_errbuf = RETVAL->ErrBuff ; */
-	    RETVAL->Env.db_errcall = db_errcall_cb ;
+	    SetValue_iv(env->db_verbose, "Verbose") ;
+	    /* env->db_errbuf = RETVAL->ErrBuff ; */
+	    env->db_errcall = db_errcall_cb ;
 	    RETVAL->active = TRUE ;
-	    status = db_appinit(home, config, &RETVAL->Env, flags) ;
-	    Trace(("  status = %d env %d Env %d\n", status, RETVAL, &RETVAL->Env)) ;
-	    if (status != 0)
+	    status = db_appinit(home, config, env, flags) ;
+	    Trace(("  status = %d env %d Env %d\n", status, RETVAL, env)) ;
+	    if (status == 0) 
+	        hash_store_iv("BerkeleyDB::Term::Env", (IV)RETVAL, 1) ;
+	    else {
+                if (RETVAL->ErrHandle)
+                    SvREFCNT_dec(RETVAL->ErrHandle) ;
+                if (RETVAL->ErrPrefix)
+                    SvREFCNT_dec(RETVAL->ErrPrefix) ;
+                Safefree(RETVAL->Env) ;
+                Safefree(RETVAL) ;
+		RETVAL = NULL ;
+	    }	
+	  }
+#else /* DB_VERSION_MAJOR > 2 */
+	  status = db_env_create(&RETVAL->Env, 0) ;
+	  Trace(("db_env_create flags = %d returned %s\n", flags, 
+	  					my_db_strerror(status))) ;
+	  env = RETVAL->Env ;
+	  if (status == 0)
+	  {
+	    /* Take a copy of the error prefix */
+	    if (errprefix) {
+	        Trace(("copying errprefix\n" )) ;
+		RETVAL->ErrPrefix = newSVsv(errprefix) ;
+		SvPOK_only(RETVAL->ErrPrefix) ;
+	    }
+	    if (RETVAL->ErrPrefix)
+	        env->set_errpfx(env, SvPVX(RETVAL->ErrPrefix)) ;
+
+	    if ((sv = readHash(hash, "ErrFile")) && sv != &PL_sv_undef) {
+		env->set_errfile(env, IoOFP(sv_2io(sv))) ;
+		RETVAL->ErrHandle = newRV(sv) ;
+	    }
+	    /* SetValue_iv(RETVAL->Env.db_verbose, "Verbose") ; */ /* TODO */
+	    SetValue_iv(mode, "Mode") ;
+	    /* RETVAL->Env.db_errbuf = RETVAL->ErrBuff ; */
+	    env->set_errcall(env, db_errcall_cb) ;
+	    RETVAL->active = TRUE ;
+	    status = env->open(env, home, config, flags, mode) ;
+	    Trace(("ENV->open returned %s\n", my_db_strerror(status))) ;
+	  }
+	  if (status == 0) 
+	      hash_store_iv("BerkeleyDB::Term::Env", (IV)RETVAL, 1) ;
+	  else {
+              if (RETVAL->ErrHandle)
+                  SvREFCNT_dec(RETVAL->ErrHandle) ;
+              if (RETVAL->ErrPrefix)
+                  SvREFCNT_dec(RETVAL->ErrPrefix) ;
+              Safefree(RETVAL) ;
+	      RETVAL = NULL ;
+	  }	
+#endif /* DB_VERSION_MAJOR > 2 */
+	}
+	OUTPUT:
+	    RETVAL
+
+BerkeleyDB::Txn::Raw
+_txn_begin(env, pid=NULL, flags=0)
+	BerkeleyDB::Env		env
+	BerkeleyDB::Txn		pid
+	u_int32_t		flags
+	CODE:
+	{
+	    DB_TXN *txn ;
+	    DB_TXN *p_id = NULL ;
+#if DB_VERSION_MAJOR == 2 
+	    if (env->Env->tx_info == NULL)
+		softCrash("Transaction Manager not enabled") ;
+#endif		
+	    if (!env->txn_enabled)
+		softCrash("Transaction Manager not enabled") ;
+	    if (pid)
+		p_id = pid->txn ;
+	    env->TxnMgrStatus = 
+#if DB_VERSION_MAJOR == 2 
+	    	txn_begin(env->Env->tx_info, p_id, &txn) ;
+#else	    
+	    	txn_begin(env->Env, p_id, &txn, flags) ;
+#endif	    
+	    if (env->TxnMgrStatus == 0) {
+	      ZMALLOC(RETVAL, BerkeleyDB_Txn_type) ;
+	      RETVAL->txn  = txn ;
+	      RETVAL->active = TRUE ;
+	      Trace(("_txn_begin created txn [%d] in [%d]\n", txn, RETVAL));
+	      hash_store_iv("BerkeleyDB::Term::Txn", (IV)RETVAL, 1) ;
+	    }
+	    else
 		RETVAL = NULL ;
 	}
 	OUTPUT:
 	    RETVAL
 
+
+#if DB_VERSION_MAJOR == 2 
+#  define env_txn_checkpoint(e,k,m) txn_checkpoint(e->Env->tx_info, k, m)
+#else
+#  define env_txn_checkpoint(e,k,m) txn_checkpoint(e->Env, k, m)
+#endif
+DualType
+env_txn_checkpoint(env, kbyte, min)
+	BerkeleyDB::Env		env
+	long			kbyte
+	long			min
+
+HV *
+txn_stat(env)
+	BerkeleyDB::Env		env
+	HV *			RETVAL = NULL ;
+	CODE:
+	{
+	    DB_TXN_STAT *	stat ;
+#if DB_VERSION_MAJOR == 2 
+	    if(txn_stat(env->Env->tx_info, &stat, safemalloc) == 0) {
+#else	    
+	    if(txn_stat(env->Env, &stat, safemalloc) == 0) {
+#endif	    
+	    	RETVAL = (HV*)sv_2mortal((SV*)newHV()) ;
+		hv_store_iv(RETVAL, "st_time_ckp", stat->st_time_ckp) ;
+		hv_store_iv(RETVAL, "st_last_txnid", stat->st_last_txnid) ;
+		hv_store_iv(RETVAL, "st_maxtxns", stat->st_maxtxns) ;
+		hv_store_iv(RETVAL, "st_naborts", stat->st_naborts) ;
+		hv_store_iv(RETVAL, "st_nbegins", stat->st_nbegins) ;
+		hv_store_iv(RETVAL, "st_ncommits", stat->st_ncommits) ;
+		hv_store_iv(RETVAL, "st_nactive", stat->st_nactive) ;
+#if DB_VERSION_MAJOR > 2 
+		hv_store_iv(RETVAL, "st_maxnactive", stat->st_maxnactive) ;
+		hv_store_iv(RETVAL, "st_regsize", stat->st_regsize) ;
+		hv_store_iv(RETVAL, "st_region_wait", stat->st_region_wait) ;
+		hv_store_iv(RETVAL, "st_region_nowait", stat->st_region_nowait) ;
+#endif
+		safefree(stat) ;
+	    }
+	}
+	OUTPUT:
+	    RETVAL
 
 #define EnDis(x)	((x) ? "Enabled" : "Disabled")
 void
@@ -1848,8 +2217,8 @@ printEnv(env)
 	INIT:
 	    ckActive_Environment(env->active) ;
 	CODE:
+#if 0	
 	  printf("env             [0x%X]\n", env) ;
-	  /* printf("  ErrBuff       [%s]\n", env->ErrBuff) ; */
 	  printf("  ErrPrefix     [%s]\n", env->ErrPrefix 
 				           ? SvPVX(env->ErrPrefix) : 0) ;
 	  printf("  DB_ENV\n") ;
@@ -1868,6 +2237,7 @@ printEnv(env)
 	  printf("    tx_max      [%d]\n", env->Env.tx_max) ;
 	  printf("    flags       [%d]\n", env->Env.flags) ;
 	  printf("\n") ;
+#endif	  
 
 SV *
 errPrefix(env, prefix)
@@ -1886,7 +2256,11 @@ errPrefix(env, prefix)
 	      env->ErrPrefix = newSVsv(prefix) ;
 	  }
 	  SvPOK_only(env->ErrPrefix) ;
-	  env->Env.db_errpfx = SvPVX(env->ErrPrefix) ;
+#if DB_VERSION_MAJOR == 2
+	  env->Env->db_errpfx = SvPVX(env->ErrPrefix) ;
+#else	  
+	  env->Env->set_errpfx(env->Env, SvPVX(env->ErrPrefix)) ;
+#endif
 	OUTPUT:
 	  RETVAL
 
@@ -1904,38 +2278,57 @@ db_appexit(env)
 	INIT:
 	    ckActive_Environment(env->active) ;
 	CODE:
-	    RETVAL = db_appexit(&env->Env) ;
+#ifdef STRICT_CLOSE
+	    if (env->open_dbs)
+		softCrash("attempted to close an environment with %d open database(s)", 
+			env->open_dbs) ;
+#endif /* STRICT_CLOSE */
+#if DB_VERSION_MAJOR == 2
+	    RETVAL = db_appexit(env->Env) ;
+#else
+	    RETVAL = env->Env->close(env->Env, 0) ;
+#endif
 	    env->active = FALSE ;
+	    hash_delete("BerkeleyDB::Term::Env", (IV)env) ;
 	OUTPUT: 
 	    RETVAL
 	    
 
 void
-DESTROY(env)
+_DESTROY(env)
         BerkeleyDB::Env  env
 	int RETVAL = 0 ;
 	CODE:
 	  Trace(("In BerkeleyDB::Env::DESTROY\n"));
-	  Trace(("    env %ld Env %ld dirty %d\n", env, &env->Env, dirty)) ;
+	  Trace(("    env %ld Env %ld dirty %d\n", env, &env->Env, PL_dirty)) ;
 	  if (env->active)
-              db_appexit(&env->Env) ;
+#if DB_VERSION_MAJOR == 2
+              db_appexit(env->Env) ;
+#else	      
+	      env->Env->close(env->Env, 0) ;
+#endif	      
           if (env->ErrHandle)
               SvREFCNT_dec(env->ErrHandle) ;
           if (env->ErrPrefix)
               SvREFCNT_dec(env->ErrPrefix) ;
+#if DB_VERSION_MAJOR == 2 
+          Safefree(env->Env) ;
+#endif	  
           Safefree(env) ;
+	  hash_delete("BerkeleyDB::Term::Env", (IV)env) ;
 	  Trace(("End of BerkeleyDB::Env::DESTROY %d\n", RETVAL)) ;
 
-BerkeleyDB::TxnMgr
-TxnMgr(env)
+BerkeleyDB::TxnMgr::Raw
+_TxnMgr(env)
         BerkeleyDB::Env  env
 	INIT:
 	    ckActive_Environment(env->active) ;
+	    if (!env->txn_enabled)
+		softCrash("Transaction Manager not enabled") ;
 	CODE:
 	    ZMALLOC(RETVAL, BerkeleyDB_TxnMgr_type) ;
 	    RETVAL->env  = env ;
-	    /* hash_store_iv("BerkeleyDB::Term::TxnMgr", txn, 1) ; */
-	    /* RETVAL->ref2env = newRV(SvRV(ST(0))) ; */
+	    /* hash_store_iv("BerkeleyDB::Term::TxnMgr", (IV)txn, 1) ; */
 	OUTPUT:
 	    RETVAL
 
@@ -1943,49 +2336,16 @@ TxnMgr(env)
 MODULE = BerkeleyDB::Term		PACKAGE = BerkeleyDB::Term
 
 void
-env_close(env)
-	BerkeleyDB_ENV_type * env
-	CODE:
-	Trace(("BerkeleyDB::Term::env_close %d\n", env)) ;
-	destroy_env(env) ;
+close_everything()
 
+#define safeCroak(string)	softCrash(string)
 void
-db_close(db)
-	DB *		  db
-	CODE:
-	/* BerkeleyDB_type * db */
-	Trace(("BerkeleyDB::Term::db_close %d\n", db)) ;
-        /* destroy_db(db) ; */
-	(db->close)(db, 0) ;
-	/* ((db->dbp)->close)(db->dbp, 0) ; */
-
-void
-close_dbs()
-	CODE:
-	DB * db ;
-	HE * he ;
-	I32 len ;
-	HV * hv = perl_get_hv("BerkeleyDB::Term::Db", TRUE);
-	I32 ret = hv_iterinit(hv) ;
-	while ( he = hv_iternext(hv) ) {
-	    db = * (DB**) (IV) hv_iterkey(he, &len) ;
-	    /* printf("close_dbs %d %d\n", db, len) ; */
-	    (db->close)(db, 0) ;
-	    /* printf("close_dbs closed\n"); */
-	}
-	
-void
-cur_close(db)
-	BerkeleyDB__Cursor_type * db
-	CODE:
-	Trace(("BerkeleyDB::Term::cur_close %d\n", db)) ;
-        destroy_cursor(db) ;
-	
-
+safeCroak(string)
+	char * string
 
 MODULE = BerkeleyDB::Hash	PACKAGE = BerkeleyDB::Hash	PREFIX = hash_
 
-BerkeleyDB::Hash
+BerkeleyDB::Hash::Raw
 _db_open_hash(self, ref)
 	char *		self
 	SV * 		ref
@@ -1997,12 +2357,15 @@ _db_open_hash(self, ref)
 	    BerkeleyDB__Env	dbenv = NULL;
 	    SV *		ref_dbenv = NULL;
 	    const char *	file = NULL ;
+	    const char *	subname = NULL ;
 	    int			flags = 0 ;
 	    int			mode = 0 ;
     	    BerkeleyDB 		db ;
 	
+    	    Trace(("_db_open_hash start\n")) ;
 	    hash = (HV*) SvRV(ref) ;
 	    SetValue_pv(file, "Filename", char *) ;
+	    SetValue_pv(subname, "Subname", char *) ;
 	    SetValue_ov(dbenv, "Env", BerkeleyDB__Env) ;
 	    ref_dbenv = sv ;
 	    SetValue_iv(flags, "Flags") ;
@@ -2016,15 +2379,22 @@ _db_open_hash(self, ref)
 	    SetValue_iv(info.h_nelem, "Nelem") ;
 	    SetValue_iv(info.flags, "Property") ;
 	    ZMALLOC(db, BerkeleyDB_type) ; 
-	    if ((sv = readHash(hash, "Txn")) && sv != &sv_undef) {
-		BerkeleyDB__Txn tmp = (BerkeleyDB__Txn)SvIV((SV*)SvRV(sv));
-		db->txn = tmp->txn ;
-	    }
-	    if ((sv = readHash(hash, "Hash")) && sv != &sv_undef) {
+	    if ((sv = readHash(hash, "Hash")) && sv != &PL_sv_undef) {
 		info.h_hash = hash_cb ;
 		db->hash = newSVsv(sv) ;
 	    }
-	    RETVAL = my_db_open(db, ref, ref_dbenv, dbenv, file, DB_HASH, flags, mode, &info) ;
+	    /* DB_DUPSORT was introduced in DB 2.5.9 */
+	    if ((sv = readHash(hash, "DupCompare")) && sv != &PL_sv_undef) {
+#ifdef DB_DUPSORT
+		info.dup_compare = dup_compare ;
+		db->dup_compare = newSVsv(sv) ;
+		info.flags |= DB_DUP|DB_DUPSORT ;
+#else
+	        croak("DupCompare needs Berkeley DB 2.5.9 or later") ;
+#endif
+	    }
+	    RETVAL = my_db_open(db, ref, ref_dbenv, dbenv, file, subname, DB_HASH, flags, mode, &info) ;
+    	    Trace(("_db_open_hash end\n")) ;
 	}
 	OUTPUT:
 	    RETVAL
@@ -2035,7 +2405,38 @@ db_stat(db, flags=0)
 	BerkeleyDB::Common	db
 	int			flags
 	HV *			RETVAL = NULL ;
-        NOT_IMPLEMENTED_YET
+	INIT:
+	  ckActive_Database(db->active) ;
+	CODE:
+	{
+#if DB_VERSION_MAJOR == 2 
+	    softCrash("$db->db_stat for a Hash needs Berkeley DB 3.x or better") ;
+#else
+	    DB_HASH_STAT *	stat ;
+	    db->Status = ((db->dbp)->stat)(db->dbp, &stat, safemalloc, flags) ;
+	    if (db->Status == 0) {
+	    	RETVAL = (HV*)sv_2mortal((SV*)newHV()) ;
+		hv_store_iv(RETVAL, "hash_magic", stat->hash_magic) ;
+		hv_store_iv(RETVAL, "hash_version", stat->hash_version);
+		hv_store_iv(RETVAL, "hash_pagesize", stat->hash_pagesize);
+		hv_store_iv(RETVAL, "hash_nrecs", stat->hash_nrecs);
+		hv_store_iv(RETVAL, "hash_nelem", stat->hash_nelem);
+		hv_store_iv(RETVAL, "hash_ffactor", stat->hash_ffactor);
+		hv_store_iv(RETVAL, "hash_buckets", stat->hash_buckets);
+		hv_store_iv(RETVAL, "hash_free", stat->hash_free);
+		hv_store_iv(RETVAL, "hash_bfree", stat->hash_bfree);
+		hv_store_iv(RETVAL, "hash_bigpages", stat->hash_bigpages);
+		hv_store_iv(RETVAL, "hash_big_bfree", stat->hash_big_bfree);
+		hv_store_iv(RETVAL, "hash_overflows", stat->hash_overflows);
+		hv_store_iv(RETVAL, "hash_ovfl_free", stat->hash_ovfl_free);
+		hv_store_iv(RETVAL, "hash_dup", stat->hash_dup);
+		hv_store_iv(RETVAL, "hash_dup_free", stat->hash_dup_free);
+		safefree(stat) ;
+	    }
+#endif	    
+	}
+	OUTPUT:
+	    RETVAL
 
 
 MODULE = BerkeleyDB::Unknown	PACKAGE = BerkeleyDB::Unknown	PREFIX = hash_
@@ -2051,6 +2452,7 @@ _db_open_unknown(ref)
 	    BerkeleyDB__Env	dbenv = NULL;
 	    SV *		ref_dbenv = NULL;
 	    const char *	file = NULL ;
+	    const char *	subname = NULL ;
 	    int			flags = 0 ;
 	    int			mode = 0 ;
     	    BerkeleyDB 		db ;
@@ -2059,6 +2461,7 @@ _db_open_unknown(ref)
 	
 	    hash = (HV*) SvRV(ref) ;
 	    SetValue_pv(file, "Filename", char *) ;
+	    SetValue_pv(subname, "Subname", char *) ;
 	    SetValue_ov(dbenv, "Env", BerkeleyDB__Env) ;
 	    ref_dbenv = sv ;
 	    SetValue_iv(flags, "Flags") ;
@@ -2072,12 +2475,8 @@ _db_open_unknown(ref)
 	    SetValue_iv(info.h_nelem, "Nelem") ;
 	    SetValue_iv(info.flags, "Property") ;
 	    ZMALLOC(db, BerkeleyDB_type) ; 
-	    if ((sv = readHash(hash, "Txn")) && sv != &sv_undef) {
-		BerkeleyDB__Txn tmp = (BerkeleyDB__Txn)SvIV((SV*)SvRV(sv));
-		db->txn = tmp->txn ;
-	    }
 	    
-	    RETVAL = my_db_open(db, ref, ref_dbenv, dbenv, file, DB_UNKNOWN, flags, mode, &info) ;
+	    RETVAL = my_db_open(db, ref, ref_dbenv, dbenv, file, subname, DB_UNKNOWN, flags, mode, &info) ;
 	    XPUSHs(sv_2mortal(newSViv((IV)RETVAL)));
 	    if (RETVAL)
 	        XPUSHs(sv_2mortal(newSVpv(Names[RETVAL->type], 0))) ;
@@ -2089,7 +2488,7 @@ _db_open_unknown(ref)
 
 MODULE = BerkeleyDB::Btree	PACKAGE = BerkeleyDB::Btree	PREFIX = btree_
 
-BerkeleyDB::Btree
+BerkeleyDB::Btree::Raw
 _db_open_btree(self, ref)
 	char *		self
 	SV * 		ref
@@ -2101,12 +2500,14 @@ _db_open_btree(self, ref)
 	    BerkeleyDB__Env	dbenv = NULL;
 	    SV *		ref_dbenv = NULL;
 	    const char *	file = NULL ;
+	    const char *	subname = NULL ;
 	    int			flags = 0 ;
 	    int			mode = 0 ;
     	    BerkeleyDB  	db ;
 	
 	    hash = (HV*) SvRV(ref) ;
 	    SetValue_pv(file, "Filename", char*) ;
+	    SetValue_pv(subname, "Subname", char *) ;
 	    SetValue_ov(dbenv, "Env", BerkeleyDB__Env) ;
 	    ref_dbenv = sv ;
 	    SetValue_iv(flags, "Flags") ;
@@ -2119,20 +2520,26 @@ _db_open_btree(self, ref)
 	    SetValue_iv(info.bt_minkey, "Minkey") ;
 	    SetValue_iv(info.flags, "Property") ;
 	    ZMALLOC(db, BerkeleyDB_type) ; 
-	    if ((sv = readHash(hash, "Txn")) && sv != &sv_undef) {
-		BerkeleyDB__Txn tmp = (BerkeleyDB__Txn)SvIV((SV*)SvRV(sv));
-		db->txn = tmp->txn ;
-	    }
-	    if ((sv = readHash(hash, "Compare")) && sv != &sv_undef) {
+	    if ((sv = readHash(hash, "Compare")) && sv != &PL_sv_undef) {
 		info.bt_compare = btree_compare ;
 		db->compare = newSVsv(sv) ;
 	    }
-	    if ((sv = readHash(hash, "Prefix")) && sv != &sv_undef) {
+	    /* DB_DUPSORT was introduced in DB 2.5.9 */
+	    if ((sv = readHash(hash, "DupCompare")) && sv != &PL_sv_undef) {
+#ifdef DB_DUPSORT
+		info.dup_compare = dup_compare ;
+		db->dup_compare = newSVsv(sv) ;
+		info.flags |= DB_DUP|DB_DUPSORT ;
+#else
+	        softCrash("DupCompare needs Berkeley DB 2.5.9 or later") ;
+#endif
+	    }
+	    if ((sv = readHash(hash, "Prefix")) && sv != &PL_sv_undef) {
 		info.bt_prefix = btree_prefix ;
 		db->prefix = newSVsv(sv) ;
 	    }
 	    
-	    RETVAL = my_db_open(db, ref, ref_dbenv, dbenv, file, DB_BTREE, flags, mode, &info) ;
+	    RETVAL = my_db_open(db, ref, ref_dbenv, dbenv, file, subname, DB_BTREE, flags, mode, &info) ;
 	}
 	OUTPUT:
 	    RETVAL
@@ -2151,7 +2558,14 @@ db_stat(db, flags=0)
 	    db->Status = ((db->dbp)->stat)(db->dbp, &stat, safemalloc, flags) ;
 	    if (db->Status == 0) {
 	    	RETVAL = (HV*)sv_2mortal((SV*)newHV()) ;
+		hv_store_iv(RETVAL, "bt_magic", stat->bt_magic);
+		hv_store_iv(RETVAL, "bt_version", stat->bt_version);
+#if DB_VERSION_MAJOR > 2 
+		hv_store_iv(RETVAL, "bt_metaflags", stat->bt_metaflags) ;
+		hv_store_iv(RETVAL, "bt_flags", stat->bt_metaflags) ;
+#else		
 		hv_store_iv(RETVAL, "bt_flags", stat->bt_flags) ;
+#endif		
 		hv_store_iv(RETVAL, "bt_maxkey", stat->bt_maxkey) ;
 		hv_store_iv(RETVAL, "bt_minkey", stat->bt_minkey);
 		hv_store_iv(RETVAL, "bt_re_len", stat->bt_re_len);
@@ -2180,8 +2594,6 @@ db_stat(db, flags=0)
 		hv_store_iv(RETVAL, "bt_leaf_pgfree", stat->bt_leaf_pgfree);
 		hv_store_iv(RETVAL, "bt_dup_pgfree", stat->bt_dup_pgfree);
 		hv_store_iv(RETVAL, "bt_over_pgfree", stat->bt_over_pgfree);
-		hv_store_iv(RETVAL, "bt_magic", stat->bt_magic);
-		hv_store_iv(RETVAL, "bt_version", stat->bt_version);
 		safefree(stat) ;
 	    }
 	}
@@ -2191,7 +2603,7 @@ db_stat(db, flags=0)
 
 MODULE = BerkeleyDB::Recno	PACKAGE = BerkeleyDB::Recno	PREFIX = recno_
 
-BerkeleyDB::Recno
+BerkeleyDB::Recno::Raw
 _db_open_recno(self, ref)
 	char *		self
 	SV * 		ref
@@ -2203,6 +2615,7 @@ _db_open_recno(self, ref)
 	    BerkeleyDB__Env	dbenv = NULL;
 	    SV *		ref_dbenv = NULL;
 	    const char *	file = NULL ;
+	    const char *	subname = NULL ;
 	    int			flags = 0 ;
 	    int			mode = 0 ;
     	    BerkeleyDB 		db ;
@@ -2222,33 +2635,28 @@ _db_open_recno(self, ref)
 
 	    SetValue_iv(info.flags, "Property") ;
 	    SetValue_pv(info.re_source, "Source", char*) ;
-	    if ((sv = readHash(hash, "Len")) && sv != &sv_undef) {
+	    if ((sv = readHash(hash, "Len")) && sv != &PL_sv_undef) {
 		info.re_len = SvIV(sv) ; ;
-		info.flags |= DB_FIXEDLEN ;
+		flagSet_DB2(info.flags, DB_FIXEDLEN) ;
 	    }
-	    if ((sv = readHash(hash, "Delim")) && sv != &sv_undef) {
-		info.re_delim = SvPOK(sv) ? *SvPV(sv,na) : SvIV(sv) ; ;
-		info.flags |= DB_DELIMITER ;
+	    if ((sv = readHash(hash, "Delim")) && sv != &PL_sv_undef) {
+		info.re_delim = SvPOK(sv) ? *SvPV(sv,PL_na) : SvIV(sv) ; ;
+		flagSet_DB2(info.flags, DB_DELIMITER) ;
 	    }
-	    if ((sv = readHash(hash, "Pad")) && sv != &sv_undef) {
-		info.re_pad = (u_int32_t)SvPOK(sv) ? *SvPV(sv,na) : SvIV(sv) ; ;
-		info.flags |= DB_PAD ;
+	    if ((sv = readHash(hash, "Pad")) && sv != &PL_sv_undef) {
+		info.re_pad = (u_int32_t)SvPOK(sv) ? *SvPV(sv,PL_na) : SvIV(sv) ; ;
+		flagSet_DB2(info.flags, DB_PAD) ;
 	    }
 	    ZMALLOC(db, BerkeleyDB_type) ; 
-	    if ((sv = readHash(hash, "Txn")) && sv != &sv_undef) {
-		BerkeleyDB__Txn tmp = (BerkeleyDB__Txn)SvIV((SV*)SvRV(sv));
-		db->txn = tmp->txn ;
-	    }
 #ifdef ALLOW_RECNO_OFFSET
 	    SetValue_iv(db->array_base, "ArrayBase") ;
 	    db->array_base = (db->array_base == 0 ? 1 : 0) ;
 #endif /* ALLOW_RECNO_OFFSET */
 	    
-	    RETVAL = my_db_open(db, ref, ref_dbenv, dbenv, file, DB_RECNO, flags, mode, &info) ;
+	    RETVAL = my_db_open(db, ref, ref_dbenv, dbenv, file, subname, DB_RECNO, flags, mode, &info) ;
 	}
 	OUTPUT:
 	    RETVAL
-
 
 
 MODULE = BerkeleyDB::Common  PACKAGE = BerkeleyDB::Common	PREFIX = dab_
@@ -2260,39 +2668,56 @@ db_close(db,flags=0)
 	int 			flags
 	INIT:
 	    ckActive_Database(db->active) ;
-	CODE:
 	    CurrentDB = db ;
+	CODE:
+	    Trace(("BerkeleyDB::Common::db_close %d\n", db));
+#ifdef STRICT_CLOSE
+	    if (db->txn)
+		softCrash("attempted to close a database while a transaction was still open") ;
+	    if (db->open_cursors)
+		softCrash("attempted to close a database with %d open cursor(s)", 
+				db->open_cursors) ;
+#endif /* STRICT_CLOSE */
 	    RETVAL =  db->Status = ((db->dbp)->close)(db->dbp, flags) ;
+	    if (db->parent_env && db->parent_env->open_dbs)
+		-- db->parent_env->open_dbs ;
 	    db->active = FALSE ;
+	    hash_delete("BerkeleyDB::Term::Db", (IV)db) ;
+	    -- db->open_cursors ;
+	    Trace(("end of BerkeleyDB::Common::db_close\n"));
 	OUTPUT: 
 	    RETVAL
 
 void
-dab_DESTROY(db)
+dab__DESTROY(db)
 	BerkeleyDB::Common	db
 	CODE:
 	  CurrentDB = db ;
-	  Trace(("In BerkeleyDB::Common::DESTROY db %d dirty=%d\n", db, dirty)) ;
-      	  if (! dirty && db->active) ((db->dbp)->close)(db->dbp, 0) ;
+	  Trace(("In BerkeleyDB::Common::_DESTROY db %d dirty=%d\n", db, PL_dirty)) ;
+      	  if (! PL_dirty && db->active) {
+	      	-- db->open_cursors ;
+		((db->dbp)->close)(db->dbp, 0) ;
+	  }
       	  if (db->hash)
         	  SvREFCNT_dec(db->hash) ;
       	  if (db->compare)
         	  SvREFCNT_dec(db->compare) ;
+      	  if (db->dup_compare)
+        	  SvREFCNT_dec(db->dup_compare) ;
       	  if (db->prefix)
         	  SvREFCNT_dec(db->prefix) ;
-      	  if (db->ref2env)
-          	  SvREFCNT_dec(db->ref2env) ;
-#ifdef ALLOW_KV_FILTER
-          if (db->readKey)
-              SvREFCNT_dec(db->readKey) ;
-          if (db->writeKey)
-              SvREFCNT_dec(db->writeKey) ;
-          if (db->readValue)
-              SvREFCNT_dec(db->readValue) ;
-          if (db->writeValue)
-              SvREFCNT_dec(db->writeValue) ;
+#ifdef DBM_FILTERING
+          if (db->filter_fetch_key)
+              SvREFCNT_dec(db->filter_fetch_key) ;
+          if (db->filter_store_key)
+              SvREFCNT_dec(db->filter_store_key) ;
+          if (db->filter_fetch_value)
+              SvREFCNT_dec(db->filter_fetch_value) ;
+          if (db->filter_store_value)
+              SvREFCNT_dec(db->filter_store_value) ;
 #endif
-	  hash_delete("BerkeleyDB::Term::Db", db->dbp) ;
+	  hash_delete("BerkeleyDB::Term::Db", (IV)db) ;
+          Safefree(db->filename) ;
           Safefree(db) ;
 	  Trace(("End of BerkeleyDB::Common::DESTROY \n")) ;
 
@@ -2301,8 +2726,8 @@ dab_DESTROY(db)
 #else
 #define db_cursor(db, txn, cur,flags)  ((db->dbp)->cursor)(db->dbp, txn, cur,flags)
 #endif
-BerkeleyDB::Cursor
-db_cursor(db, flags=0)
+BerkeleyDB::Cursor::Raw
+_db_cursor(db, flags=0)
         BerkeleyDB::Common 	db
 	u_int32_t		flags 
         BerkeleyDB::Cursor 	RETVAL = NULL ;
@@ -2314,11 +2739,15 @@ db_cursor(db, flags=0)
 	  CurrentDB = db ;
 	  if ((db->Status = db_cursor(db, db->txn, &cursor, flags)) == 0){
 	      ZMALLOC(RETVAL, BerkeleyDB__Cursor_type) ;
+	      db->open_cursors ++ ;
+	      RETVAL->parent_db  = db ;
 	      RETVAL->cursor  = cursor ;
 	      RETVAL->dbp     = db->dbp ;
-	      RETVAL->ref2db  = newRV(SvRV(ST(0))) ;
               RETVAL->type    = db->type ;
+              RETVAL->recno_or_queue    = db->recno_or_queue ;
+              RETVAL->filename    = STRDUP(db->filename) ;
               RETVAL->compare = db->compare ;
+              RETVAL->dup_compare = db->dup_compare ;
               RETVAL->prefix  = db->prefix ;
               RETVAL->hash    = db->hash ;
 	      RETVAL->partial = db->partial ;
@@ -2328,20 +2757,85 @@ db_cursor(db, flags=0)
 #ifdef ALLOW_RECNO_OFFSET
 	      RETVAL->array_base  = db->array_base ;
 #endif /* ALLOW_RECNO_OFFSET */
-#ifdef ALLOW_KV_FILTER
+#ifdef DBM_FILTERING
 	      RETVAL->filtering   = FALSE ;
-	      RETVAL->readKey     = db->readKey ;
-	      RETVAL->writeKey    = db->writeKey ;
-	      RETVAL->readValue   = db->readValue ;
-	      RETVAL->writeValue  = db->writeValue ;
+	      RETVAL->filter_fetch_key    = db->filter_fetch_key ;
+	      RETVAL->filter_store_key    = db->filter_store_key ;
+	      RETVAL->filter_fetch_value  = db->filter_fetch_value ;
+	      RETVAL->filter_store_value  = db->filter_store_value ;
 #endif
               /* RETVAL->info ; */
-	      hash_store_iv("BerkeleyDB::Term::Cursor", cursor, 1) ;
+	      hash_store_iv("BerkeleyDB::Term::Cursor", (IV)RETVAL, 1) ;
 	  }
 	}
 	OUTPUT:
 	  RETVAL
 
+BerkeleyDB::Cursor::Raw
+_db_join(db, cursors, flags=0)
+        BerkeleyDB::Common 	db
+	AV *			cursors
+	u_int32_t		flags 
+        BerkeleyDB::Cursor 	RETVAL = NULL ;
+	INIT:
+	    ckActive_Database(db->active) ;
+	CODE:
+	{
+#if DB_VERSION_MAJOR == 2 && (DB_VERSION_MINOR < 5 || (DB_VERSION_MINOR == 5 && DB_VERSION_PATCH < 2))
+	    softCrash("join needs Berkeley DB 2.5.2 or later") ;
+#else /* Berkeley DB >= 2.5.2 */
+	  DBC *		join_cursor ;
+	  DBC **	cursor_list ; 
+	  I32		count = av_len(cursors) + 1 ;
+	  int		i ;
+	  CurrentDB = db ;
+	  if (count < 1 )
+	      softCrash("db_join: No cursors in parameter list") ;
+	  cursor_list = (DBC **)safemalloc(sizeof(DBC*) * (count + 1));
+	  for (i = 0 ; i < count ; ++i) {
+	      SV * obj = (SV*) * av_fetch(cursors, i, FALSE) ;
+	      BerkeleyDB__Cursor cur = (BerkeleyDB__Cursor) getInnerObject(obj) ;
+	      cursor_list[i] = cur->cursor ;
+	  }
+	  cursor_list[i] = NULL ;
+#if DB_VERSION_MAJOR == 2 
+	  if ((db->Status = ((db->dbp)->join)(db->dbp, cursor_list, flags, &join_cursor)) == 0){
+#else	  
+	  if ((db->Status = ((db->dbp)->join)(db->dbp, cursor_list, &join_cursor, flags)) == 0){
+#endif	  
+	      ZMALLOC(RETVAL, BerkeleyDB__Cursor_type) ;
+	      db->open_cursors ++ ;
+	      RETVAL->parent_db  = db ;
+	      RETVAL->cursor  = join_cursor ;
+	      RETVAL->dbp     = db->dbp ;
+              RETVAL->type    = db->type ;
+              RETVAL->filename    = STRDUP(db->filename) ;
+              RETVAL->compare = db->compare ;
+              RETVAL->dup_compare = db->dup_compare ;
+              RETVAL->prefix  = db->prefix ;
+              RETVAL->hash    = db->hash ;
+	      RETVAL->partial = db->partial ;
+	      RETVAL->doff    = db->doff ;
+	      RETVAL->dlen    = db->dlen ;
+	      RETVAL->active  = TRUE ;
+#ifdef ALLOW_RECNO_OFFSET
+	      RETVAL->array_base  = db->array_base ;
+#endif /* ALLOW_RECNO_OFFSET */
+#ifdef DBM_FILTERING
+	      RETVAL->filtering   = FALSE ;
+	      RETVAL->filter_fetch_key    = db->filter_fetch_key ;
+	      RETVAL->filter_store_key    = db->filter_store_key ;
+	      RETVAL->filter_fetch_value  = db->filter_fetch_value ;
+	      RETVAL->filter_store_value  = db->filter_store_value ;
+#endif
+              /* RETVAL->info ; */
+	      hash_store_iv("BerkeleyDB::Term::Cursor", (IV)RETVAL, 1) ;
+	  }
+	  safefree(cursor_list) ;
+#endif /* Berkeley DB >= 2.5.2 */
+	}
+	OUTPUT:
+	  RETVAL
 
 int
 ArrayOffset(db)
@@ -2374,9 +2868,13 @@ byteswapped(db)
 	    ckActive_Database(db->active) ;
 	CODE:
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 5
-	    croak("byteswapped needs Berkeley DB 2.5 or later") ;
+	    softCrash("byteswapped needs Berkeley DB 2.5 or later") ;
 #else
+#if DB_VERSION_MAJOR == 2 
 	    RETVAL = db->dbp->byteswapped ;
+#else	    
+	    RETVAL = db->dbp->get_byteswapped(db->dbp) ;
+#endif	    
 #endif
 	OUTPUT: 
 	    RETVAL
@@ -2389,64 +2887,59 @@ status(db)
 	OUTPUT: 
 	    RETVAL
 
-#ifdef ALLOW_KV_FILTER
+#ifdef DBM_FILTERING
 
-#define setFilter(type)						\
-	    if (db->type)					\
-	        RETVAL = sv_2mortal(newSVsv(db->type)) ;	\
-	    if (db->type && code == &sv_undef) {		\
-                SvREFCNT_dec(db->type) ;			\
-	        db->type = NULL ;				\
-	    }							\
-	    else if (code) {					\
-	        if (db->type)					\
-	            sv_setsv(db->type, code) ;			\
-	        else						\
-	            db->type = newSVsv(code) ;			\
-	    }	    
+#define setFilter(type)					\
+	{						\
+	    if (db->type)				\
+	        RETVAL = sv_mortalcopy(db->type) ;	\
+	    ST(0) = RETVAL ;				\
+	    if (db->type && (code == &PL_sv_undef)) {	\
+                SvREFCNT_dec(db->type) ;		\
+	        db->type = NULL ;			\
+	    }						\
+	    else if (code) {				\
+	        if (db->type)				\
+	            sv_setsv(db->type, code) ;		\
+	        else					\
+	            db->type = newSVsv(code) ;		\
+	    }	    					\
+	}
 
-
-SV *
-ReadKey(db, code=NULL)
-	BerkeleyDB::Common	db
-	SV *			code
-	SV *			RETVAL = NULL ;
-	CODE:
-	    setFilter(readKey) ;
-	OUTPUT:
-	    RETVAL
 
 SV *
-WriteKey(db, code=NULL)
-	BerkeleyDB::Common	db
-	SV *			code
-	SV *			RETVAL = NULL ;
+filter_fetch_key(db, code)
+	BerkeleyDB::Common		db
+	SV *		code
+	SV *		RETVAL = &PL_sv_undef ;
 	CODE:
-	    setFilter(writeKey) ;
-	OUTPUT:
-	    RETVAL
+	    setFilter(filter_fetch_key) ;
 
 SV *
-ReadValue(db, code=NULL)
-	BerkeleyDB::Common	db
-	SV *			code
-	SV *			RETVAL = NULL ;
+filter_store_key(db, code)
+	BerkeleyDB::Common		db
+	SV *		code
+	SV *		RETVAL = &PL_sv_undef ;
 	CODE:
-	    setFilter(readValue) ;
-	OUTPUT:
-	    RETVAL
+	    setFilter(filter_store_key) ;
 
 SV *
-WriteValue(db, code=NULL)
-	BerkeleyDB::Common	db
-	SV *			code
-	SV *			RETVAL = NULL ;
+filter_fetch_value(db, code)
+	BerkeleyDB::Common		db
+	SV *		code
+	SV *		RETVAL = &PL_sv_undef ;
 	CODE:
-	    setFilter(writeValue) ;
-	OUTPUT:
-	    RETVAL
+	    setFilter(filter_fetch_value) ;
 
-#endif /* ALLOW_KV_FILTER */
+SV *
+filter_store_value(db, code)
+	BerkeleyDB::Common		db
+	SV *		code
+	SV *		RETVAL = &PL_sv_undef ;
+	CODE:
+	    setFilter(filter_store_value) ;
+
+#endif /* DBM_FILTERING */
 
 void
 partial_set(db, offset, length)
@@ -2501,7 +2994,7 @@ db_get(db, key, data, flags=0)
 	BerkeleyDB::Common	db
 	u_int		flags
 	DBTKEY_B	key
-	DBT		data = NO_INIT
+	DBT_OPT		data 
 	INIT:
 	  ckActive_Database(db->active) ;
 	  CurrentDB = db ;
@@ -2548,14 +3041,21 @@ db_sync(db, flags=0)
 	  CurrentDB = db ;
 
 void
-Txn(db, txn)
+_Txn(db, txn=NULL)
         BerkeleyDB::Common      db
         BerkeleyDB::Txn         txn
 	INIT:
 	  ckActive_Database(db->active) ;
-	  ckActive_Transaction(txn->active) ;
 	CODE:
-	   db->txn = txn->txn ;
+	   if (txn) {
+	       Trace(("_Txn(%d in %d) active [%d]\n", txn->txn, txn, txn->active));
+	       ckActive_Transaction(txn->active) ;
+	       db->txn = txn->txn ;
+	   }    
+	   else {
+	       Trace(("_Txn(undef) \n"));
+	       db->txn = NULL ;
+	   }
 
 
 
@@ -2566,28 +3066,35 @@ DualType
 c_close(db)
     BerkeleyDB::Cursor	db
 	INIT:
-	  CurrentDB = db ;
+	  CurrentDB = db->parent_db ;
 	  ckActive_Cursor(db->active) ;
-	  db->active = FALSE ;
+	  hash_delete("BerkeleyDB::Term::Cursor", (IV)db) ;
 	CODE:
-	    RETVAL =  db->Status =
-    	      ((db->cursor)->c_close)(db->cursor) ;
+#ifdef STRICT_CLOSE
+	  if (db->parent_db->txn)
+	      softCrash("attempted to close a Cursor with an open transaction");
+#endif /* STRICT_CLOSE */
+	  RETVAL =  db->Status =
+    	          ((db->cursor)->c_close)(db->cursor) ;
+	  db->active = FALSE ;
+	  if (db->parent_db->open_cursors)
+	      -- db->parent_db->open_cursors ;
 	OUTPUT:
 	  RETVAL
 
 void
-DESTROY(db)
+_DESTROY(db)
     BerkeleyDB::Cursor	db
 	CODE:
-	  CurrentDB = db ;
-	  Trace(("In BerkeleyDB::Cursor::DESTROY db %d dirty=%d\n", db, dirty));
-	  hash_delete("BerkeleyDB::Term::Cursor", db->cursor) ;
+	  CurrentDB = db->parent_db ;
+	  Trace(("In BerkeleyDB::Cursor::_DESTROY db %d dirty=%d active=%d\n", db, PL_dirty, db->active));
+	  hash_delete("BerkeleyDB::Term::Cursor", (IV)db) ;
 	  if (db->active)
     	      ((db->cursor)->c_close)(db->cursor) ;
-    	  if (db->ref2db)
-       	 	   SvREFCNT_dec(db->ref2db) ;
+	  if (db->parent_db->open_cursors)
+	      -- db->parent_db->open_cursors ;
           Safefree(db) ;
-	  Trace(("End of BerkeleyDB::Cursor::DESTROY\n")) ;
+	  Trace(("End of BerkeleyDB::Cursor::_DESTROY\n")) ;
 
 DualType
 status(db)
@@ -2604,7 +3111,7 @@ cu_c_del(db, flags=0)
     BerkeleyDB::Cursor	db
     int			flags
 	INIT:
-	  CurrentDB = db ;
+	  CurrentDB = db->parent_db ;
 	  ckActive_Cursor(db->active) ;
 	OUTPUT:
 	  RETVAL
@@ -2616,16 +3123,17 @@ cu_c_get(db, key, data, flags=0)
     BerkeleyDB::Cursor	db
     int			flags
     DBTKEY_B		key
-    DBT_B		data = NO_INIT
+    DBT_B		data 
 	INIT:
-	  CurrentDB = db ;
+	  Trace(("c_get db [%d] flags [%d]\n", db, flags)) ;
+	  CurrentDB = db->parent_db ;
 	  ckActive_Cursor(db->active) ;
 	  SetPartial(data,db) ;
-	  /* key		if (! (flags & DB_GET_RECNO)) OutputKey_B(ST(1), key) ; */
+	  Trace(("c_get end\n")) ;
 	OUTPUT:
 	  RETVAL
 	  key		
-	  data
+	  data		if (! flagSet(DB_JOIN_ITEM)) OutputValue_B(ST(2), data) ;
 
 
 #define cu_c_put(c,k,d,f)  (c->Status = (c->cursor->c_put)(c->cursor,&k,&d,f))
@@ -2636,7 +3144,7 @@ cu_c_put(db, key, data, flags=0)
     DBT			data
     int			flags
 	INIT:
-	  CurrentDB = db ;
+	  CurrentDB = db->parent_db ;
 	  ckActive_Cursor(db->active) ;
 	  /* SetPartial(data,db) ; */
 	OUTPUT:
@@ -2648,25 +3156,33 @@ cu_c_put(db, key, data, flags=0)
 
 MODULE = BerkeleyDB::TxnMgr           PACKAGE = BerkeleyDB::TxnMgr	PREFIX = xx_
 
-BerkeleyDB::Txn
-txn_begin(txnmgr, pid=NULL)
+BerkeleyDB::Txn::Raw
+_txn_begin(txnmgr, pid=NULL, flags=0)
 	BerkeleyDB::TxnMgr	txnmgr
 	BerkeleyDB::Txn		pid
+	u_int32_t		flags
 	CODE:
 	{
 	    DB_TXN *txn ;
 	    DB_TXN *p_id = NULL ;
-	    if (txnmgr->env->Env.tx_info == NULL)
-		croak("Transaction Manager not enabled") ;
+#if DB_VERSION_MAJOR == 2 
+	    if (txnmgr->env->Env->tx_info == NULL)
+		softCrash("Transaction Manager not enabled") ;
+#endif		
 	    if (pid)
 		p_id = pid->txn ;
-	    txnmgr->env->TxnMgrStatus = txn_begin(txnmgr->env->Env.tx_info, p_id, &txn) ;
+	    txnmgr->env->TxnMgrStatus = 
+#if DB_VERSION_MAJOR == 2 
+	    	txn_begin(txnmgr->env->Env->tx_info, p_id, &txn) ;
+#else	    
+	    	txn_begin(txnmgr->env->Env, p_id, &txn, flags) ;
+#endif	    
 	    if (txnmgr->env->TxnMgrStatus == 0) {
 	      ZMALLOC(RETVAL, BerkeleyDB_Txn_type) ;
 	      RETVAL->txn  = txn ;
 	      RETVAL->active = TRUE ;
-	      hash_store_iv("BerkeleyDB::Term::Txn", txn, 1) ;
-		/* RETVAL = txn ; */
+	      Trace(("_txn_begin created txn [%d] in [%d]\n", txn, RETVAL));
+	      hash_store_iv("BerkeleyDB::Term::Txn", (IV)RETVAL, 1) ;
 	    }
 	    else
 		RETVAL = NULL ;
@@ -2685,12 +3201,10 @@ status(mgr)
 
 
 void
-DESTROY(mgr)
+_DESTROY(mgr)
     BerkeleyDB::TxnMgr	mgr
 	CODE:
-	  Trace(("In BerkeleyDB::TxnMgr::DESTROY dirty=%d\n", dirty)) ;
-          if (mgr->ref2env)
-              SvREFCNT_dec(mgr->ref2env) ;
+	  Trace(("In BerkeleyDB::TxnMgr::DESTROY dirty=%d\n", PL_dirty)) ;
           Safefree(mgr) ;
 	  Trace(("End of BerkeleyDB::TxnMgr::DESTROY\n")) ;
 
@@ -2700,7 +3214,11 @@ txn_close(txnp)
         NOT_IMPLEMENTED_YET
 
 
-#define xx_txn_checkpoint(t,k,m) txn_checkpoint(t->env->Env.tx_info, k, m)
+#if DB_VERSION_MAJOR == 2 
+#  define xx_txn_checkpoint(t,k,m) txn_checkpoint(t->env->Env->tx_info, k, m)
+#else
+#  define xx_txn_checkpoint(t,k,m) txn_checkpoint(t->env->Env, k, m)
+#endif
 DualType
 xx_txn_checkpoint(txnp, kbyte, min)
 	BerkeleyDB::TxnMgr	txnp
@@ -2714,7 +3232,11 @@ txn_stat(txnp)
 	CODE:
 	{
 	    DB_TXN_STAT *	stat ;
-	    if(txn_stat(txnp->env->Env.tx_info, &stat, safemalloc) == 0) {
+#if DB_VERSION_MAJOR == 2 
+	    if(txn_stat(txnp->env->Env->tx_info, &stat, safemalloc) == 0) {
+#else	    
+	    if(txn_stat(txnp->env->Env, &stat, safemalloc) == 0) {
+#endif	    
 	    	RETVAL = (HV*)sv_2mortal((SV*)newHV()) ;
 		hv_store_iv(RETVAL, "st_time_ckp", stat->st_time_ckp) ;
 		hv_store_iv(RETVAL, "st_last_txnid", stat->st_last_txnid) ;
@@ -2723,6 +3245,12 @@ txn_stat(txnp)
 		hv_store_iv(RETVAL, "st_nbegins", stat->st_nbegins) ;
 		hv_store_iv(RETVAL, "st_ncommits", stat->st_ncommits) ;
 		hv_store_iv(RETVAL, "st_nactive", stat->st_nactive) ;
+#if DB_VERSION_MAJOR > 2 
+		hv_store_iv(RETVAL, "st_maxnactive", stat->st_maxnactive) ;
+		hv_store_iv(RETVAL, "st_regsize", stat->st_regsize) ;
+		hv_store_iv(RETVAL, "st_region_wait", stat->st_region_wait) ;
+		hv_store_iv(RETVAL, "st_region_nowait", stat->st_region_nowait) ;
+#endif
 		safefree(stat) ;
 	    }
 	}
@@ -2750,14 +3278,14 @@ status(tid)
 	    RETVAL
 
 int
-DESTROY(tid)
+_DESTROY(tid)
     BerkeleyDB::Txn	tid
 	CODE:
-	  Trace(("In BerkeleyDB::Txn::DESTROY dirty=%d\n", dirty)) ;
+	  Trace(("In BerkeleyDB::Txn::_DESTROY txn [%d] active [%d] dirty=%d\n", tid->txn, tid->active, PL_dirty)) ;
 	  if (tid->active)
 	    txn_abort(tid->txn) ;
           RETVAL = (int)tid ;
-	  hash_delete("BerkeleyDB::Term::Txn", tid->txn) ;
+	  hash_delete("BerkeleyDB::Term::Txn", (IV)tid) ;
           Safefree(tid) ;
 	  Trace(("End of BerkeleyDB::Txn::DESTROY\n")) ;
 	OUTPUT:
@@ -2778,20 +3306,27 @@ xx_txn_prepare(tid)
 	INIT:
 	    ckActive_Transaction(tid->active) ;
 
-#define xx_txn_commit(t) (t->Status = txn_commit(t->txn))
+#if DB_VERSION_MAJOR == 2 
+#define _txn_commit(t,flags) (t->Status = txn_commit(t->txn))
+#else
+#define _txn_commit(t, flags) (t->Status = txn_commit(t->txn, flags))
+#endif
 DualType
-xx_txn_commit(tid)
+_txn_commit(tid, flags=0)
 	BerkeleyDB::Txn	tid
+	u_int32_t	flags
 	INIT:
 	    ckActive_Transaction(tid->active) ;
+	    hash_delete("BerkeleyDB::Term::Txn", (IV)tid) ;
 	    tid->active = FALSE ;
 
-#define xx_txn_abort(t) (t->Status = txn_abort(t->txn))
+#define _txn_abort(t) (t->Status = txn_abort(t->txn))
 DualType
-xx_txn_abort(tid)
+_txn_abort(tid)
 	BerkeleyDB::Txn	tid
 	INIT:
 	    ckActive_Transaction(tid->active) ;
+	    hash_delete("BerkeleyDB::Term::Txn", (IV)tid) ;
 	    tid->active = FALSE ;
 
 #define xx_txn_id(t) txn_id(t->txn)
@@ -2818,7 +3353,8 @@ FIRSTKEY(db)
 
 	     */
             CurrentDB = db ;
-	    key.flags = value.flags = 0 ;
+	    DBT_clear(key) ;
+	    DBT_clear(value) ;
 	    /* If necessary create a cursor for FIRSTKEY/NEXTKEY use */
 	    if (!db->cursor &&
 		(db->Status = db_cursor(db, db->txn, &cursor, 0)) == 0 )
@@ -2849,7 +3385,8 @@ NEXTKEY(db, key)
             DBT         value ;
  
             CurrentDB = db ;
-	    key.flags = value.flags = 0 ;
+	    DBT_clear(value) ;
+	    key.flags = 0 ;
 	    RETVAL = (db->Status) =
 		((db->cursor)->c_get)(db->cursor, &key, &value, DB_NEXT);
 
@@ -2878,11 +3415,26 @@ MODULE = BerkeleyDB        PACKAGE = BerkeleyDB
 
 BOOT:
   {
-    SV * ver_sv = perl_get_sv("BerkeleyDB::db_version", TRUE) ;
+    SV * version_sv = perl_get_sv("BerkeleyDB::db_version", GV_ADD|GV_ADDMULTI) ;
+    SV * ver_sv = perl_get_sv("BerkeleyDB::db_ver", GV_ADD|GV_ADDMULTI) ;
     int Major, Minor, Patch ;
     (void)db_version(&Major, &Minor, &Patch) ;
-    sv_setpvf(ver_sv, "%d.%d", Major, Minor) ;
+    /* Check that the versions of db.h and libdb.a are the same */
+    if (Major != DB_VERSION_MAJOR || Minor != DB_VERSION_MINOR
+                || Patch != DB_VERSION_PATCH)
+        croak("\nBerkeleyDB needs compatible versions of libdb & db.h\n\tyou have db.h version %d.%d.%d and libdb version %d.%d.%d\n",
+                DB_VERSION_MAJOR, DB_VERSION_MINOR, DB_VERSION_PATCH,
+                Major, Minor, Patch) ;
 
+    if (Major < 2 || (Major == 2 && Minor < 6))
+    {
+        croak("BerkeleyDB needs Berkeley DB 2.6 or greater. This is %d.%d.%d\n", 
+		Major, Minor, Patch) ;
+    }
+    sv_setpvf(version_sv, "%d.%d", Major, Minor) ;
+    sv_setpvf(ver_sv, "%d.%03d%03d", Major, Minor, Patch) ;
+
+    DBT_clear(empty) ;
     empty.data  = &zero ;
     empty.size  =  sizeof(db_recno_t) ;
     empty.flags = 0 ;

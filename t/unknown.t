@@ -11,17 +11,6 @@ BEGIN {
     }
 }
 
-#use Config;
-#
-#BEGIN {
-#    if(-d "lib" && -f "TEST") {
-#        if ($Config{'extensions'} !~ /\bBerkeleyDB\b/ ) {
-#            print "1..74\n";
-#            exit 0;
-#        }
-#    }
-#}
-
 use BerkeleyDB; 
 use File::Path qw(rmtree);
 
