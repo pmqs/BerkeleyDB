@@ -14,7 +14,7 @@ BEGIN {
 use BerkeleyDB; 
 use t::util ;
 
-print "1..218\n";
+print "1..224\n";
 
 my $Dfile = "dbhash.tmp";
 my $Dfile2 = "dbhash2.tmp";
@@ -22,7 +22,6 @@ my $Dfile3 = "dbhash3.tmp";
 unlink $Dfile;
 
 umask(0) ;
-
 
 # Check for invalid parameters
 {
@@ -184,16 +183,6 @@ umask(0) ;
 {
     # Tied Array interface
 
-    # full tied array support started in Perl 5.004_57
-    # just double check.
-    my $FA = 0 ;
-    {
-        sub try::TIEARRAY { bless [], "try" }
-        sub try::FETCHSIZE { $FA = 1 }
-        my @a ; 
-        tie @a, 'try' ;
-        my $a = @a ;
-    }
 
     my $lex = new LexFile $Dfile ;
     my @array ;
@@ -869,6 +858,47 @@ EOM
     ok 218, $x eq "abc--def-------ghi--" ;
 }
 
+{
+    # 23 Sept 2001 -- push into an empty array
+    my $lex = new LexFile $Dfile ;
+    my @array ;
+    my $db ;
+    ok 219, $db = tie @array, 'BerkeleyDB::Recno', 
+						-ArrayBase => 0,
+                                      	       	-Flags  => DB_CREATE ,
+				    	    	-Property => DB_RENUMBER,
+						-Filename => $Dfile ;
+    $FA ? push @array, "first"
+        : $db->push("first") ;
+
+    ok 220, $array[0] eq "first" ;
+    ok 221, $FA ? pop @array : $db->pop() eq "first" ;
+
+    undef $db;
+    untie @array ;
+
+}
+
+{
+    # 23 Sept 2001 -- unshift into an empty array
+    my $lex = new LexFile $Dfile ;
+    my @array ;
+    my $db ;
+    ok 222, $db = tie @array, 'BerkeleyDB::Recno', 
+						-ArrayBase => 0,
+                                      	       	-Flags  => DB_CREATE ,
+				    	    	-Property => DB_RENUMBER,
+						-Filename => $Dfile ;
+    $FA ? unshift @array, "first"
+        : $db->unshift("first") ;
+
+    ok 223, $array[0] eq "first" ;
+    ok 224, ($FA ? shift @array : $db->shift()) eq "first" ;
+
+    undef $db;
+    untie @array ;
+
+}
 __END__
 
 

@@ -22,7 +22,7 @@ BEGIN
     }
 }    
 
-print "1..197\n";
+print "1..199\n";
 
 sub fillout
 {
@@ -209,17 +209,6 @@ umask(0) ;
  
 {
     # Tied Array interface
-
-    # full tied array support started in Perl 5.004_57
-    # just double check.
-    my $FA = 0 ;
-    {
-        sub try::TIEARRAY { bless [], "try" }
-        sub try::FETCHSIZE { $FA = 1 }
-        my @a ; 
-        tie @a, 'try' ;
-        my $a = @a ;
-    }
 
     my $lex = new LexFile $Dfile ;
     my @array ;
@@ -736,6 +725,28 @@ EOM
 
     undef $db ;
     untie @array ;
+}
+
+{
+    # 23 Sept 2001 -- push into an empty array
+    my $lex = new LexFile $Dfile ;
+    my @array ;
+    my $db ;
+    my $rec_len = 21 ;
+    ok 198, $db = tie @array, 'BerkeleyDB::Queue', 
+                                      	       	-Flags  => DB_CREATE ,
+				    	        -ArrayBase => 0,
+	                		        -Len       => $rec_len,
+	                		        -Pad       => " " ,
+						-Filename => $Dfile ;
+    $FA ? push @array, "first"
+        : $db->push("first") ;
+
+    ok 199, ($FA ? pop @array : $db->pop()) eq fillout("first", $rec_len) ;
+
+    undef $db;
+    untie @array ;
+
 }
 
 __END__

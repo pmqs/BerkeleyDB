@@ -5,7 +5,7 @@ package main ;
 use strict ;
 use BerkeleyDB ;
 use File::Path qw(rmtree);
-use vars qw(%DB_errors) ;
+use vars qw(%DB_errors $FA) ;
 
 %DB_errors = (
     'DB_INCOMPLETE'	=> "DB_INCOMPLETE: Sync was unable to complete",
@@ -17,6 +17,17 @@ use vars qw(%DB_errors) ;
     'DB_OLD_VERSION'	=> "DB_OLDVERSION: Database requires a version upgrade",
     'DB_RUNRECOVERY'	=> "DB_RUNRECOVERY: Fatal error, run database recovery",
 ) ;
+
+# full tied array support started in Perl 5.004_57
+# just double check.
+$FA = 0 ;
+{
+    sub try::TIEARRAY { bless [], "try" }
+    sub try::FETCHSIZE { $FA = 1 }
+    my @a ; 
+    tie @a, 'try' ;
+    my $a = @a ;
+}
 
 {
     package LexFile ;
