@@ -1,6 +1,10 @@
 Revision history for Perl extension BerkeleyDB.
 
-0.21 28th April 2003
+0.22 17th May 2003
+
+        * win32 problem with open macro fixed.
+
+0.21 12th May 2003
 
         * adding support for env->set_flags 
 	* adding recursion detection

@@ -48,6 +48,9 @@ extern "C" {
 #  ifdef rename
 #    undef rename
 #  endif
+#  ifdef open
+#    undef open
+#  endif
 #endif
 
 /* Being the Berkeley DB we prefer the <sys/cdefs.h> (which will be
