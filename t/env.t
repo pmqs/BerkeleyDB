@@ -155,7 +155,6 @@ my $version_major  = 0;
 
 {
     # -ErrPrefix
-    use IO ;
     my $home = "./fred" ;
     ok 32, my $lexD = new LexDir($home) ;
     my $errfile = "./errfile" ;

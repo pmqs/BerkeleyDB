@@ -2,7 +2,7 @@
 
  BerkeleyDB.xs -- Perl 5 interface to Berkeley DB version 2, 3 &4
 
- written by Paul Marquess <Paul.Marquess@btinternet.com>
+ written by Paul Marquess <pmqs@cpan.org>
 
  All comments/suggestions/problems are welcome
 
@@ -117,6 +117,10 @@ extern "C" {
 #  define AT_LEAST_DB_4_1
 #endif
 
+#if DB_VERSION_MAJOR > 4 || (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 2)
+#  define AT_LEAST_DB_4_2
+#endif
+
 #ifdef __cplusplus
 }
 #endif
@@ -202,7 +206,7 @@ typedef struct {
 	int		active ;
 	bool		txn_enabled ;
 	bool		opened ;
-	bool		cdb_enabled;
+	bool		cds_enabled;
 	} BerkeleyDB_ENV_type ;
 
 
@@ -233,7 +237,7 @@ typedef struct {
 	u_int32_t	dlen ;
 	u_int32_t	doff ;
 	int		active ;
-	bool		cdb_enabled;
+	bool		cds_enabled;
 #ifdef ALLOW_RECNO_OFFSET
 	int		array_base ;
 #endif
@@ -269,7 +273,7 @@ typedef struct {
 	u_int32_t	dlen ;
 	u_int32_t	doff ;
 	int		active ;
-	bool		cdb_enabled;
+	bool		cds_enabled;
 #ifdef ALLOW_RECNO_OFFSET
 	int		array_base ;
 #endif
@@ -1057,7 +1061,7 @@ associate_cb(DB_callback const DBT * pkey, const DBT * pdata, DBT * skey)
     int retval ;
     int count ;
     SV * skey_SV ;
-    int skey_len;
+    STRLEN skey_len;
     char * skey_ptr ;
 
     Trace(("In associate_cb \n")) ;
@@ -1425,7 +1429,7 @@ my_db_open(
 	hash_store_iv("BerkeleyDB::Term::Db", (char *)RETVAL, 1) ;
 	Trace(("  storing %p %p in BerkeleyDB::Term::Db\n", RETVAL, dbp)) ;
 	if (dbenv) {
-	    RETVAL->cdb_enabled = dbenv->cdb_enabled ;
+	    RETVAL->cds_enabled = dbenv->cds_enabled ;
 	    RETVAL->parent_env = dbenv ;
 	    dbenv->Status = Status ;
 	    ++ dbenv->open_dbs ;
@@ -1733,7 +1737,7 @@ _db_appinit(self, ref)
 	    env->db_errcall = db_errcall_cb ;
 	    RETVAL->active = TRUE ;
 	    RETVAL->opened = TRUE;
-	    RETVAL->cdb_enabled = (flags & DB_INIT_CDB != 0 ? TRUE : FALSE) ;
+	    RETVAL->cds_enabled = (flags & DB_INIT_CDB != 0 ? TRUE : FALSE) ;
 	    status = db_appinit(home, config, env, flags) ;
 	    printf("  status = %d errno %d \n", status, errno) ;
 	    Trace(("  status = %d env %d Env %d\n", status, RETVAL, env)) ;
@@ -1752,6 +1756,9 @@ _db_appinit(self, ref)
 #else /* DB_VERSION_MAJOR > 2 */
 #ifndef AT_LEAST_DB_3_1
 #    define DB_CLIENT	0
+#endif
+#ifdef AT_LEAST_DB_4_2
+#    define DB_CLIENT	DB_RPCCLIENT
 #endif
 	  status = db_env_create(&RETVAL->Env, server ? DB_CLIENT : 0) ;
 	  Trace(("db_env_create flags = %d returned %s\n", flags,
@@ -1831,7 +1838,7 @@ _db_appinit(self, ref)
 	    SetValue_iv(mode, "Mode") ;
 	    env->set_errcall(env, db_errcall_cb) ;
 	    RETVAL->active = TRUE ;
-	    RETVAL->cdb_enabled = (flags & DB_INIT_CDB != 0 ? TRUE : FALSE) ;
+	    RETVAL->cds_enabled = (flags & DB_INIT_CDB != 0 ? TRUE : FALSE) ;
 #ifdef IS_DB_3_0_x
 	    status = (env->open)(env, home, config, flags, mode) ;
 #else /* > 3.0 */
@@ -2808,11 +2815,11 @@ _db_cursor(db, flags=0)
 	{
 	  DBC *	cursor ;
 	  saveCurrentDB(db) ;
-	  if (ix == 1 && db->cdb_enabled) {
+	  if (ix == 1 && db->cds_enabled) {
 #ifdef AT_LEAST_DB_3
-	      flags = DB_WRITECURSOR;
+	      flags |= DB_WRITECURSOR;
 #else	      
-	      flags = DB_RMW;
+	      flags |= DB_RMW;
 #endif	      
 	  }
 	  if ((db->Status = db_cursor(db, db->txn, &cursor, flags)) == 0){
@@ -2824,7 +2831,7 @@ _db_cursor(db, flags=0)
 	      RETVAL->txn     = db->txn ;
               RETVAL->type    = db->type ;
               RETVAL->recno_or_queue    = db->recno_or_queue ;
-              RETVAL->cdb_enabled    = db->cdb_enabled ;
+              RETVAL->cds_enabled    = db->cds_enabled ;
               RETVAL->filename    = my_strdup(db->filename) ;
               RETVAL->compare = db->compare ;
               RETVAL->dup_compare = db->dup_compare ;
@@ -2941,6 +2948,30 @@ ArrayOffset(db)
 #endif /* ALLOW_RECNO_OFFSET */
 	OUTPUT:
 	    RETVAL
+
+bool
+cds_available()
+	CODE:
+#ifndef AT_LEAST_DB_2
+	    RETVAL = TRUE;
+#else
+	    RETVAL = FALSE;
+#endif	    
+	OUTPUT:
+	    RETVAL
+
+
+bool
+cds_enabled(db)
+        BerkeleyDB::Common 	db
+	INIT:
+	    ckActive_Database(db->active) ;
+	CODE:
+	    RETVAL = db->cds_enabled ;
+	OUTPUT:
+	    RETVAL
+
+
 
 int
 type(db)
@@ -3193,7 +3224,7 @@ db_key_range(db, key, less, equal, greater, flags=0)
 
 
 #define db_fd(d, x)	(db->Status = (db->dbp->fd)(db->dbp, &x))
-DualType
+int
 db_fd(db)
 	BerkeleyDB::Common	db
 	INIT:
@@ -3307,7 +3338,7 @@ _c_dup(db, flags=0)
 	      RETVAL->dbp     = db->dbp ;
               RETVAL->type    = db->type ;
               RETVAL->recno_or_queue    = db->recno_or_queue ;
-              RETVAL->cdb_enabled    = db->cdb_enabled ;
+              RETVAL->cds_enabled    = db->cds_enabled ;
               RETVAL->filename    = my_strdup(db->filename) ;
               RETVAL->compare = db->compare ;
               RETVAL->dup_compare = db->dup_compare ;

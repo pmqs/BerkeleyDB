@@ -45,6 +45,11 @@ BerkeleyDB - Perl extension for Berkeley DB version 2, 3 or 4
   $boolean = $db->byteswapped() ;
   $status = $db->truncate($count) ;
 
+  $bool = BerkeleyDB::cds_available();
+  $lock = $db->cds_lock();
+  $bool = $db->cds_enabled();
+  $bool = $db->locked();
+  
   ($flag, $old_offset, $old_length) = $db->partial_set($offset, $length) ;
   ($flag, $old_offset, $old_length) = $db->partial_clear() ;
 
@@ -1352,6 +1357,10 @@ for a B<BerkeleyDB::Hash> database, B<DB_BTREE> for a B<BerkeleyDB::Btree>
 database and B<DB_RECNO> for a B<BerkeleyDB::Recno> database. This method
 is typically used when a database has been opened with
 B<BerkeleyDB::Unknown>.
+
+=head2 $lock = $db->cds_lock();
+
+TODO.
 
 =item $ref = $db->db_stat()
 

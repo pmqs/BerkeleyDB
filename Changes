@@ -1,5 +1,14 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.24 27th September 2003
+
+        * Mentioned comp.databases.berkeley-db in README
+
+        * Builds with Berkeley DB 4.2
+
+        * The return type for db->db_fd was wrongly set at DualType -
+          should be int.
+
 0.23 15th June 2003
 
         * Fixed problem where a secondary index would use the same

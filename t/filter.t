@@ -80,6 +80,7 @@ umask(0) ;
 
    ($fetch_key, $store_key, $fetch_value, $store_value) = ("") x 4 ;
    ok 8, $h{"Fred"} eq "[Jxe]";
+   print "$h{'Fred'}\n";
    #                   fk   sk     fv    sv
    ok 9, checkOutput( "", "fred", "[Jxe]", "") ;
 
@@ -275,14 +276,14 @@ if(0)
 
     sub INC { return ++ $_[0] }
     sub DEC { return -- $_[0] }
-    $db->filter_fetch_key   (sub { warn "FFK $_\n"; $_ = INC($_); warn "XX\n" }) ;
-    $db->filter_store_key   (sub { warn "FSK $_\n"; $_ = DEC($_); warn "XX\n" }) ;
-    $db->filter_fetch_value (sub { warn "FFV $_\n"; $_ = INC($_); warn "XX\n"}) ;
-    $db->filter_store_value (sub { warn "FSV $_\n"; $_ = DEC($_); warn "XX\n" }) ;
+    #$db->filter_fetch_key   (sub { warn "FFK $_\n"; $_ = INC($_); warn "XX\n" }) ;
+    #$db->filter_store_key   (sub { warn "FSK $_\n"; $_ = DEC($_); warn "XX\n" }) ;
+    #$db->filter_fetch_value (sub { warn "FFV $_\n"; $_ = INC($_); warn "XX\n"}) ;
+    #$db->filter_store_value (sub { warn "FSV $_\n"; $_ = DEC($_); warn "XX\n" }) ;
 
-    #$db->filter_fetch_key   (sub { warn "FFK $_\n"; $_ = pack("i", $_); warn "XX\n" }) ;
-    #$db->filter_store_key   (sub { warn "FSK $_\n"; $_ = unpack("i", $_); warn "XX\n" }) ;
-    #$db->filter_fetch_value (sub { warn "FFV $_\n"; $_ = pack("i", $_); warn "XX\n"}) ;
+    $db->filter_fetch_key   (sub { warn "FFK $_\n"; $_ = pack("i", $_); warn "XX\n" }) ;
+    $db->filter_store_key   (sub { warn "FSK $_\n"; $_ = unpack("i", $_); warn "XX\n" }) ;
+    $db->filter_fetch_value (sub { warn "FFV $_\n"; $_ = pack("i", $_); warn "XX\n"}) ;
     #$db->filter_store_value (sub { warn "FSV $_\n"; $_ = unpack("i", $_); warn "XX\n" }) ;
 
     #$db->filter_fetch_key   (sub { ++ $_ }) ;

@@ -52,7 +52,7 @@ WriteMakefile(
         'dist'          => {COMPRESS=>'gzip', SUFFIX=>'gz'},    
 	($] >= 5.005
 	    ? (ABSTRACT_FROM	=> 'BerkeleyDB.pod',
-	       AUTHOR  	=> 'Paul Marquess <Paul.Marquess@btinternet.com>')
+	       AUTHOR  	=> 'Paul Marquess <pmqs@cpan.org>')
 	    : ()
 	),
 	);

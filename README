@@ -1,8 +1,8 @@
                                    BerkeleyDB
 
-                                  Version 0.23
+                                  Version 0.24
 
-                                 15th June 2003
+                                 27th Sept 2003
 
 	Copyright (c) 1997-2003 Paul Marquess. All rights reserved. This
 	program is free software; you can redistribute it and/or modify
@@ -321,6 +321,39 @@ If that doesn't work for you, it's time to make changes to the Makefile
 by hand. Good luck!
 
 
+
+Solaris build fails with "gcc: unrecognized option `-KPIC'"
+-----------------------------------------------------------
+
+You are running Solaris and you get an error like this when you try to
+build this Perl module
+
+    gcc: unrecognized option `-KPIC'
+
+This symptom usually means that you are using a Perl binary that has been
+built with the Sun C compiler, but you are using gcc to build this module.
+
+When Perl builds modules that need a C compiler, it will attempt to use
+the same C compiler and command line options that was used to build perl
+itself. In this case "-KPIC" is a valid option for the Sun C compiler,
+but not for gcc. The equivalent option for gcc is "-fPIC".
+
+The solution is either:
+
+    1. Build both Perl and this module with the same C compiler, either
+       by using the Sun C compiler for both or gcc for both.
+
+    2. Try generating the Makefile for this module like this perl
+
+           perl Makefile.PL CC=gcc CCCDLFLAGS=-fPIC OPTIMIZE=" " LD=gcc
+           make test
+
+       This second option seems to work when mixing a Perl binary built
+       with the Sun C compiler and this module built with gcc. Your
+       mileage may vary.
+
+
+
 Network Drive
 -------------
 
@@ -501,7 +534,14 @@ following steps should do the trick:
 FEEDBACK
 --------
 
+General feedback/questions/bug reports can be sent to me at pmqs@cpan.org.
+
+Alternatively, if you have Usenet access, you can try the
+comp.databases.berkeley-db or comp.lang.perl.modules groups.
+
+
 How to report a problem with BerkeleyDB.
+----------------------------------------
 
 To help me help you, I need of the following information:
 
@@ -516,6 +556,10 @@ To help me help you, I need of the following information:
 
        perl -MBerkeleyDB -e 'print qq{BerkeleyDB ver $BerkeleyDB::VERSION\n}'
 
+    If you are running windows use this
+
+       perl -MBerkeleyDB -e "print qq{BerkeleyDB ver $BerkeleyDB::VERSION\n}"
+
     If you haven't installed BerkeleyDB then search BerkeleyDB.pm for a
     line like this:
 
@@ -525,6 +569,10 @@ To help me help you, I need of the following information:
     successfully installed BerkeleyDB, this one-liner will tell you:
 
         perl -MBerkeleyDB -e 'print BerkeleyDB::DB_VERSION_STRING.qq{\n}'
+
+    If you are running windows use this
+
+        perl -MBerkeleyDB -e "print BerkeleyDB::DB_VERSION_STRING.qq{\n}"
 
     If you haven't installed BerkeleyDB then search db.h for a line
     like this:
@@ -555,5 +603,5 @@ CHANGES
 
 See the Changes file.
 
-Paul Marquess <Paul.Marquess@btinternet.com>
+Paul Marquess <pmqs@cpan.org>
 
