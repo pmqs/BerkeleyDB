@@ -1,8 +1,7 @@
 # Filename:	config.in
 #
 # written by Paul Marquess (pmarquess@bfsec.bt.co.uk)
-# last modified 28th Nov 1996
-# version 0.01
+# SCCS: 1.3, 11/11/97
 
 # 1. Where is the file db.h?
 #
@@ -17,5 +16,27 @@ INCLUDE	= /usr/local/include
 #    installed on your system.
 
 LIB	= /usr/local/lib
+
+# 3. Is the library called libdb?
+#
+#    If you have copies of both 1.x and 2.x Berkeley DB installed on
+#    your system it can sometimes be tricky to make sure you are using
+#    the correct one. Renaming one (or creating a symbolic link) to
+#    include the version number of the library can help.
+#
+#    For example, if you have Berkeley DB 2.3.12 you could rename the
+#    Berkeley DB library from libdb.a to lib-2.3.12.a and change the
+#    DBNAME line below to look like this:
+#
+#        DBNAME = -ldb-2.3.12
+#
+#    Note: If you are building this module with Win32, -llibdb will be
+#    used by default.
+#
+#    If you have changed the name of the library, uncomment the line
+#    below (by removing the leading #) and edit the line to use the nae
+#    you have picked.
+
+#DBNAME = -ldb-2.3.12
 
 # end of file config.in

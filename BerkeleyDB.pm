@@ -1,12 +1,12 @@
 
-package BerkDB;
+package BerkeleyDB;
 
 
 #     Copyright (c) 1997 Paul Marquess. All rights reserved.
 #     This program is free software; you can redistribute it and/or
 #     modify it under the same terms as Perl itself.
 #
-# SCCS: 1.6, 10/23/97  
+# SCCS: 1.7, 11/11/97  
 
 # The documentation for this module is at the bottom of this file,
 # after the line __END__.
@@ -15,14 +15,14 @@ BEGIN { require 5.004_02 }
 
 use strict;
 use Carp;
-use vars qw($VERSION @ISA @EXPORT $AUTOLOAD);
+use vars qw($VERSION @ISA @EXPORT $AUTOLOAD $Error);
 
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 require Exporter;
 require DynaLoader;
 require AutoLoader;
-use FileHandle ;
+use IO ;
 
 @ISA = qw(Exporter DynaLoader);
 # Items to export into callers namespace by default. Note: do not export
@@ -178,14 +178,14 @@ sub AUTOLOAD {
 	    goto &AutoLoader::AUTOLOAD;
 	}
 	else {
-		croak "Your vendor has not defined BerkDB macro $constname";
+		croak "Your vendor has not defined BerkeleyDB macro $constname";
 	}
     }
     eval "sub $AUTOLOAD { $val }";
     goto &$AUTOLOAD;
 }
 
-bootstrap BerkDB $VERSION;
+bootstrap BerkeleyDB $VERSION;
 
 # Preloaded methods go here.
 
@@ -232,7 +232,7 @@ sub ParseParameters($@)
 }
 
 
-package BerkDB::Env ;
+package BerkeleyDB::Env ;
 
 use UNIVERSAL qw( isa ) ;
 use Carp ;
@@ -249,7 +249,7 @@ sub new
 {
     # Usage:
     #
-    #	$env = new BerkDB::Env
+    #	$env = new BerkeleyDB::Env
     #			[ -Home		=> $path, ]
     #			[ -Config	=> { name => value, name => value }
     #			[ -ErrFile   	=> filename or filehandle, ]
@@ -262,7 +262,7 @@ sub new
     #			;
 
     my $pkg = shift ;
-    my $got = BerkDB::ParseParameters({
+    my $got = BerkeleyDB::ParseParameters({
 					Home		=> undef,
 					ErrFile  	=> undef,
 					ErrPrefix 	=> undef,
@@ -276,7 +276,7 @@ sub new
 
     if (defined $got->{ErrFile}) {
 	if (!isaFilehandle($got->{ErrFile})) {
-	    my $handle = new FileHandle ">$got->{ErrFile}"
+	    my $handle = new IO::File ">$got->{ErrFile}"
 		or croak "Cannot open file $got->{ErrFile}: $!\n" ;
 	    $got->{ErrFile} = $handle ;
 	}
@@ -287,14 +287,14 @@ sub new
     	croak("Config parameter must be a hash reference")
             if ! ref $got->{Config} eq 'HASH' ;
 
-        @BerkDB::a = () ;
+        @BerkeleyDB::a = () ;
 	my $k = "" ; my $v = "" ;
 	while (($k, $v) = each %{$got->{Config}}) {
-	    push @BerkDB::a, "$k\t$v" ;
+	    push @BerkeleyDB::a, "$k\t$v" ;
 	}
 
-        $got->{"Config"} = pack("p*", @BerkDB::a, undef) 
-	    if @BerkDB::a ;
+        $got->{"Config"} = pack("p*", @BerkeleyDB::a, undef) 
+	    if @BerkeleyDB::a ;
     }
 
     my $obj =  _db_appinit($got) ;
@@ -304,23 +304,23 @@ sub new
 
 }
 
-#*Hash = \&BerkDB::Hash::new ;
+#*Hash = \&BerkeleyDB::Hash::new ;
 
-package BerkDB::Hash ;
+package BerkeleyDB::Hash ;
 
 use vars qw(@ISA) ;
-@ISA = qw( BerkDB::Common BerkDB::_tiedHash ) ;
+@ISA = qw( BerkeleyDB::Common BerkeleyDB::_tiedHash ) ;
 use UNIVERSAL qw( isa ) ;
 use Carp ;
 
 sub new
 {
     my $self = shift ;
-    my $got = BerkDB::ParseParameters(
+    my $got = BerkeleyDB::ParseParameters(
 		      {
 			# Generic Stuff
 			Filename 	=> undef,
-			#Flags		=> BerkDB::DB_CREATE(),
+			#Flags		=> BerkeleyDB::DB_CREATE(),
 			Flags		=> 0,
 			Property	=> 0,
 			Mode		=> 0666,
@@ -337,11 +337,11 @@ sub new
 			Hash 		=> undef,
 		      }, @_) ;
 
-    croak("Env not of type BerkDB::Env")
-	if defined $got->{Env} and ! isa($got->{Env},'BerkDB::Env');
+    croak("Env not of type BerkeleyDB::Env")
+	if defined $got->{Env} and ! isa($got->{Env},'BerkeleyDB::Env');
 
-    croak("Txn not of type BerkDB::Txn")
-	if defined $got->{Txn} and ! isa($got->{Txn},'BerkDB::Txn');
+    croak("Txn not of type BerkeleyDB::Txn")
+	if defined $got->{Txn} and ! isa($got->{Txn},'BerkeleyDB::Txn');
 
     croak("-Tie needs a reference to a hash")
 	if defined $got->{Tie} and $got->{Tie} !~ /HASH/ ;
@@ -366,7 +366,7 @@ sub new
 #    return $self->new(@_) ;
 #}
 
-package BerkDB::Common ;
+package BerkeleyDB::Common ;
 
 sub Tie
 {
@@ -386,21 +386,188 @@ print "Tie method REF=[$self] [" . (ref $self) . "]\n" ;
 	if defined $ref and $ref !~ /HASH/ ;
 
     #tie %{ $ref }, ref($self), $self ; 
-    tie %{ $ref }, "BerkDB::_tiedHash", $self ; 
+    tie %{ $ref }, "BerkeleyDB::_tiedHash", $self ; 
     return undef ;
 }
 
-package BerkDB::_tiedHash ;
+package BerkeleyDB::Btree ;
 
-sub TIEHASH  
-{ 
+use vars qw(@ISA) ;
+@ISA = qw( BerkeleyDB::Common BerkeleyDB::_tiedHash ) ;
+use UNIVERSAL qw( isa ) ;
+use Carp ;
+
+sub new
+{
     my $self = shift ;
-    my $db_object = shift ;
+    my $got = BerkeleyDB::ParseParameters(
+		      {
+			# Generic Stuff
+			Filename 	=> undef,
+			#Flags		=> BerkeleyDB::DB_CREATE(),
+			Flags		=> 0,
+			Property	=> 0,
+			Mode		=> 0666,
+			Cachesize 	=> 0,
+			Lorder 		=> 0,
+			Pagesize 	=> 0,
+			Env		=> undef,
+			#Tie 		=> undef,
+			Txn		=> undef,
 
-print "Tiehash REF=[$self] [" . (ref $self) . "]\n" ;
+			# Btree specific
+			Minkey		=> 0,
+			Compare		=> undef,
+			Prefix 		=> undef,
+		      }, @_) ;
 
-    return bless { Obj => $db_object}, $self ; 
+    croak("Env not of type BerkeleyDB::Env")
+	if defined $got->{Env} and ! isa($got->{Env},'BerkeleyDB::Env');
+
+    croak("Txn not of type BerkeleyDB::Txn")
+	if defined $got->{Txn} and ! isa($got->{Txn},'BerkeleyDB::Txn');
+
+    croak("-Tie needs a reference to a hash")
+	if defined $got->{Tie} and $got->{Tie} !~ /HASH/ ;
+
+    my $obj = _db_open_btree($got);
+    if ($obj) {
+        bless $obj, $self ;
+
+        tie %{ $got->{Tie} }, $self, $obj 
+            if $got->{Tie};
+
+    }
+
+    return $obj ;
 }
+
+*BerkeleyDB::Btree::TIEHASH = \&BerkeleyDB::Btree::new ;
+
+
+package BerkeleyDB::Recno ;
+
+use vars qw(@ISA) ;
+@ISA = qw( BerkeleyDB::Common BerkeleyDB::_tiedArray ) ;
+use UNIVERSAL qw( isa ) ;
+use Carp ;
+
+sub new
+{
+    my $self = shift ;
+    my $got = BerkeleyDB::ParseParameters(
+		      {
+			# Generic Stuff
+			Filename 	=> undef,
+			#Flags		=> BerkeleyDB::DB_CREATE(),
+			Flags		=> 0,
+			Property	=> 0,
+			Mode		=> 0666,
+			Cachesize 	=> 0,
+			Lorder 		=> 0,
+			Pagesize 	=> 0,
+			Env		=> undef,
+			#Tie 		=> undef,
+			Txn		=> undef,
+
+			# Recno specific
+			Delim		=> undef,
+			Len		=> undef,
+			Pad		=> undef,
+			Source 		=> undef,
+		      }, @_) ;
+
+    croak("Env not of type BerkeleyDB::Env")
+	if defined $got->{Env} and ! isa($got->{Env},'BerkeleyDB::Env');
+
+    croak("Txn not of type BerkeleyDB::Txn")
+	if defined $got->{Txn} and ! isa($got->{Txn},'BerkeleyDB::Txn');
+
+    croak("-Tie needs a reference to a hash")
+	if defined $got->{Tie} and $got->{Tie} !~ /HASH/ ;
+
+    my $obj = _db_open_recno($got);
+    if ($obj) {
+        bless $obj, $self ;
+
+        tie %{ $got->{Tie} }, $self, $obj 
+            if $got->{Tie};
+
+    }
+
+    return $obj ;
+}
+
+*BerkeleyDB::Recno::TIEARRAY = \&BerkeleyDB::Recno::new ;
+*BerkeleyDB::Recno::db_stat = \&BerkeleyDB::Btree::db_stat ;
+
+package BerkeleyDB::Text ;
+
+use vars qw(@ISA) ;
+@ISA = qw( BerkeleyDB::Common BerkeleyDB::_tiedArray ) ;
+use UNIVERSAL qw( isa ) ;
+use Carp ;
+
+sub new
+{
+    my $self = shift ;
+    my $got = BerkeleyDB::ParseParameters(
+		      {
+			# Generic Stuff
+			Filename 	=> undef,
+			#Flags		=> BerkeleyDB::DB_CREATE(),
+			Flags		=> 0,
+			Property	=> 0,
+			Mode		=> 0666,
+			Cachesize 	=> 0,
+			Lorder 		=> 0,
+			Pagesize 	=> 0,
+			Env		=> undef,
+			#Tie 		=> undef,
+			Txn		=> undef,
+
+			# Recno specific
+			Delim		=> undef,
+			Len		=> undef,
+			Pad		=> undef,
+			Btree 		=> undef,
+		      }, @_) ;
+
+    croak("Env not of type BerkeleyDB::Env")
+	if defined $got->{Env} and ! isa($got->{Env},'BerkeleyDB::Env');
+
+    croak("Txn not of type BerkeleyDB::Txn")
+	if defined $got->{Txn} and ! isa($got->{Txn},'BerkeleyDB::Txn');
+
+    croak("-Tie needs a reference to a hash")
+	if defined $got->{Tie} and $got->{Tie} !~ /HASH/ ;
+
+    my $obj = _db_open_text($got);
+    if ($obj) {
+        bless $obj, $self ;
+
+        tie %{ $got->{Tie} }, $self, $obj 
+            if $got->{Tie};
+
+    }
+
+    return $obj ;
+}
+
+*BerkeleyDB::Text::TIEARRAY = \&BerkeleyDB::Text::new ;
+*BerkeleyDB::Text::db_stat = \&BerkeleyDB::Btree::db_stat ;
+
+package BerkeleyDB::_tiedHash ;
+
+#sub TIEHASH  
+#{ 
+#    my $self = shift ;
+#    my $db_object = shift ;
+#
+#print "Tiehash REF=[$self] [" . (ref $self) . "]\n" ;
+#
+#    return bless { Obj => $db_object}, $self ; 
+#}
 
 sub STORE
 {
@@ -441,93 +608,57 @@ sub CLEAR
     my $self = shift ;
     my ($key, $value) = (0, 0) ;
     my $cursor = $self->db_cursor() ;
-    while ($cursor->c_get($key, $value, BerkDB::DB_NEXT()) == 0) 
+    while ($cursor->c_get($key, $value, BerkeleyDB::DB_NEXT()) == 0) 
 	{ $cursor->c_del() }
     #1 while $cursor->c_del() == 0 ;
     # cursor will self-destruct
 }
 
-sub DESTROY
+#sub DESTROY
+#{
+#    my $self = shift ;
+#    print "BerkeleyDB::_tieHash::DESTROY\n" ;
+#    $self->{Cursor}->c_close() if $self->{Cursor} ;
+#}
+
+package BerkeleyDB::_tiedArray ;
+
+#sub TIEARRAY  
+#{ 
+#    my $self = shift ;
+#    my $db_object = shift ;
+#
+#print "Tiearray REF=[$self] [" . (ref $self) . "]\n" ;
+#
+#    return bless { Obj => $db_object}, $self ; 
+#}
+
+sub STORE
 {
     my $self = shift ;
-    print "BerkDB::_tieHash::DESTROY\n" ;
-    $self->{Cursor}->c_close() if $self->{Cursor} ;
+    my $key  = shift ;
+    my $value = shift ;
+
+    $self->db_put($key, $value) ;
 }
 
-package BerkDB::Btree ;
-
-use vars qw(@ISA) ;
-@ISA = qw( BerkDB::Common BerkDB::_tiedHash ) ;
-use UNIVERSAL qw( isa ) ;
-use Carp ;
-
-sub new
+sub FETCH
 {
     my $self = shift ;
-    my $got = BerkDB::ParseParameters(
-		      {
-			# Generic Stuff
-			Filename 	=> undef,
-			#Flags		=> BerkDB::DB_CREATE(),
-			Flags		=> 0,
-			Property	=> 0,
-			Mode		=> 0666,
-			Cachesize 	=> 0,
-			Lorder 		=> 0,
-			Pagesize 	=> 0,
-			Env		=> undef,
-			#Tie 		=> undef,
-			Txn		=> undef,
+    my $key  = shift ;
+    my $value = undef ;
+    $self->db_get($key, $value) ;
 
-			# Btree specific
-			Minkey		=> 0,
-			Compare		=> undef,
-			Prefix 		=> undef,
-		      }, @_) ;
-
-    croak("Env not of type BerkDB::Env")
-	if defined $got->{Env} and ! isa($got->{Env},'BerkDB::Env');
-
-    croak("Txn not of type BerkDB::Txn")
-	if defined $got->{Txn} and ! isa($got->{Txn},'BerkDB::Txn');
-
-    croak("-Tie needs a reference to a hash")
-	if defined $got->{Tie} and $got->{Tie} !~ /HASH/ ;
-
-    my $obj = _db_open_btree($got);
-    if ($obj) {
-        bless $obj, $self ;
-
-        tie %{ $got->{Tie} }, $self, $obj 
-            if $got->{Tie};
-
-    }
-
-    return $obj ;
+    return $value ;
 }
 
-*BerkDB::Btree::TIEHASH = \&BerkDB::Btree::new ;
+#sub DESTROY
+#{
+#    my $self = shift ;
+#    print "BerkeleyDB::_tieArray::DESTROY\n" ;
+#}
 
-
-package BerkDB::Recno ;
-
-sub db_open
-{
-    my $pkg = shift ;
-    my $got = BerkDB::ParseParameters({Filename => undef,
-					Flags	=> BerkDB::DB_CREATE(),
-					Mode	=> 0666,
-					Env	=> undef,
-					Info	=> undef}, @_) ;
-
-    print "filename is undef\n" if $got->{Filename} eq undef ;
-    my $filename = $got->{Filename} ;
-    #BerkDB::_db_open(($got->{Filename} eq undef) ? undef : $got->{Filename}, BerkDB::DB_HASH(), $got->{Flags},
-    BerkDB::_db_open($got->{Filename}, BerkDB::DB_RECNO(), $got->{Flags},
-		$got->{Mode}, ) ; #$got->{Env}, $got->{Info}) ;
-}
-
-package BerkDB ;
+package BerkeleyDB ;
 
 
 

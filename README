@@ -1,8 +1,8 @@
-                                     BerkDB
+                                   BerkeleyDB
 
-                                  Version 0.01
+                                  Version 0.02
 
-                                 23rd Oct 1997 
+                                 10th Nov 1997 
 
 	Copyright (c) 1997 Paul Marquess. All rights reserved. This
 	program is free software; you can redistribute it and/or modify
@@ -19,23 +19,23 @@
 DESCRIPTION
 -----------
 
-BerkDB is a module which allows Perl programs to make use of the
+BerkeleyDB is a module which allows Perl programs to make use of the
 facilities provided by Berkeley DB version 2. (Note: if you want to use
-version 1 of Berkeley DB with Perl you need DB_File).
+version 1 of Berkeley DB with Perl you need the DB_File module).
 
 Berkeley DB is a C library which provides a consistent interface to a
-number of database formats. BerkDB provides an interface to all three
-of the database types (hash, btree and recno) currently supported by
-Berkeley DB.
+number of database formats. BerkeleyDB provides an interface to all
+three of the database types (hash, btree and recno) currently supported
+by Berkeley DB.
 
 For further details see the documentation included at the end of the
-file BerkDB.pm.
+file BerkeleyDB.pm.
 
 PREREQUISITES
 -------------
 
-Before you can build BerkDB you need to have the following installed
-on your system:
+Before you can build BerkeleyDB you need to have the following
+installed on your system:
 
     * Perl 5.004_02 or greater. 
 
@@ -50,7 +50,8 @@ BUILDING THE MODULE
 -------------------
 
 Assuming you have met all the prerequisites, building the module should
-be relatively straightforward.
+be relatively straightforward. If you are running Solaris 2.5 read the
+Solaris Notes section below.
 
 The first step is to edit the file config.in to suit you local
 installation. Instructions are given in the file.
@@ -68,39 +69,56 @@ INSTALLATION
 
     make install
 
+
+Solaris Notes
+-------------
+
+If you are running Solaris 2.5, and you get this error when you run the
+BerkeleyDB test harness:
+
+    libc internal error: _rmutex_unlock: rmutex not held.
+
+you probably need to install a Sun patch. It has been reported that
+Sun patch 103187-25 (or later revisions) fixes this problem.
+
+To find out if you have the patch installed, the command "showrev -p"
+will display the patches that are currently installed on your system.
+
+
+
 FEEDBACK
 --------
 
-How to report a problem with BerkDB.
+How to report a problem with BerkeleyDB.
 
 To help me help you, I need of the following information:
 
  1. The version of Perl and the operating system name and version you
     are running. If you are running a newish version of Perl, the
-    output from running "perl -V" will tell me all I need to know. 
-    If your perl doesn't understand the -V flag, then not only do you
-    have quite an old version of Perl, you very likely have an old
-    version of BerkDB.  You should consider upgrading. The problem you
+    output from running "perl -V" will tell me all I need to know.  If
+    your perl doesn't understand the -V flag, then not only do you have
+    quite an old version of Perl, you very likely have an old version
+    of BerkeleyDB.  You should consider upgrading. The problem you
     have might already be fixed.
 
- 2. The version of BerkDB you have. If you have successfully installed
-    BerkDB, this one-liner will tell you:
+ 2. The version of BerkeleyDB you have. If you have successfully
+    installed BerkeleyDB, this one-liner will tell you:
 
-       perl -e 'use BerkDB; print "BerkDB ver $BerkDB::VERSION\n"'
+       perl -e 'use BerkeleyDB; print "BerkeleyDB ver $BerkeleyDB::VERSION\n"'
 
-    If you haven't installed BerkDB then search BerkDB.pm for a line
-    like this:
+    If you haven't installed BerkeleyDB then search BerkeleyDB.pm for a
+    line like this:
 
       $VERSION = "1.20" ;
 
  3. The version of Berkeley DB you have installed. 
 
- 4. If you are having problems building BerkDB, send me a complete log
-    of what happened.
+ 4. If you are having problems building BerkeleyDB, send me a complete
+    log of what happened.
 
- 5. Now the difficult one. If you think you have found a bug in BerkDB
-    and you want me to fix it, you will *greatly* enhance the chances
-    of me being able to track it down by sending me a small
+ 5. Now the difficult one. If you think you have found a bug in
+    BerkeleyDB and you want me to fix it, you will *greatly* enhance
+    the chances of me being able to track it down by sending me a small
     self-contained Perl script that illustrates the problem you are
     encountering. Include a summary of what you think the problem is
     and a log of what happens when you run the script, in case I can't

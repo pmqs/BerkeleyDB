@@ -1,6 +1,6 @@
-BerkDB.pm
-BerkDB.pod
-BerkDB.xs
+BerkeleyDB.pm
+BerkeleyDB.pod
+BerkeleyDB.xs
 Changes
 MANIFEST
 Makefile.PL

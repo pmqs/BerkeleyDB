@@ -1,9 +1,8 @@
 # typemap for Perl 5 interface to Berkeley DB version 2
 #
-# SCCS: 1.5, 10/23/97     
+# SCCS: 1.6, 11/11/97     
 #
 # written by Paul Marquess (pmarquess@bfsec.bt.co.uk)
-# last modified 28th June 1996
 # version 0.2
 #
 #################################### DB SECTION
@@ -16,17 +15,18 @@ u_int32_t		T_U_INT
 const char * 		T_PV_NULL
 PV_or_NULL		T_PV_NULL
 IO_or_NULL		T_IO_NULL
-BerkDB			T_PTROBJ
-BerkDB::Common		T_PTROBJ
-BerkDB::Hash		T_PTROBJ
-BerkDB::Btree		T_PTROBJ
-BerkDB::Recno		T_PTROBJ
-BerkDB::Cursor		T_PTROBJ
-BerkDB::TxnMgr		T_PTROBJ
-BerkDB::Txn		T_PTROBJ
-BerkDB::Log		T_PTROBJ
-BerkDB::Lock		T_PTROBJ
-BerkDB::Env		T_PTROBJ_NULL
+BerkeleyDB		T_PTROBJ
+BerkeleyDB::Common	T_PTROBJ
+BerkeleyDB::Hash	T_PTROBJ
+BerkeleyDB::Btree	T_PTROBJ
+BerkeleyDB::Recno	T_PTROBJ
+BerkeleyDB::Text	T_PTROBJ
+BerkeleyDB::Cursor	T_PTROBJ
+BerkeleyDB::TxnMgr	T_PTROBJ
+BerkeleyDB::Txn		T_PTROBJ
+BerkeleyDB::Log		T_PTROBJ
+BerkeleyDB::Lock	T_PTROBJ
+BerkeleyDB::Env		T_PTROBJ_NULL
 DBT			T_dbtdatum
 DBTKEY			T_dbtkeydatum
 DBTKEY_B		T_dbtkeydatum_btree

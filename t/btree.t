@@ -1,6 +1,6 @@
 #!./perl -w
 
-# ID: 1.2, 10/23/97   
+# ID: 1.3, 11/11/97   
 
 use strict ;
 
@@ -15,17 +15,17 @@ BEGIN {
 #
 #BEGIN {
 #    if(-d "lib" && -f "TEST") {
-#        if ($Config{'extensions'} !~ /\bBerkDB\b/ ) {
+#        if ($Config{'extensions'} !~ /\bBerkeleyDB\b/ ) {
 #            print "1..74\n";
 #            exit 0;
 #        }
 #    }
 #}
 
-use BerkDB; 
+use BerkeleyDB; 
 use File::Path qw(rmtree);
 
-print "1..131\n";
+print "1..159\n";
 
 {
     package LexFile ;
@@ -66,21 +66,21 @@ umask(0) ;
 {
     # Check for invalid parameters
     my $db ;
-    eval ' $db = new BerkDB::Btree  -Stupid => 3 ; ' ;
+    eval ' $db = new BerkeleyDB::Btree  -Stupid => 3 ; ' ;
     ok 1, $@ =~ /unknown key value\(s\) Stupid/  ;
 
-    eval ' $db = new BerkDB::Btree -Bad => 2, -Mode => 0345, -Stupid => 3; ' ;
+    eval ' $db = new BerkeleyDB::Btree -Bad => 2, -Mode => 0345, -Stupid => 3; ' ;
     ok 2, $@ =~ /unknown key value\(s\) Bad Stupid/  ;
 
-    eval ' $db = new BerkDB::Btree -Env => 2 ' ;
-    ok 3, $@ =~ /^Env not of type BerkDB::Env/ ;
+    eval ' $db = new BerkeleyDB::Btree -Env => 2 ' ;
+    ok 3, $@ =~ /^Env not of type BerkeleyDB::Env/ ;
 
-    eval ' $db = new BerkDB::Btree -Txn => "x" ' ;
-    ok 4, $@ =~ /^Txn not of type BerkDB::Txn/ ;
+    eval ' $db = new BerkeleyDB::Btree -Txn => "x" ' ;
+    ok 4, $@ =~ /^Txn not of type BerkeleyDB::Txn/ ;
 
     my $obj = bless [], "main" ;
-    eval ' $db = new BerkDB::Btree -Env => $obj ' ;
-    ok 5, $@ =~ /^Env not of type BerkDB::Env/ ;
+    eval ' $db = new BerkeleyDB::Btree -Env => $obj ' ;
+    ok 5, $@ =~ /^Env not of type BerkeleyDB::Env/ ;
 }
 
 # Now check the interface to Btree
@@ -88,7 +88,7 @@ umask(0) ;
 {
     my $lex = new LexFile $Dfile ;
 
-    ok 6, my $db = new BerkDB::Btree -Filename => $Dfile, 
+    ok 6, my $db = new BerkeleyDB::Btree -Filename => $Dfile, 
 				    -Flags    => DB_CREATE ;
 
     # Add a k/v pair
@@ -121,8 +121,8 @@ umask(0) ;
     # Check simple env works with a hash.
     my $lex = new LexFile $Dfile ;
 
-    ok 19, my $env = new BerkDB::Env ;
-    ok 20, my $db = new BerkDB::Btree -Filename => $Dfile, 
+    ok 19, my $env = new BerkeleyDB::Env ;
+    ok 20, my $db = new BerkeleyDB::Btree -Filename => $Dfile, 
 				    -Env      => $env,
 				    -Flags    => DB_CREATE ;
 
@@ -140,7 +140,7 @@ umask(0) ;
     my $lex = new LexFile $Dfile ;
     my %hash ;
     my ($k, $v) ;
-    ok 24, my $db = new BerkDB::Btree -Filename => $Dfile, 
+    ok 24, my $db = new BerkeleyDB::Btree -Filename => $Dfile, 
 				     -Flags    => DB_CREATE ;
 
     # create some data
@@ -192,7 +192,7 @@ umask(0) ;
 
     my $lex = new LexFile $Dfile ;
     my %hash ;
-    ok 31, tie %hash, 'BerkDB::Btree', -Filename => $Dfile,
+    ok 31, tie %hash, 'BerkeleyDB::Btree', -Filename => $Dfile,
                                       -Flags    => DB_CREATE ;
 
     # check "each" with an empty database
@@ -243,15 +243,15 @@ umask(0) ;
     my $value ;
     my (%h, %g, %k) ;
     my @Keys = qw( 0123 12 -1234 9 987654321 def  ) ; 
-    ok 44, tie %h, "BerkDB::Btree", -Filename => $Dfile, 
+    ok 44, tie %h, "BerkeleyDB::Btree", -Filename => $Dfile, 
 				     -Compare   => sub { $_[0] <=> $_[1] },
 				     -Flags    => DB_CREATE ;
 
-    ok 45, tie %g, 'BerkDB::Btree', -Filename => $Dfile2, 
+    ok 45, tie %g, 'BerkeleyDB::Btree', -Filename => $Dfile2, 
 				     -Compare   => sub { $_[0] cmp $_[1] },
 				     -Flags    => DB_CREATE ;
 
-    ok 46, tie %k, 'BerkDB::Btree', -Filename => $Dfile3, 
+    ok 46, tie %k, 'BerkeleyDB::Btree', -Filename => $Dfile3, 
 				   -Compare   => sub { length $_[0] <=> length $_[1] },
 				   -Flags    => DB_CREATE ;
 
@@ -296,7 +296,7 @@ umask(0) ;
     my %hash ;
     my $fd ;
     my $value ;
-    ok 50, my $db = tie %hash, 'BerkDB::Btree' ;
+    ok 50, my $db = tie %hash, 'BerkeleyDB::Btree' ;
 
     ok 51, $db->db_put("some key", "some value") == 0  ;
     ok 52, $db->db_get("some key", $value) == 0 ;
@@ -310,8 +310,8 @@ umask(0) ;
 
     my $lex = new LexFile $Dfile ;
     my $value ;
-    ok 54, my $env = new BerkDB::Env ;
-    ok 55, my $db = new BerkDB::Btree, -Filename => $Dfile,
+    ok 54, my $env = new BerkeleyDB::Env ;
+    ok 55, my $db = new BerkeleyDB::Btree, -Filename => $Dfile,
                                       	       -Flags    => DB_CREATE ,
 					       -Env 	 => $env ;
 
@@ -394,8 +394,8 @@ umask(0) ;
     my $lex = new LexFile $Dfile ;
     my %hash ;
     my $value ;
-    ok 95, my $env = new BerkDB::Env ;
-    ok 96, my $db = tie %hash, 'BerkDB::Btree', -Filename => $Dfile,
+    ok 95, my $env = new BerkeleyDB::Env ;
+    ok 96, my $db = tie %hash, 'BerkeleyDB::Btree', -Filename => $Dfile,
                                       	       -Flags    => DB_CREATE ,
 					       -Env 	 => $env ;
 
@@ -466,11 +466,11 @@ umask(0) ;
     my $home = "./fred" ;
     rmtree $home if -e $home ;
     ok 122, mkdir($home, 0777) ;
-    ok 123, my $env = new BerkDB::Env -Home => $home,
+    ok 123, my $env = new BerkeleyDB::Env -Home => $home,
 				     -Flags => DB_CREATE|DB_INIT_TXN|
 					  	DB_INIT_MPOOL|DB_INIT_LOCK ;
     ok 124, my $txn = $env->txn_begin() ;
-    ok 125, my $db1 = tie %hash, 'BerkDB::Btree', -Filename => $Dfile,
+    ok 125, my $db1 = tie %hash, 'BerkeleyDB::Btree', -Filename => $Dfile,
                                       	       -Flags    =>  DB_CREATE ,
 					       -Env 	 => $env,
 					       -Txn	 => $txn ;
@@ -517,5 +517,168 @@ umask(0) ;
     undef $cursor ;
     undef $db1 ;
     undef $env ;
+    untie %hash ;
     rmtree $home ;
 }
+
+{
+    # DB_DUP
+
+    my $lex = new LexFile $Dfile ;
+    my %hash ;
+    ok 132, my $db = tie %hash, 'BerkeleyDB::Btree', -Filename => $Dfile,
+				      -Property  => DB_DUP,
+                                      -Flags    => DB_CREATE ;
+
+    $hash{'Wall'} = 'Larry' ;
+    $hash{'Wall'} = 'Stone' ;
+    $hash{'Smith'} = 'John' ;
+    $hash{'Wall'} = 'Brick' ;
+    $hash{'Wall'} = 'Brick' ;
+    $hash{'mouse'} = 'mickey' ;
+
+    ok 133, keys %hash == 6 ;
+
+    # create a cursor
+    ok 134, my $cursor = $db->db_cursor() ;
+
+    my $key = "Wall" ;
+    my $value ;
+    ok 135, $cursor->c_get($key, $value, DB_SET) == 0 ;
+    ok 136, $key eq "Wall" && $value eq "Larry" ;
+    ok 137, $cursor->c_get($key, $value, DB_NEXT) == 0 ;
+    ok 138, $key eq "Wall" && $value eq "Stone" ;
+    ok 139, $cursor->c_get($key, $value, DB_NEXT) == 0 ;
+    ok 140, $key eq "Wall" && $value eq "Brick" ;
+    ok 141, $cursor->c_get($key, $value, DB_NEXT) == 0 ;
+    ok 142, $key eq "Wall" && $value eq "Brick" ;
+
+    my $ref = $db->db_stat() ; 
+    ok 143, $ref->{bt_flags} | DB_DUP ;
+
+    undef $db ;
+    undef $cursor ;
+    untie %hash ;
+
+}
+
+{
+    # stat
+
+    my $lex = new LexFile $Dfile ;
+    my %hash ;
+    my ($k, $v) ;
+    ok 144, my $db = new BerkeleyDB::Btree -Filename => $Dfile, 
+				     -Flags    => DB_CREATE,
+				 	-Minkey	=>3 ,
+					-Pagesize	=> 5 * 1024,
+					;
+
+    my $ref = $db->db_stat() ; 
+    ok 145, $ref->{'bt_nrecs'} == 0;
+    ok 146, $ref->{'bt_minkey'} == 3;
+    ok 147, $ref->{'bt_pagesize'} == 5 * 1024;
+
+    # create some data
+    my %data =  (
+		"red"	=> 2,
+		"green"	=> "house",
+		"blue"	=> "sea",
+		) ;
+
+    my $ret = 0 ;
+    while (($k, $v) = each %data) {
+        $ret += $db->db_put($k, $v) ;
+    }
+    ok 148, $ret == 0 ;
+
+    $ref = $db->db_stat() ; 
+    ok 149, $ref->{'bt_nrecs'} == 3;
+}
+
+{
+   # sub-class test
+
+   package Another ;
+
+   use strict ;
+
+   open(FILE, ">SubDB.pm") or die "Cannot open SubDB.pm: $!\n" ;
+   print FILE <<'EOM' ;
+
+   package SubDB ;
+
+   use strict ;
+   use vars qw( @ISA @EXPORT) ;
+
+   require Exporter ;
+   use BerkeleyDB;
+   @ISA=qw(BerkeleyDB::Btree);
+   @EXPORT = @BerkeleyDB::EXPORT ;
+
+   sub db_put { 
+	my $self = shift ;
+        my $key = shift ;
+        my $value = shift ;
+        $self->SUPER::db_put($key, $value * 3) ;
+   }
+
+   sub db_get { 
+	my $self = shift ;
+        $self->SUPER::db_get($_[0], $_[1]) ;
+	$_[1] -= 2 ;
+   }
+
+   sub A_new_method
+   {
+	my $self = shift ;
+        my $key = shift ;
+        my $value = $self->FETCH($key) ;
+	return "[[$value]]" ;
+   }
+
+   1 ;
+EOM
+
+    close FILE ;
+
+    BEGIN { push @INC, '.'; }    
+    eval 'use SubDB ; ';
+    main::ok 150, $@ eq "" ;
+    my %h ;
+    my $X ;
+    eval '
+	$X = tie(%h, "SubDB", -Filename => "dbbtree.tmp", 
+			-Flags => DB_CREATE,
+			-Mode => 0640 );
+	' ;
+
+    main::ok 151, $@ eq "" ;
+
+    my $ret = eval '$h{"fred"} = 3 ; return $h{"fred"} ' ;
+    main::ok 152, $@ eq "" ;
+    main::ok 153, $ret == 7 ;
+
+    my $value = 0;
+    $ret = eval '$X->db_put("joe", 4) ; $X->db_get("joe", $value) ; return $value' ;
+    main::ok 154, $@ eq "" ;
+    main::ok 155, $ret == 10 ;
+
+    $ret = eval ' DB_NEXT eq main::DB_NEXT ' ;
+    main::ok 156, $@ eq ""  ;
+    main::ok 157, $ret == 1 ;
+
+    $ret = eval '$X->A_new_method("joe") ' ;
+    main::ok 158, $@ eq "" ;
+    main::ok 159, $ret eq "[[10]]" ;
+
+    unlink "SubDB.pm", "dbbtree.tmp" ;
+
+}
+
+# TODO
+#
+# DB_RECNUM
+# DB_APPEND for put
+# DB_SET_RECNO & DB_GET_RECNO for cursors
+

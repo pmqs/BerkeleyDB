@@ -1,18 +1,18 @@
 =head1 NAME
 
-BerkDB - Perl extension for Berkeley DB version 2
+BerkeleyDB - Perl extension for Berkeley DB version 2
 
 =head1 SYNOPSIS
 
-  use BerkDB;
+  use BerkeleyDB;
 
-  $env = new BerkDB::Env [OPTIONS] ;
+  $env = new BerkeleyDB::Env [OPTIONS] ;
 
-  $db  = tie %hash, 'BerkDB::Hash', [OPTIONS] ;
-  $db  = new BerkDB::Hash [OPTIONS] ;
+  $db  = tie %hash, 'BerkeleyDB::Hash', [OPTIONS] ;
+  $db  = new BerkeleyDB::Hash [OPTIONS] ;
 
-  $db  = tie %hash, 'BerkDB::Btree', [OPTIONS] ;
-  $db  = new BerkDB::Btree [OPTIONS] ;
+  $db  = tie %hash, 'BerkeleyDB::Btree', [OPTIONS] ;
+  $db  = new BerkeleyDB::Btree [OPTIONS] ;
 
   $hash{$key} = $value ;
   $value = $hash{$key} ;
@@ -42,8 +42,8 @@ BerkDB - Perl extension for Berkeley DB version 2
   $status = $txn->txn_id()
   $status = $txn->txn_stat()
 
-  $BerkDB::Error
-  $BerkDB::db_version
+  $BerkeleyDB::Error
+  $BerkeleyDB::db_version
 
 
 =head1 DESCRIPTION
@@ -65,7 +65,7 @@ needed when you want to make use of locking, logging or transactions.
 
 =head2 Synopsis
 
-    $env = new BerkDB::Env [OPTIONS]
+    $env = new BerkeleyDB::Env [OPTIONS]
              [ -Home         => $path, ]
              [ -Config       => { name => value, name => value }, ]
              [ -ErrFile      => filename or filehandle, ]
@@ -139,7 +139,7 @@ The environment class has the following methods:
 
 The equivalent of db_open with type DB_HASH. Two forms
 
-    $db = new BerkDB::Hash
+    $db = new BerkeleyDB::Hash
                 [ -Filename      => "filename" ]
                 [ -Flags         => ]
                 [ -Property      => ]
@@ -155,10 +155,10 @@ The equivalent of db_open with type DB_HASH. Two forms
                 
 and this
 
-    $db = tie %hash, 'BerkDB::Hash', OPTIONS
+    $db = tie %hash, 'BerkeleyDB::Hash', OPTIONS
 
 where OPTIONS are the same as for the new constructor. In addition to
-the standard set of options (see L<COMMON OPTIONS>) BerkDB::Hash
+the standard set of options (see L<COMMON OPTIONS>) BerkeleyDB::Hash
 supports these:
 
 =over 5
@@ -186,14 +186,14 @@ See L<COMMON DATABASE METHODS>.
 =head2 A Simple Hash Example
 
     use strict ;
-    use BerkDB ;
+    use BerkeleyDB ;
 
     my %hash ;
     my $filename = "database" ;
-    tie %hash, 'BerkDB::Hash',
+    tie %hash, 'BerkeleyDB::Hash',
                 -Filename  => $filename,
                 -Flags     => DB_CREATE,
-        or die "Cannot open file $filename: $! $BerkDB::Error\n" ;
+        or die "Cannot open file $filename: $! $BerkeleyDB::Error\n" ;
 
     $hash{"fred"} = "barney" ;
     $hash{"joe"} = "harry" ;
@@ -310,48 +310,49 @@ See the Changes file.
 
 =head1 AVAILABILITY
  
-The most recent version of B<BerkDB> can always be found on CPAN (see
-L<perlmod/CPAN> for details), in the directory
-F<modules/by-module/BerkDB>.
+The most recent version of B<BerkeleyDB> can always be found on CPAN
+(see L<perlmod/CPAN> for details), in the directory
+F<modules/by-module/BerkeleyDB>.
 
 The official web site for Berkeley DB is
 F<http://www.sleepycat.com/db>. The ftp equivalent is
-F<ftp.sleepycat.com:/pub>. 
+F<ftp.sleepycat.com:/pub>.
 
 =head1 COPYRIGHT
 
 Copyright (c) 1997 Paul Marquess. All rights reserved. This program is
 free software; you can redistribute it and/or modify it under the same
 terms as Perl itself.
- 
-Although B<BerkDB> is covered by the Perl license, the library it
+
+Although B<BerkeleyDB> is covered by the Perl license, the library it
 makes use of, namely Berkeley DB version 2, is not. Berkeley DB has its
 own copyright and its own license. Please take the time to read it.
 
-The license for Berkeley DB version 2, and how it relates to BerkDB
+The license for Berkeley DB version 2, and how it relates to BerkeleyDB
 does need some extra clarification. Here are are few words taken from
 the Berkeley DB FAQ regarding the version 2 license:
- 
+
     The major difference is that the license for DB 2.0, when
-    downloaded from the net, requires that the software that
-    uses DB 2.0 be freely redistributable.
- 
-That means that if you want to use BerkDB, and you have changed either
-the source for Berkeley DB or Perl, then the changes must be freely
-available.
- 
-In the case of Perl, the term source refers to the complete source
-code for Perl (e.g. sv.c, toke.c, perl.h) and any external modules that
-you are using (e.g. BerkDB, Tk).
- 
+    downloaded from the net, requires that the software that uses DB
+    2.0 be freely redistributable.
+
+That means that if you want to use BerkeleyDB, and you have changed
+either the source for Berkeley DB or Perl, then the changes must be
+freely available.
+
+In the case of Perl, the term source refers to the complete source code
+for Perl (e.g. sv.c, toke.c, perl.h) and any external modules that you
+are using (e.g. BerkeleyDB, Tk).
+
 Note that any Perl scripts that you write are your property - this
-includes scripts that make use of BerkDB. Neither the Perl license or
-the Berkeley DB license place any restriction on what you have to do
+includes scripts that make use of BerkeleyDB. Neither the Perl license
+or the Berkeley DB license place any restriction on what you have to do
 with them.
- 
+
 If you are in any doubt about the license situation, contact either the
-Berkeley DB authors or the author of BerkDB. See L<"AUTHOR"> for details.
- 
+Berkeley DB authors or the author of BerkeleyDB. See L<"AUTHOR"> for
+details.
+
 
 =head1 AUTHOR
 

@@ -1,10 +1,10 @@
 /*
  
- BerkDB.xs -- Perl 5 interface to Berkeley DB version 2
+ BerkeleyDB.xs -- Perl 5 interface to Berkeley DB version 2
  
  written by Paul Marquess (pmarquess@bfsec.bt.co.uk)
 
- SCCS: 1.6, 10/23/97  
+ SCCS: 1.7, 11/11/97  
 
  All comments/suggestions/problems are welcome
  
@@ -14,6 +14,7 @@
  
  Changes:
         0.01 -  First Alpha Release
+        0.02 -  
  
 */
 
@@ -48,27 +49,29 @@ typedef struct {
 	u_int32_t	partial ;
 	u_int32_t	dlen ;
 	u_int32_t	doff ;
-        } BerkDB_type;
+        } BerkeleyDB_type;
 
 typedef struct {
 	int		Status ;
 	/* char		ErrBuff[1000] ; */
 	SV *		ErrPrefix ;
+	SV *		ErrHandle ;
 	DB_ENV		Env ;
-	} BerkDB_ENV_type ;
+	} BerkeleyDB_ENV_type ;
 
-typedef BerkDB_ENV_type *	BerkDB__Env ;
-typedef BerkDB_type * 		BerkDB ;
-typedef BerkDB_type * 		BerkDB__Common ;
-typedef BerkDB_type * 		BerkDB__Hash ;
-typedef BerkDB_type * 		BerkDB__Btree ;
-typedef BerkDB_type * 		BerkDB__Recno ;
-typedef BerkDB_type   		BerkDB__Cursor_type ;
-typedef BerkDB_type * 		BerkDB__Cursor ;
-typedef DB_TXNMGR *   		BerkDB__TxnMgr ;
-typedef DB_TXN *      		BerkDB__Txn ;
-typedef DB_LOG *      		BerkDB__Log ;
-typedef DB_LOCKTAB *  		BerkDB__Lock ;
+typedef BerkeleyDB_ENV_type *	BerkeleyDB__Env ;
+typedef BerkeleyDB_type * 	BerkeleyDB ;
+typedef BerkeleyDB_type *	BerkeleyDB__Common ;
+typedef BerkeleyDB_type * 	BerkeleyDB__Hash ;
+typedef BerkeleyDB_type * 	BerkeleyDB__Btree ;
+typedef BerkeleyDB_type * 	BerkeleyDB__Recno ;
+typedef BerkeleyDB_type * 	BerkeleyDB__Text ;
+typedef BerkeleyDB_type   	BerkeleyDB__Cursor_type ;
+typedef BerkeleyDB_type * 	BerkeleyDB__Cursor ;
+typedef DB_TXNMGR *   		BerkeleyDB__TxnMgr ;
+typedef DB_TXN *      		BerkeleyDB__Txn ;
+typedef DB_LOG *      		BerkeleyDB__Log ;
+typedef DB_LOCKTAB *  		BerkeleyDB__Lock ;
 typedef DBT 			DBTKEY ;
 typedef DBT 			DBTKEY_B ;
 typedef DBT 			DBTVALUE ;
@@ -81,7 +84,7 @@ typedef PerlIO *      		IO_or_NULL ;
 #define Trace(x)	
 #endif
 
-#define ERR_BUFF "BerkDB::Error" 
+#define ERR_BUFF "BerkeleyDB::Error" 
 
 #define ZMALLOC(to, typ) ((to = (typ *)safemalloc(sizeof(typ))), \
 				Zero(to,1,typ))
@@ -139,14 +142,14 @@ typedef PerlIO *      		IO_or_NULL ;
 /* Internal Global Data */
 static db_recno_t Value ;
 static db_recno_t zero = 0 ;
-static BerkDB	CurrentDB ;
+static BerkeleyDB	CurrentDB ;
 static DBTKEY	empty ;
 static char	ErrBuff[1000] ;
 
 
 static I32
 GetArrayLength(db)
-BerkDB db ;
+BerkeleyDB db ;
 {
     DBT		key ;
     DBT		value ;
@@ -166,7 +169,7 @@ BerkDB db ;
 
 static db_recno_t
 GetRecnoKey(db, value)
-BerkDB  db ;
+BerkeleyDB  db ;
 I32      value ;
 {
     Trace(("GetRecnoKey start value = %d\n", value)) ;
@@ -225,7 +228,7 @@ const DBT * key2 ;
     SPAGAIN ;
 
     if (count != 1)
-        croak ("BerkDB btree_compare: expected 1 return value from compare sub, got %d\n", count) ;
+        croak ("BerkeleyDB btree_compare: expected 1 return value from compare sub, got %d\n", count) ;
 
     retval = POPi ;
 
@@ -272,7 +275,7 @@ const DBT * key2 ;
     SPAGAIN ;
 
     if (count != 1)
-        croak ("BerkDB btree_prefix: expected 1 return value from prefix sub, got %d\n", count) ;
+        croak ("BerkeleyDB btree_prefix: expected 1 return value from prefix sub, got %d\n", count) ;
  
     retval = POPi ;
  
@@ -308,7 +311,7 @@ size_t size ;
     SPAGAIN ;
 
     if (count != 1)
-        croak ("BerkDB hash_cb: expected 1 return value from hash sub, got %d\n", count) ;
+        croak ("BerkeleyDB hash_cb: expected 1 return value from hash sub, got %d\n", count) ;
 
     retval = POPi ;
 
@@ -369,11 +372,11 @@ int value ;
     hv_store(hash, key, strlen(key), newSViv(value), 0);
 }
 
-static BerkDB
+static BerkeleyDB
 my_db_open(db, ref, dbenv, file, type, flags, mode, info)
-BerkDB		db ;
+BerkeleyDB	db ;
 SV *		ref ;
-BerkDB__Env	dbenv ;
+BerkeleyDB__Env	dbenv ;
 const char *	file;
 DBTYPE		type;
 int		flags;
@@ -381,13 +384,14 @@ int		mode;
 DB_INFO * 	info ;
 {
     DB_ENV *	env    = NULL ;
-    BerkDB     	RETVAL = NULL ;
+    BerkeleyDB 	RETVAL = NULL ;
     DB *	dbp ;
     int		Status ;
 
     Trace(("_db_open(dbenv[%lu] file[%s] type[%d] flags[%d] mode[%d]\n", 
 		dbenv, file, type, flags, mode)) ;
 
+    CurrentDB = db ;
     if (dbenv) 
 	env = &dbenv->Env ;
 
@@ -1339,7 +1343,7 @@ not_there:
 }
 
 
-MODULE = BerkDB		PACKAGE = BerkDB	PREFIX = env_
+MODULE = BerkeleyDB		PACKAGE = BerkeleyDB	PREFIX = env_
 
 char *
 DB_VERSION_STRING()
@@ -1367,13 +1371,13 @@ env_db_version(maj, min, patch)
 	  patch
 
 
-MODULE = BerkDB::Env		PACKAGE = BerkDB::Env PREFIX = env_
+MODULE = BerkeleyDB::Env		PACKAGE = BerkeleyDB::Env PREFIX = env_
 
 
-BerkDB::Env
+BerkeleyDB::Env
 _db_appinit(ref)
 	SV * 		ref
-        BerkDB__Env 	RETVAL = NULL ;
+        BerkeleyDB__Env	RETVAL = NULL ;
 	CODE:
 	{
 	    HV *	hash ;
@@ -1382,7 +1386,6 @@ _db_appinit(ref)
 	    char **	config = NULL ;
 	    int		flags = 0 ;
 	    SV *	errprefix = NULL;
-	    FILE *	handle = NULL ;
 	    int status ;
 
 	    Trace(("in _db_appinit\n")) ;
@@ -1391,9 +1394,8 @@ _db_appinit(ref)
 	    SetValue_pv(config, "Config", char **) ;
 	    SetValue_sv(errprefix, "ErrPrefix") ;
 	    SetValue_iv(flags, "Flags") ;
-	    SetValue_io(handle, "ErrFile") ;
-	    Trace(("_db_appinit(config=[%d], home=[%s],handle[%d],errprefix=[%s],flags=[%d]\n", 
-			config, home, handle, errprefix, flags)) ;
+	    Trace(("_db_appinit(config=[%d], home=[%s],errprefix=[%s],flags=[%d]\n", 
+			config, home, errprefix, flags)) ;
 #ifdef TRACE 
 	    if (config) {
 	       int i ;
@@ -1406,8 +1408,7 @@ _db_appinit(ref)
 	      }
 	    }
 #endif
-	    ZMALLOC(RETVAL, BerkDB_ENV_type) ;
-	    Trace(("Handle = %X\n", handle)) ;
+	    ZMALLOC(RETVAL, BerkeleyDB_ENV_type) ;
 
 	    /* Take a copy of the error prefix */
 	    if (errprefix) {
@@ -1418,7 +1419,11 @@ _db_appinit(ref)
 	    if (RETVAL->ErrPrefix)
 	        RETVAL->Env.db_errpfx = SvPVX(RETVAL->ErrPrefix) ;
 
-	    SetValue_io(RETVAL->Env.db_errfile, "Handle") ;
+	    if ((sv = readHash(hash, "ErrFile")) && sv != &sv_undef) {
+		RETVAL->Env.db_errfile = IoOFP(sv_2io(sv)) ;
+		RETVAL->ErrHandle = newRV(sv) ;
+	    }
+	    /* SetValue_io(RETVAL->Env.db_errfile, "ErrFile") ; */
 	    SetValue_iv(RETVAL->Env.lk_max, "LockMax") ;
 	    SetValue_iv(RETVAL->Env.lg_max, "LogMax") ;
 	    SetValue_iv(RETVAL->Env.tx_max, "TxnMax") ;
@@ -1437,7 +1442,7 @@ _db_appinit(ref)
 #define EnDis(x)	((x) ? "Enabled" : "Disabled")
 void
 printEnv(env)
-        BerkDB::Env  env
+        BerkeleyDB::Env  env
 	CODE:
 	  printf("env             [0x%X]\n", env) ;
 	  /* printf("  ErrBuff       [%s]\n", env->ErrBuff) ; */
@@ -1460,13 +1465,14 @@ printEnv(env)
 	  printf("    flags       [%d]\n", env->Env.flags) ;
 	  printf("\n") ;
 
-char *
+SV *
 errPrefix(env, prefix)
-        BerkDB::Env  env
-	SV * 		prefix
+        BerkeleyDB::Env  env
+	SV * 		 prefix
 	CODE:
 	  if (env->ErrPrefix) {
-	      RETVAL = SvPVX(env->ErrPrefix) ;
+	      RETVAL = newSVsv(env->ErrPrefix) ;
+              SvPOK_only(RETVAL) ;
 	      sv_setsv(env->ErrPrefix, prefix) ;
 	  }
 	  else {
@@ -1481,22 +1487,24 @@ errPrefix(env, prefix)
 #define env_DESTROY(env)	db_appexit(&env->Env)
 int
 env_DESTROY(env)
-        BerkDB::Env  env
+        BerkeleyDB::Env  env
 	INIT:
-	  Trace(("In BerkDB::Env::DESTROY env %ld Env %ld \n", 
+	  Trace(("In BerkeleyDB::Env::DESTROY env %ld Env %ld \n", 
 			env, &env->Env)) ;
         CLEANUP:
-	  Trace(("start cleanup BerkDB::Env::DESTROY\n")) ;
+	  Trace(("start cleanup BerkeleyDB::Env::DESTROY\n")) ;
+	  if (env->ErrHandle)
+	      SvREFCNT_dec(env->ErrHandle) ;
 	  if (env->ErrPrefix)
 	      SvREFCNT_dec(env->ErrPrefix) ;
           Safefree(env) ;
-	  Trace(("real end of BerkDB::Env::DESTROY\n")) ;
+	  Trace(("real end of BerkeleyDB::Env::DESTROY\n")) ;
 
 
-BerkDB::Txn
+BerkeleyDB::Txn
 txn_begin(env, pid=NULL)
-	BerkDB::Env	env
-	BerkDB::Txn	pid
+	BerkeleyDB::Env	env
+	BerkeleyDB::Txn	pid
 	CODE:
 	{
 	    int status ;
@@ -1511,9 +1519,9 @@ txn_begin(env, pid=NULL)
 	OUTPUT:
 	    RETVAL
 
-MODULE = BerkDB::Hash	PACKAGE = BerkDB::Hash	PREFIX = hash_
+MODULE = BerkeleyDB::Hash	PACKAGE = BerkeleyDB::Hash	PREFIX = hash_
 
-BerkDB::Hash
+BerkeleyDB::Hash
 _db_open_hash(ref)
 	SV * 		ref
 	CODE:
@@ -1521,16 +1529,16 @@ _db_open_hash(ref)
 	    HV *		hash ;
 	    SV * 		sv ;
 	    DB_INFO 		info ;
-	    BerkDB__Env	dbenv = NULL;
+	    BerkeleyDB__Env	dbenv = NULL;
 	    SV *		ref_dbenv = NULL;
 	    const char *	file = NULL ;
 	    int			flags = 0 ;
 	    int			mode = 0 ;
-    	    BerkDB     		db ;
+    	    BerkeleyDB 		db ;
 	
 	    hash = (HV*) SvRV(ref) ;
 	    SetValue_pv(file, "Filename", char *) ;
-	    SetValue_ov(dbenv, "Env", BerkDB__Env) ;
+	    SetValue_ov(dbenv, "Env", BerkeleyDB__Env) ;
 	    ref_dbenv = sv ;
 	    SetValue_iv(flags, "Flags") ;
 	    SetValue_iv(mode, "Mode") ;
@@ -1542,8 +1550,8 @@ _db_open_hash(ref)
 	    SetValue_iv(info.h_ffactor, "Ffactor") ;
 	    SetValue_iv(info.h_nelem, "Nelem") ;
 	    SetValue_iv(info.flags, "Property") ;
-	    ZMALLOC(db, BerkDB_type) ; 
-	    SetValue_ov(db->txn, "Txn", BerkDB__Txn) ;
+	    ZMALLOC(db, BerkeleyDB_type) ; 
+	    SetValue_ov(db->txn, "Txn", BerkeleyDB__Txn) ;
 	    if ((sv = readHash(hash, "Hash")) && sv != &sv_undef) {
 		info.h_hash = hash_cb ;
 		db->hash = newSVsv(sv) ;
@@ -1556,16 +1564,16 @@ _db_open_hash(ref)
 
 
 HV *
-stat(db, flags=0)
-	BerkDB::Common	db
-	int		flags
-	HV *		RETVAL = NULL ;
+db_stat(db, flags=0)
+	BerkeleyDB::Common	db
+	int			flags
+	HV *			RETVAL = NULL ;
         NOT_IMPLEMENTED_YET
 
 
-MODULE = BerkDB::Btree	PACKAGE = BerkDB::Btree	PREFIX = btree_
+MODULE = BerkeleyDB::Btree	PACKAGE = BerkeleyDB::Btree	PREFIX = btree_
 
-BerkDB::Btree
+BerkeleyDB::Btree
 _db_open_btree(ref)
 	SV * 		ref
 	CODE:
@@ -1573,16 +1581,16 @@ _db_open_btree(ref)
 	    HV *		hash ;
 	    SV * 		sv ;
 	    DB_INFO 		info ;
-	    BerkDB__Env	dbenv = NULL;
+	    BerkeleyDB__Env	dbenv = NULL;
 	    SV *		ref_dbenv = NULL;
 	    const char *	file = NULL ;
 	    int			flags = 0 ;
 	    int			mode = 0 ;
-    	    BerkDB     		db ;
+    	    BerkeleyDB  	db ;
 	
 	    hash = (HV*) SvRV(ref) ;
 	    SetValue_pv(file, "Filename", char*) ;
-	    SetValue_ov(dbenv, "Env", BerkDB__Env) ;
+	    SetValue_ov(dbenv, "Env", BerkeleyDB__Env) ;
 	    ref_dbenv = sv ;
 	    SetValue_iv(flags, "Flags") ;
 	    SetValue_iv(mode, "Mode") ;
@@ -1593,8 +1601,8 @@ _db_open_btree(ref)
 	    SetValue_iv(info.db_pagesize, "Pagesize") ;
 	    SetValue_iv(info.bt_minkey, "Minkey") ;
 	    SetValue_iv(info.flags, "Property") ;
-	    ZMALLOC(db, BerkDB_type) ; 
-	    SetValue_ov(db->txn, "Txn", BerkDB__Txn) ;
+	    ZMALLOC(db, BerkeleyDB_type) ; 
+	    SetValue_ov(db->txn, "Txn", BerkeleyDB__Txn) ;
 	    if ((sv = readHash(hash, "Compare")) && sv != &sv_undef) {
 		info.bt_compare = btree_compare ;
 		db->compare = newSVsv(sv) ;
@@ -1611,10 +1619,10 @@ _db_open_btree(ref)
 
 
 HV *
-stat(db, flags=0)
-	BerkDB::Common	db
-	int		flags
-	HV *		RETVAL = NULL ;
+db_stat(db, flags=0)
+	BerkeleyDB::Common	db
+	int			flags
+	HV *			RETVAL = NULL ;
 	CODE:
 	{
 	    DB_BTREE_STAT *	stat ;
@@ -1655,16 +1663,117 @@ stat(db, flags=0)
 	    RETVAL
 
 
-MODULE = BerkDB::Common  PACKAGE = BerkDB::Common	PREFIX = dab_
+MODULE = BerkeleyDB::Recno	PACKAGE = BerkeleyDB::Recno	PREFIX = recno_
+
+BerkeleyDB::Recno
+_db_open_recno(ref)
+	SV * 		ref
+	CODE:
+	{
+	    HV *		hash ;
+	    SV * 		sv ;
+	    DB_INFO 		info ;
+	    BerkeleyDB__Env	dbenv = NULL;
+	    SV *		ref_dbenv = NULL;
+	    const char *	file = NULL ;
+	    int			flags = 0 ;
+	    int			mode = 0 ;
+    	    BerkeleyDB 		db ;
+	
+	    hash = (HV*) SvRV(ref) ;
+	    SetValue_pv(file, "Filename", char*) ;
+	    SetValue_ov(dbenv, "Env", BerkeleyDB__Env) ;
+	    ref_dbenv = sv ;
+	    SetValue_iv(flags, "Flags") ;
+	    SetValue_iv(mode, "Mode") ;
+
+       	    Zero(&info, 1, DB_INFO) ;
+	    SetValue_iv(info.db_cachesize, "Cachesize") ;
+	    SetValue_iv(info.db_lorder, "Lorder") ;
+	    SetValue_iv(info.db_pagesize, "Pagesize") ;
+	    SetValue_iv(info.bt_minkey, "Minkey") ;
+
+	    SetValue_iv(info.flags, "Property") ;
+	    SetValue_iv(info.re_len, "Len") ;
+	    SetValue_pv(info.re_source, "Source", char*) ;
+	    if ((sv = readHash(hash, "Delim")) && sv != &sv_undef) {
+		info.re_delim = SvIV(sv) ; ;
+		info.flags |= DB_DELIMITER ;
+	    }
+	    if ((sv = readHash(hash, "Pad")) && sv != &sv_undef) {
+		info.re_pad = (u_int32_t)SvIV(sv) ; ;
+		info.flags |= DB_PAD ;
+	    }
+	    ZMALLOC(db, BerkeleyDB_type) ; 
+	    SetValue_ov(db->txn, "Txn", BerkeleyDB__Txn) ;
+	    
+	    RETVAL = my_db_open(db, ref_dbenv, dbenv, file, DB_RECNO, flags, mode, &info) ;
+	}
+	OUTPUT:
+	    RETVAL
+
+
+MODULE = BerkeleyDB::Text	PACKAGE = BerkeleyDB::Text	PREFIX = text_
+
+BerkeleyDB::Text
+_db_open_text(ref)
+	SV * 		ref
+	CODE:
+	{
+	    HV *		hash ;
+	    SV * 		sv ;
+	    DB_INFO 		info ;
+	    BerkeleyDB__Env	dbenv = NULL;
+	    SV *		ref_dbenv = NULL;
+	    const char *	file = NULL ;
+	    int			flags = 0 ;
+	    int			mode = 0 ;
+    	    BerkeleyDB 		db ;
+	
+	    hash = (HV*) SvRV(ref) ;
+	    SetValue_pv(file, "Btree", char*) ;
+	    SetValue_ov(dbenv, "Env", BerkeleyDB__Env) ;
+	    ref_dbenv = sv ;
+	    SetValue_iv(flags, "Flags") ;
+	    SetValue_iv(mode, "Mode") ;
+
+       	    Zero(&info, 1, DB_INFO) ;
+	    SetValue_iv(info.db_cachesize, "Cachesize") ;
+	    SetValue_iv(info.db_lorder, "Lorder") ;
+	    SetValue_iv(info.db_pagesize, "Pagesize") ;
+	    SetValue_iv(info.bt_minkey, "Minkey") ;
+
+	    SetValue_iv(info.flags, "Property") ;
+	    SetValue_iv(info.re_len, "Len") ;
+	    SetValue_pv(info.re_source, "Filename", char*) ;
+	    if ((sv = readHash(hash, "Delim")) && sv != &sv_undef) {
+		info.re_delim = SvIV(sv) ; ;
+		info.flags |= DB_DELIMITER ;
+	    }
+	    if ((sv = readHash(hash, "Pad")) && sv != &sv_undef) {
+		info.re_pad = (u_int32_t)SvIV(sv) ; ;
+		info.flags |= DB_PAD ;
+	    }
+	    info.flags |= DB_RENUMBER ;
+	    ZMALLOC(db, BerkeleyDB_type) ; 
+	    SetValue_ov(db->txn, "Txn", BerkeleyDB__Txn) ;
+	    
+	    RETVAL = my_db_open(db, ref_dbenv, dbenv, file, DB_RECNO, flags, mode, &info) ;
+	}
+	OUTPUT:
+	    RETVAL
+
+
+MODULE = BerkeleyDB::Common  PACKAGE = BerkeleyDB::Common	PREFIX = dab_
 
 
 #define dab_DESTROY(db)	((db->dbp)->close)(db->dbp, 0)
 int
 dab_DESTROY(db)
-	BerkDB::Common	db
+	BerkeleyDB::Common	db
 	INIT:
 	  CurrentDB = db ;
-	  Trace(("In BerkDB::Common::DESTROY\n")) ;
+	  Trace(("In BerkeleyDB::Common::DESTROY\n")) ;
 	  if (db->cursor)
 	      ((db->cursor)->c_close)(db->cursor) ;
 	CLEANUP:
@@ -1677,19 +1786,19 @@ dab_DESTROY(db)
           if (db->ref2env)
 	      SvREFCNT_dec(db->ref2env) ;
           Safefree(db) ;
-	  Trace(("End of BerkDB::Common::DESTROY\n")) ;
+	  Trace(("End of BerkeleyDB::Common::DESTROY\n")) ;
 
 #define db_cursor(db, txn, cur)  ((db->dbp)->cursor)(db->dbp, txn, cur)
-BerkDB::Cursor
+BerkeleyDB::Cursor
 db_cursor(db)
-        BerkDB::Common 	db
-        BerkDB::Cursor 	RETVAL = NULL ;
+        BerkeleyDB::Common 	db
+        BerkeleyDB::Cursor 	RETVAL = NULL ;
 	CODE:
 	{
 	  DBC *		cursor ;
 	  CurrentDB = db ;
 	  if ((db->Status = db_cursor(db, db->txn, &cursor)) == 0){
-	      ZMALLOC(RETVAL, BerkDB__Cursor_type) ;
+	      ZMALLOC(RETVAL, BerkeleyDB__Cursor_type) ;
 	      RETVAL->cursor  = cursor ;
 	      RETVAL->dbp     = db->dbp ;
 	      RETVAL->ref2db  = newRV(SvRV(ST(0))) ;
@@ -1710,9 +1819,9 @@ db_cursor(db)
 
 void
 partial_set(db, offset, length)
-        BerkDB::Common 	db
-	u_int32_t	offset
-	u_int32_t	length
+        BerkeleyDB::Common 	db
+	u_int32_t		offset
+	u_int32_t		length
 	PPCODE:
 	    if (GIMME == G_ARRAY) {
 		XPUSHs(sv_2mortal(newSViv(db->partial == DB_DBT_PARTIAL))) ;
@@ -1726,7 +1835,7 @@ partial_set(db, offset, length)
 
 void
 partial_clear(db)
-        BerkDB::Common 	db
+        BerkeleyDB::Common 	db
 	PPCODE:
 	    if (GIMME == G_ARRAY) {
 		XPUSHs(sv_2mortal(newSViv(db->partial == DB_DBT_PARTIAL))) ;
@@ -1742,7 +1851,7 @@ partial_clear(db)
 	(db->Status = ((db->dbp)->del)(db->dbp, db->txn, &key, flags))
 int
 db_del(db, key, flags=0)
-	BerkDB::Common	db
+	BerkeleyDB::Common	db
 	DBTKEY		key
 	u_int		flags
 	INIT:
@@ -1753,7 +1862,7 @@ db_del(db, key, flags=0)
 	(db->Status = ((db->dbp)->get)(db->dbp, db->txn, &key, &data, flags))
 int
 db_get(db, key, data, flags=0)
-	BerkDB::Common	db
+	BerkeleyDB::Common	db
 	u_int		flags
 	DBTKEY_B	key
 	DBT		data = NO_INIT
@@ -1767,10 +1876,10 @@ db_get(db, key, data, flags=0)
 		(db->Status = (db->dbp->put)(db->dbp,db->txn,&key,&data,flag))
 int
 db_put(db, key, data, flags=0)
-	BerkDB::Common	db
-	DBTKEY		key
-	DBT		data
-	u_int		flags
+	BerkeleyDB::Common	db
+	DBTKEY			key
+	DBT			data
+	u_int			flags
 	INIT:
 	  CurrentDB = db ;
 	  /* SetPartial(data) ; */
@@ -1778,7 +1887,7 @@ db_put(db, key, data, flags=0)
 #define db_fd(d, x)	(db->Status = (db->dbp->fd)(db->dbp, &x))
 int
 db_fd(db)
-	BerkDB::Common	db
+	BerkeleyDB::Common	db
 	CODE:
 	  CurrentDB = db ;
 	  db_fd(db, RETVAL) ;
@@ -1789,8 +1898,8 @@ db_fd(db)
 #define db_sync(db, fl)	(db->Status = (db->dbp->sync)(db->dbp, fl))
 int
 db_sync(db, flags=0)
-	BerkDB::Common	db
-	u_int		flags
+	BerkeleyDB::Common	db
+	u_int			flags
 	INIT:
 	  CurrentDB = db ;
 
@@ -1798,13 +1907,13 @@ db_sync(db, flags=0)
 
 
 
-MODULE = BerkDB::Cursor              PACKAGE = BerkDB::Cursor	PREFIX = cu_
+MODULE = BerkeleyDB::Cursor              PACKAGE = BerkeleyDB::Cursor	PREFIX = cu_
 
 
 #define cu_DESTROY(c)	((c->cursor)->c_close)(c->cursor)
 int
 cu_DESTROY(db)
-    BerkDB::Cursor	db
+    BerkeleyDB::Cursor	db
 	INIT:
 	  Trace(("in cursor DESTROY\n")) ;
 	  CurrentDB = db ;
@@ -1819,7 +1928,7 @@ cu_DESTROY(db)
 #define cu_c_del(c,f)	(c->Status = ((c->cursor)->c_del)(c->cursor,f))
 int
 cu_c_del(db, flags=0)
-    BerkDB::Cursor	db
+    BerkeleyDB::Cursor	db
     int			flags
 	INIT:
 	  CurrentDB = db ;
@@ -1828,7 +1937,7 @@ cu_c_del(db, flags=0)
 #define cu_c_get(c,k,d,f) (c->Status = (c->cursor->c_get)(c->cursor,&k,&d,f))
 int
 cu_c_get(db, key, data, flags=0)
-    BerkDB::Cursor	db
+    BerkeleyDB::Cursor	db
     int			flags
     DBTKEY_B		key
     DBT			data = NO_INIT
@@ -1843,7 +1952,7 @@ cu_c_get(db, key, data, flags=0)
 #define cu_c_put(c,k,d,f)  (c->Status = (c->cursor->c_put)(c->cursor,&k,&d,f))
 int
 cu_c_put(db, key, data, flags=0)
-    BerkDB::Cursor	db
+    BerkeleyDB::Cursor	db
     DBTKEY		key
     DBT			data
     int			flags
@@ -1855,26 +1964,26 @@ cu_c_put(db, key, data, flags=0)
 
 
 
-MODULE = BerkDB::Txn              PACKAGE = BerkDB::Txn		PREFIX = xx_
+MODULE = BerkeleyDB::Txn              PACKAGE = BerkeleyDB::Txn		PREFIX = xx_
 
-BerkDB::TxnMgr
+BerkeleyDB::TxnMgr
 txn_open(dir, flags, mode, dbenv)
     const char *	dir
     int 		flags
     int 		mode
-    BerkDB::Env 	dbenv
+    BerkeleyDB::Env 	dbenv
         NOT_IMPLEMENTED_YET
 
-BerkDB::Txn
+BerkeleyDB::Txn
 txn_begin(txnp, tid)
-	BerkDB::TxnMgr	txnp
-	BerkDB::Txn	tid
+	BerkeleyDB::TxnMgr	txnp
+	BerkeleyDB::Txn		tid
         NOT_IMPLEMENTED_YET
 
 
 int
 txn_close(txnp)
-	BerkDB::TxnMgr	txnp
+	BerkeleyDB::TxnMgr	txnp
         NOT_IMPLEMENTED_YET
 
 #define xx_txn_unlink(d,f,e)	txn_unlink(d,f,&(e->Env))
@@ -1882,34 +1991,34 @@ int
 xx_txn_unlink(dir, force, dbenv)
     const char *	dir
     int 		force
-    BerkDB::Env 	dbenv
+    BerkeleyDB::Env 	dbenv
 
 int
 txn_prepare(tid)
-	BerkDB::Txn	tid
+	BerkeleyDB::Txn	tid
 
 int
 txn_commit(tid)
-	BerkDB::Txn	tid
+	BerkeleyDB::Txn	tid
 
 int
 txn_abort(tid)
-	BerkDB::Txn	tid
+	BerkeleyDB::Txn	tid
 
 u_int32_t
 txn_id(tid)
-	BerkDB::Txn	tid
+	BerkeleyDB::Txn	tid
 
 int
 txn_checkpoint(txnp, kbyte, min)
-	BerkDB::TxnMgr	txnp
-	long		kbyte
-	long		min
+	BerkeleyDB::TxnMgr	txnp
+	long			kbyte
+	long			min
 
 HV *
 txn_stat(txnp)
-	BerkDB::TxnMgr	txnp
-	HV *		RETVAL = NULL ;
+	BerkeleyDB::TxnMgr	txnp
+	HV *			RETVAL = NULL ;
 	CODE:
 	{
 	    DB_TXN_STAT *	stat ;
@@ -1928,11 +2037,11 @@ txn_stat(txnp)
 	OUTPUT:
 	    RETVAL
 
-MODULE = BerkDB::_tiedHash        PACKAGE = BerkDB::_tiedHash
+MODULE = BerkeleyDB::_tiedHash        PACKAGE = BerkeleyDB::_tiedHash
 
 int
 FIRSTKEY(db)
-        BerkDB::Common         db
+        BerkeleyDB::Common         db
         CODE:
         {
             DBTKEY      key ;
@@ -1970,8 +2079,8 @@ FIRSTKEY(db)
 
 int
 NEXTKEY(db, key)
-        BerkDB::Common  db
-        DBTKEY          key
+        BerkeleyDB::Common  db
+        DBTKEY              key
         CODE:
         {
             DBT         value ;
@@ -1990,11 +2099,11 @@ NEXTKEY(db, key)
         }
  
 
-MODULE = BerkDB        PACKAGE = BerkDB
+MODULE = BerkeleyDB        PACKAGE = BerkeleyDB
 
 BOOT:
   {
-    SV * ver_sv = perl_get_sv("BerkDB::db_version", TRUE) ;
+    SV * ver_sv = perl_get_sv("BerkeleyDB::db_version", TRUE) ;
     int Major, Minor, Patch ;
     (void)db_version(&Major, &Minor, &Patch) ;
     sv_setpvf(ver_sv, "%d.%d", Major, Minor) ;
@@ -2002,9 +2111,6 @@ BOOT:
     empty.data  = &zero ;
     empty.size  =  sizeof(db_recno_t) ;
     empty.flags = 0 ;
-
-    /* Create the $BerkDB::Error scalar */
-    sv_setpv(perl_get_sv(ERR_BUFF, TRUE), "") ;
 
   }
 
