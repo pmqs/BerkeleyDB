@@ -14,10 +14,10 @@ BerkeleyDB - Perl extension for Berkeley DB version 2, 3 or 4
   $db  = tie %hash, 'BerkeleyDB::Btree', [OPTIONS] ;
   $db  = new BerkeleyDB::Btree [OPTIONS] ;
 
-  $db  = tie %hash, 'BerkeleyDB::Recno', [OPTIONS] ;
+  $db  = tie @array, 'BerkeleyDB::Recno', [OPTIONS] ;
   $db  = new BerkeleyDB::Recno [OPTIONS] ;
 
-  $db  = tie %hash, 'BerkeleyDB::Queue', [OPTIONS] ;
+  $db  = tie @array, 'BerkeleyDB::Queue', [OPTIONS] ;
   $db  = new BerkeleyDB::Queue [OPTIONS] ;
 
   $db  = new BerkeleyDB::Unknown [OPTIONS] ;
@@ -1601,7 +1601,7 @@ See L<"AUTHOR"> for details.
 
 =head1 AUTHOR
 
-Paul Marquess E<lt>pmqs@cpan.org<gt>.
+Paul Marquess E<lt>pmqs@cpan.orgE<gt>.
 
 Questions about Berkeley DB may be addressed to E<lt>db@sleepycat.comE<gt>.
 

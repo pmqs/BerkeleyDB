@@ -1,5 +1,24 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.23 15th June 2003
+
+        * Fixed problem where a secondary index would use the same
+          compare callback as the primary key, regardless of what was
+          defined for the secondary index. 
+	  Problem spotted by Dave Tallman.
+
+        * Also fixed a problem with the associate callback. If the value
+          for the secondary key was not a string, the secondary key was
+          being set incorrectly. This is now fixed.
+
+        * When built with Berkeley DB 3.2 or better, all callbacks now use
+          the BackRef pointer instead of the global CurrentDB. This was
+          done partially to fix the secondary index problem, above.
+
+        * The test harness was failing under cygwin. Now fixed. 
+
+        * Previous release broke TRACE. Fixed.
+
 0.22 17th May 2003
 
         * win32 problem with open macro fixed.

@@ -122,6 +122,16 @@ $FA = 0 ;
     }
 }
 
+sub normalise
+{
+    my $data = shift ;
+    $data =~ s#\r\n#\n#g
+        if $^O eq 'cygwin' ;
+
+    return $data ;
+}
+
+
 sub docat
 {
     my $file = shift;
@@ -129,6 +139,7 @@ sub docat
     open(CAT,$file) || die "Cannot open $file:$!";
     my $result = <CAT>;
     close(CAT);
+    $result = normalise($result);
     return $result;
 }
 
@@ -140,6 +151,7 @@ sub docat_del
     my $result = <CAT> || "" ;
     close(CAT);
     unlink $file ;
+    $result = normalise($result);
     return $result;
 }   
 
@@ -174,6 +186,41 @@ sub joiner
     }
 
     (scalar(@data), join($sep, @data)) ;
+}
+
+sub joinkeys
+{
+    my $db = shift ;
+    my $sep = shift || " " ;
+    my ($k, $v) = (0, "") ;
+    my @data = () ;
+
+    my $cursor = $db->db_cursor()  or return () ;
+    for ( my $status = $cursor->c_get($k, $v, DB_FIRST) ;
+          $status == 0 ;
+          $status = $cursor->c_get($k, $v, DB_NEXT)) {
+	push @data, $k ;
+    }
+
+    return join($sep, @data) ;
+
+}
+
+sub dumpdb
+{
+    my $db = shift ;
+    my $sep = shift || " " ;
+    my ($k, $v) = (0, "") ;
+    my @data = () ;
+
+    my $cursor = $db->db_cursor()  or return () ;
+    for ( my $status = $cursor->c_get($k, $v, DB_FIRST) ;
+          $status == 0 ;
+          $status = $cursor->c_get($k, $v, DB_NEXT)) {
+	print "  [$k][$v]\n" ;
+    }
+
+
 }
 
 sub countRecords
