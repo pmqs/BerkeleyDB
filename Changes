@@ -13,3 +13,7 @@ Revision history for Perl extension BerkeleyDB.
 	implemented BerkeleyDB::Unknown
 	implemented BerkeleyDB::Recno, including push, pop etc
 	modified the txn support. 
+
+0.04  19 May 1998
+	Define DEFSV & SAVE_DEFSV if not already defined. This allows
+	the module to be built with Perl 5.004_04.

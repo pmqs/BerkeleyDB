@@ -8,7 +8,7 @@
 
  All comments/suggestions/problems are welcome
  
-     Copyright (c) 1997 Paul Marquess. All rights reserved.
+     Copyright (c) 1997/8 Paul Marquess. All rights reserved.
      This program is free software; you can redistribute it and/or
      modify it under the same terms as Perl itself.
 
@@ -37,13 +37,22 @@ extern "C" {
 
 #include <db.h>
 
+/* need to define DEFSV & SAVE_DEFSV for older version of Perl */
+#ifndef DEFSV
+#define DEFSV GvSV(defgv)
+#endif
+
+#ifndef SAVE_DEFSV
+#define SAVE_DEFSV SAVESPTR(GvSV(defgv))
+#endif
+
 #ifdef __cplusplus
 }
 #endif
 
 /* #define TRACE */
 /* #define ALLOW_RECNO_OFFSET */
-#define ALLOW_KV_FILTER
+/* #define ALLOW_KV_FILTER */
 
 
 typedef struct {
@@ -139,7 +148,7 @@ typedef int			DualType ;
 #define ckFilter(arg,type)                              \
         if (db->type) {                                 \
             if (db->filtering)                          \
-                croak("recusrion detected") ;           \
+                croak("recursion detected") ;           \
             db->filtering = TRUE ;                      \
             SAVE_DEFSV ;   /* save $_ */                \
             /* DEFSV = sv_2mortal(newSVsv(arg)) ; */            \
@@ -673,9 +682,10 @@ IV value ;
 }
 
 static BerkeleyDB
-my_db_open(db, ref, dbenv, file, type, flags, mode, info)
+my_db_open(db, ref, ref_dbenv, dbenv, file, type, flags, mode, info)
 BerkeleyDB	db ;
-SV *		ref ;
+SV * 		ref;
+SV *		ref_dbenv ;
 BerkeleyDB__Env	dbenv ;
 const char *	file;
 DBTYPE		type;
@@ -688,8 +698,8 @@ DB_INFO * 	info ;
     DB *	dbp ;
     int		Status ;
 
-    Trace(("_db_open(dbenv[%lu] ref [%lu] file[%s] type[%d] flags[%d] mode[%d]\n", 
-		dbenv, ref, file, type, flags, mode)) ;
+    Trace(("_db_open(dbenv[%lu] ref_dbenv [%lu] file[%s] type[%d] flags[%d] mode[%d]\n", 
+		dbenv, ref_dbenv, file, type, flags, mode)) ;
 
     CurrentDB = db ;
     if (dbenv) 
@@ -705,9 +715,23 @@ DB_INFO * 	info ;
 	hash_store_iv("BerkeleyDB::Term::Db", (IV)dbp, 1) ;
 	Trace(("  storing %d in BerkeleyDB::Term::Db\n", dbp)) ;
 	if (dbenv) {
-	    RETVAL->ref2env = newRV(ref) ;
+	    RETVAL->ref2env = newRV(ref_dbenv) ;
 	    dbenv->Status = Status ;
 	}
+#ifdef ALLOW_KV_FILTER
+        {
+            SV * sv ;
+	    HV * hash = (HV*) SvRV(ref) ;
+            if ((sv = readHash(hash, "ReadKey")) && sv != &sv_undef)
+                db->readKey = newSVsv(sv) ;
+            if ((sv = readHash(hash, "WriteKey")) && sv != &sv_undef)
+                db->writeKey = newSVsv(sv) ;
+            if ((sv = readHash(hash, "ReadValue")) && sv != &sv_undef)
+                db->readValue = newSVsv(sv) ;
+            if ((sv = readHash(hash, "WriteValue")) && sv != &sv_undef)
+                db->writeValue = newSVsv(sv) ;
+        }	    
+#endif	    
     }
     else { 
 	Trace(("status = %d\n", Status)) ; 
@@ -1903,9 +1927,9 @@ close_dbs()
 	I32 ret = hv_iterinit(hv) ;
 	while ( he = hv_iternext(hv) ) {
 	    db = * (DB**) (IV) hv_iterkey(he, &len) ;
-	    printf("close_dbs %d %d\n", db, len) ;
+	    /* printf("close_dbs %d %d\n", db, len) ; */
 	    (db->close)(db, 0) ;
-	    printf("close_dbs closed\n");
+	    /* printf("close_dbs closed\n"); */
 	}
 	
 void
@@ -1958,8 +1982,7 @@ _db_open_hash(self, ref)
 		info.h_hash = hash_cb ;
 		db->hash = newSVsv(sv) ;
 	    }
-	    
-	    RETVAL = my_db_open(db, ref_dbenv, dbenv, file, DB_HASH, flags, mode, &info) ;
+	    RETVAL = my_db_open(db, ref, ref_dbenv, dbenv, file, DB_HASH, flags, mode, &info) ;
 	}
 	OUTPUT:
 	    RETVAL
@@ -2012,7 +2035,7 @@ _db_open_unknown(ref)
 		db->txn = tmp->txn ;
 	    }
 	    
-	    RETVAL = my_db_open(db, ref_dbenv, dbenv, file, DB_UNKNOWN, flags, mode, &info) ;
+	    RETVAL = my_db_open(db, ref, ref_dbenv, dbenv, file, DB_UNKNOWN, flags, mode, &info) ;
 	    XPUSHs(sv_2mortal(newSViv((IV)RETVAL)));
 	    if (RETVAL)
 	        XPUSHs(sv_2mortal(newSVpv(Names[RETVAL->type], 0))) ;
@@ -2067,7 +2090,7 @@ _db_open_btree(self, ref)
 		db->prefix = newSVsv(sv) ;
 	    }
 	    
-	    RETVAL = my_db_open(db, ref_dbenv, dbenv, file, DB_BTREE, flags, mode, &info) ;
+	    RETVAL = my_db_open(db, ref, ref_dbenv, dbenv, file, DB_BTREE, flags, mode, &info) ;
 	}
 	OUTPUT:
 	    RETVAL
@@ -2175,7 +2198,7 @@ _db_open_recno(self, ref)
 	    db->array_base = (db->array_base == 0 ? 1 : 0) ;
 #endif
 	    
-	    RETVAL = my_db_open(db, ref_dbenv, dbenv, file, DB_RECNO, flags, mode, &info) ;
+	    RETVAL = my_db_open(db, ref, ref_dbenv, dbenv, file, DB_RECNO, flags, mode, &info) ;
 	}
 	OUTPUT:
 	    RETVAL
@@ -2268,6 +2291,7 @@ db_cursor(db)
 	OUTPUT:
 	  RETVAL
 
+
 int
 ArrayOffset(db)
         BerkeleyDB::Common 	db
@@ -2299,6 +2323,65 @@ status(db)
 	    RETVAL =  db->Status ;
 	OUTPUT: 
 	    RETVAL
+
+#ifdef ALLOW_KV_FILTER
+
+#define setFilter(type)						\
+	    if (db->type)					\
+	        RETVAL = sv_2mortal(newSVsv(db->type)) ;	\
+	    if (db->type && code == &sv_undef) {		\
+                SvREFCNT_dec(db->type) ;			\
+	        db->type = NULL ;				\
+	    }							\
+	    else if (code) {					\
+	        if (db->type)					\
+	            sv_setsv(db->type, code) ;			\
+	        else						\
+	            db->type = newSVsv(code) ;			\
+	    }	    
+
+
+SV *
+ReadKey(db, code=NULL)
+	BerkeleyDB::Common	db
+	SV *			code
+	SV *			RETVAL = NULL ;
+	CODE:
+	    setFilter(readKey) ;
+	OUTPUT:
+	    RETVAL
+
+SV *
+WriteKey(db, code=NULL)
+	BerkeleyDB::Common	db
+	SV *			code
+	SV *			RETVAL = NULL ;
+	CODE:
+	    setFilter(writeKey) ;
+	OUTPUT:
+	    RETVAL
+
+SV *
+ReadValue(db, code=NULL)
+	BerkeleyDB::Common	db
+	SV *			code
+	SV *			RETVAL = NULL ;
+	CODE:
+	    setFilter(readValue) ;
+	OUTPUT:
+	    RETVAL
+
+SV *
+WriteValue(db, code=NULL)
+	BerkeleyDB::Common	db
+	SV *			code
+	SV *			RETVAL = NULL ;
+	CODE:
+	    setFilter(writeValue) ;
+	OUTPUT:
+	    RETVAL
+
+#endif /* ALLOW_KV_FILTER */
 
 void
 partial_set(db, offset, length)

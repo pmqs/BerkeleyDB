@@ -17,7 +17,7 @@ use strict;
 use Carp;
 use vars qw($VERSION @ISA @EXPORT $AUTOLOAD);
 
-$VERSION = '0.03';
+$VERSION = '0.04';
 
 require Exporter;
 require DynaLoader;
@@ -355,6 +355,12 @@ sub new
 			Ffactor		=> 0,
 			Nelem 		=> 0,
 			Hash 		=> undef,
+
+			# BerkeleyDB specific
+			ReadKey		=> undef,
+			WriteKey	=> undef,
+			ReadValue	=> undef,
+			WriteValue	=> undef,
 		      }, @_) ;
 
     croak("Env not of type BerkeleyDB::Env")
