@@ -684,6 +684,7 @@ umask(0) ;
     # db_stat
 
     my $lex = new LexFile $Dfile ;
+    my $recs = ($BerkeleyDB::db_version >= 3.1 ? "qs_ndata" : "qs_nrecs") ;
     my @array ;
     my ($k, $v) ;
     my $rec_len = 7 ;
@@ -695,7 +696,7 @@ umask(0) ;
 					;
 
     my $ref = $db->db_stat() ; 
-    ok 180, $ref->{'qs_nrecs'} == 0;
+    ok 180, $ref->{$recs} == 0;
     ok 181, $ref->{'qs_pagesize'} == 4 * 1024;
 
     # create some data
@@ -713,7 +714,7 @@ umask(0) ;
     ok 182, $ret == 0 ;
 
     $ref = $db->db_stat() ; 
-    ok 183, $ref->{'qs_nrecs'} == 3;
+    ok 183, $ref->{$recs} == 3;
 }
 
 {

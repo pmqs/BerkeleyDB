@@ -2,7 +2,7 @@
 package BerkeleyDB;
 
 
-#     Copyright (c) 1997-1999 Paul Marquess. All rights reserved.
+#     Copyright (c) 1997-2000 Paul Marquess. All rights reserved.
 #     This program is free software; you can redistribute it and/or
 #     modify it under the same terms as Perl itself.
 #
@@ -16,7 +16,7 @@ use strict;
 use Carp;
 use vars qw($VERSION @ISA @EXPORT $AUTOLOAD);
 
-$VERSION = '0.10';
+$VERSION = '0.11';
 
 require Exporter;
 require DynaLoader;
@@ -283,6 +283,7 @@ package BerkeleyDB::Env ;
 
 use UNIVERSAL qw( isa ) ;
 use Carp ;
+use vars qw( %valid_config_keys ) ;
 
 sub isaFilehandle
 {
@@ -291,6 +292,8 @@ sub isaFilehandle
     return ((isa($fh,'GLOB') or isa(\$fh,'GLOB')) and defined fileno($fh) )
 
 }
+
+%valid_config_keys = map { $_, 1 } qw( DB_DATA_DIR DB_LOG_DIR DB_TEMP_DIR ) ;
 
 sub new
 {
@@ -326,13 +329,19 @@ sub new
     }
 
     
+    my %config ;
     if (defined $got->{Config}) {
     	croak("Config parameter must be a hash reference")
             if ! ref $got->{Config} eq 'HASH' ;
 
+	%config = %{ $got->{Config} } ;
         @BerkeleyDB::a = () ;
 	my $k = "" ; my $v = "" ;
-	while (($k, $v) = each %{$got->{Config}}) {
+	while (($k, $v) = each %config) {
+	    if ($BerkeleyDB::db_version >= 3.1 && ! $valid_config_keys{$k} ) {
+	        $BerkeleyDB::Error = "illegal name-value pair: $k $v\n" ; 
+                croak $BerkeleyDB::Error ;
+	    }
 	    push @BerkeleyDB::a, "$k\t$v" ;
 	}
 
@@ -343,6 +352,21 @@ sub new
     my ($addr) = _db_appinit($pkg, $got) ;
     my $obj ;
     $obj = bless [$addr] , $pkg if $addr ;
+    if ($obj && $BerkeleyDB::db_version >= 3.1 && keys %config) {
+	my ($k, $v);
+	while (($k, $v) = each %config) {
+	    if ($k eq 'DB_DATA_DIR')
+	      { $obj->set_data_dir($v) }
+	    elsif ($k eq 'DB_LOG_DIR')
+	      { $obj->set_lg_dir($v) }
+	    elsif ($k eq 'DB_TEMP_DIR')
+	      { $obj->set_tmp_dir($v) }
+	    else {
+	      $BerkeleyDB::Error = "illegal name-value pair: $k $v\n" ; 
+              croak $BerkeleyDB::Error 
+            }
+	}
+    }
     return $obj ;
 }
 
@@ -1053,7 +1077,7 @@ sub get_dup
 sub db_cursor
 {
     my $db = shift ;
-    my ($addr) = $db->_db_cursor() ;
+    my ($addr) = $db->_db_cursor(@_) ;
     my $obj ;
     $obj = bless [$addr, $db] , "BerkeleyDB::Cursor" if $addr ;
     return $obj ;

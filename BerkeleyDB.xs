@@ -6,7 +6,7 @@
 
  All comments/suggestions/problems are welcome
  
-     Copyright (c) 1997-1999 Paul Marquess. All rights reserved.
+     Copyright (c) 1997-2000 Paul Marquess. All rights reserved.
      This program is free software; you can redistribute it and/or
      modify it under the same terms as Perl itself.
 
@@ -50,6 +50,14 @@ extern "C" {
 #endif
 
 #include <db.h>
+
+#if (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR == 0)
+#  define IS_DB_3_0
+#endif
+
+#if DB_VERSION_MAJOR > 3 || (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR >= 1)
+#  define AT_LEAST_DB_3_1
+#endif
 
 /* need to define DEFSV & SAVE_DEFSV for older version of Perl */
 #ifndef DEFSV
@@ -578,7 +586,7 @@ close_everything(void)
 #if DB_VERSION_MAJOR == 2
                 db_appexit(env->Env) ;
 #else	      
-	        env->Env->close(env->Env, 0) ;
+	        (env->Env->close)(env->Env, 0) ;
 #endif	      
 		++ closed ;
 	    }
@@ -1187,7 +1195,7 @@ my_db_open(
     }
     else { 
 #if DB_VERSION_MAJOR > 2
-	dbp->close(dbp, 0) ;
+	(dbp->close)(dbp, 0) ;
 #endif
 	destroyDB(db) ;
         Trace(("db open returned %s\n", my_db_strerror(Status))) ;
@@ -1894,9 +1902,9 @@ constant(char * name, int arg)
 #else
 	    goto not_there;
 #endif
-	if (strEQ(name, "DB_WRIRECURSOR"))
-#ifdef DB_WRIRECURSOR
-	    return DB_WRIRECURSOR;
+	if (strEQ(name, "DB_WRITECURSOR"))
+#ifdef DB_WRITECURSOR
+	    return DB_WRITECURSOR;
 #else
 	    goto not_there;
 #endif
@@ -2177,13 +2185,17 @@ _db_appinit(self, ref)
 	    /* RETVAL->Env.db_errbuf = RETVAL->ErrBuff ; */
 	    env->set_errcall(env, db_errcall_cb) ;
 	    RETVAL->active = TRUE ;
+#ifdef IS_DB_3_0
 	    status = env->open(env, home, config, flags, mode) ;
+#else /* > 3.0 */
+	    status = env->open(env, home, flags, mode) ;
+#endif 
 	    Trace(("ENV->open returned %s\n", my_db_strerror(status))) ;
 	  }
 	  if (status == 0) 
 	      hash_store_iv("BerkeleyDB::Term::Env", (IV)RETVAL, 1) ;
 	  else {
-	      env->close(env, 0) ;
+	      (env->close)(env, 0) ;
               if (RETVAL->ErrHandle)
                   SvREFCNT_dec(RETVAL->ErrHandle) ;
               if (RETVAL->ErrPrefix)
@@ -2236,8 +2248,12 @@ _txn_begin(env, pid=NULL, flags=0)
 
 #if DB_VERSION_MAJOR == 2 
 #  define env_txn_checkpoint(e,k,m) txn_checkpoint(e->Env->tx_info, k, m)
-#else
-#  define env_txn_checkpoint(e,k,m) txn_checkpoint(e->Env, k, m)
+#else /* DB 3.0 or better */
+#  ifdef AT_LEAST_DB_3_1
+#    define env_txn_checkpoint(e,k,m) txn_checkpoint(e->Env, k, m, 0)
+#  else
+#    define env_txn_checkpoint(e,k,m) txn_checkpoint(e->Env, k, m)
+#  endif
 #endif
 DualType
 env_txn_checkpoint(env, kbyte, min)
@@ -2353,7 +2369,7 @@ db_appexit(env)
 #if DB_VERSION_MAJOR == 2
 	    RETVAL = db_appexit(env->Env) ;
 #else
-	    RETVAL = env->Env->close(env->Env, 0) ;
+	    RETVAL = (env->Env->close)(env->Env, 0) ;
 #endif
 	    env->active = FALSE ;
 	    hash_delete("BerkeleyDB::Term::Env", (IV)env) ;
@@ -2372,7 +2388,7 @@ _DESTROY(env)
 #if DB_VERSION_MAJOR == 2
               db_appexit(env->Env) ;
 #else	      
-	      env->Env->close(env->Env, 0) ;
+	      (env->Env->close)(env->Env, 0) ;
 #endif	      
           if (env->ErrHandle)
               SvREFCNT_dec(env->ErrHandle) ;
@@ -2399,6 +2415,50 @@ _TxnMgr(env)
 	OUTPUT:
 	    RETVAL
 
+int
+set_data_dir(env, dir)
+        BerkeleyDB::Env  env
+	char *		 dir
+	INIT:
+	  ckActive_Database(env->active) ;
+	CODE:
+#ifndef AT_LEAST_DB_3_1
+	    softCrash("$env->set_data_dir needs Berkeley DB 3.1 or better") ;
+#else
+	    RETVAL = env->Status = env->Env->set_data_dir(env->Env, dir);
+#endif
+	OUTPUT:
+	    RETVAL
+
+int
+set_lg_dir(env, dir)
+        BerkeleyDB::Env  env
+	char *		 dir
+	INIT:
+	  ckActive_Database(env->active) ;
+	CODE:
+#ifndef AT_LEAST_DB_3_1
+	    softCrash("$env->set_lg_dir needs Berkeley DB 3.1 or better") ;
+#else
+	    RETVAL = env->Status = env->Env->set_lg_dir(env->Env, dir);
+#endif
+	OUTPUT:
+	    RETVAL
+
+int
+set_tmp_dir(env, dir)
+        BerkeleyDB::Env  env
+	char *		 dir
+	INIT:
+	  ckActive_Database(env->active) ;
+	CODE:
+#ifndef AT_LEAST_DB_3_1
+	    softCrash("$env->set_tmp_dir needs Berkeley DB 3.1 or better") ;
+#else
+	    RETVAL = env->Status = env->Env->set_tmp_dir(env->Env, dir);
+#endif
+	OUTPUT:
+	    RETVAL
 
 MODULE = BerkeleyDB::Term		PACKAGE = BerkeleyDB::Term
 
@@ -2486,7 +2546,12 @@ db_stat(db, flags=0)
 		hv_store_iv(RETVAL, "hash_magic", stat->hash_magic) ;
 		hv_store_iv(RETVAL, "hash_version", stat->hash_version);
 		hv_store_iv(RETVAL, "hash_pagesize", stat->hash_pagesize);
+#ifdef AT_LEAST_DB_3_1
+		hv_store_iv(RETVAL, "hash_nkeys", stat->hash_nkeys);
+		hv_store_iv(RETVAL, "hash_ndata", stat->hash_ndata);
+#else
 		hv_store_iv(RETVAL, "hash_nrecs", stat->hash_nrecs);
+#endif
 		hv_store_iv(RETVAL, "hash_nelem", stat->hash_nelem);
 		hv_store_iv(RETVAL, "hash_ffactor", stat->hash_ffactor);
 		hv_store_iv(RETVAL, "hash_buckets", stat->hash_buckets);
@@ -2639,7 +2704,12 @@ db_stat(db, flags=0)
 		hv_store_iv(RETVAL, "bt_re_pad", stat->bt_re_pad);
 		hv_store_iv(RETVAL, "bt_pagesize", stat->bt_pagesize);
 		hv_store_iv(RETVAL, "bt_levels", stat->bt_levels);
+#ifdef AT_LEAST_DB_3_1
+		hv_store_iv(RETVAL, "bt_nkeys", stat->bt_nkeys);
+		hv_store_iv(RETVAL, "bt_ndata", stat->bt_ndata);
+#else
 		hv_store_iv(RETVAL, "bt_nrecs", stat->bt_nrecs);
+#endif
 		hv_store_iv(RETVAL, "bt_int_pg", stat->bt_int_pg);
 		hv_store_iv(RETVAL, "bt_leaf_pg", stat->bt_leaf_pg);
 		hv_store_iv(RETVAL, "bt_dup_pg", stat->bt_dup_pg);
@@ -2796,7 +2866,12 @@ db_stat(db, flags=0)
 	    	RETVAL = (HV*)sv_2mortal((SV*)newHV()) ;
 		hv_store_iv(RETVAL, "qs_magic", stat->qs_magic) ;
 		hv_store_iv(RETVAL, "qs_version", stat->qs_version);
+#ifdef AT_LEAST_DB_3_1
+		hv_store_iv(RETVAL, "qs_nkeys", stat->qs_nkeys);
+		hv_store_iv(RETVAL, "qs_ndata", stat->qs_ndata);
+#else
 		hv_store_iv(RETVAL, "qs_nrecs", stat->qs_nrecs);
+#endif
 		hv_store_iv(RETVAL, "qs_pages", stat->qs_pages);
 		hv_store_iv(RETVAL, "qs_pagesize", stat->qs_pagesize);
 		hv_store_iv(RETVAL, "qs_pgfree", stat->qs_pgfree);
@@ -3223,6 +3298,7 @@ _DESTROY(db)
     	      ((db->cursor)->c_close)(db->cursor) ;
 	  if (db->parent_db->open_cursors)
 	      -- db->parent_db->open_cursors ;
+          Safefree(db->filename) ;
           Safefree(db) ;
 	  Trace(("End of BerkeleyDB::Cursor::_DESTROY\n")) ;
 
@@ -3347,7 +3423,11 @@ txn_close(txnp)
 #if DB_VERSION_MAJOR == 2 
 #  define xx_txn_checkpoint(t,k,m) txn_checkpoint(t->env->Env->tx_info, k, m)
 #else
-#  define xx_txn_checkpoint(t,k,m) txn_checkpoint(t->env->Env, k, m)
+#  ifdef AT_LEAST_DB_3_1
+#    define xx_txn_checkpoint(t,k,m) txn_checkpoint(t->env->Env, k, m, 0)
+#  else
+#    define xx_txn_checkpoint(t,k,m) txn_checkpoint(t->env->Env, k, m)
+#  endif
 #endif
 DualType
 xx_txn_checkpoint(txnp, kbyte, min)

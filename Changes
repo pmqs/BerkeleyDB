@@ -78,3 +78,12 @@ Revision history for Perl extension BerkeleyDB.
 	* A thread-enabled Perl it could core when a database was closed. 
 	  Problem traced to the strdup function.
 
+0.11  4th June 2000
+	* When built with Berkeley Db 3.x there can ba a clash with the close
+	  macro.
+	* Typo in the definition of DB_WRITECURSOR
+	* The flags parameter wasn't getting sent to db_cursor
+	* Plugged small mempory leak in db_cursor (DESTROY wasn't freeing
+	  memory)
+	* Can be built with Berkeley DB 3.1
+   
