@@ -238,7 +238,7 @@ B<DB_USE_ENVIRON_ROOT>
 
 =item -Verbose
 
-Add extra dubugging information to the messages sent to B<-ErrFile>.
+Add extra debugging information to the messages sent to B<-ErrFile>.
 
 =back
 
@@ -683,7 +683,7 @@ Berkeley DB's default sorting algorithm.
 
 =head2 Changing the sort order
 
-It is possible to supply your own sorthing algotithm if the one that Berkeley
+It is possible to supply your own sorting algorithm if the one that Berkeley
 DB used isn't suitable. The code below is identical to the previous example
 except for the case insensitive compare function.
 
@@ -1156,8 +1156,8 @@ must take B<one> of the following values:
 When used with a Btree or Hash database, a duplicate of the key referenced
 by the current cursor position will be created and the contents of
 B<$value> will be associated with it - B<$key> is ignored.
-The new key/value pair will be stored 
-immediately after the current cursor position. 
+The new key/value pair will be stored immediately after the current
+cursor position.
 Obviously the database has to have been opened with B<DB_DUP>.
 
 When used with a Recno ... TODO
@@ -1364,7 +1364,14 @@ TODO.
 
 =head2 Sharing Databases With C Applications
 
-TODO
+There is no technical reason why a Berkeley DB database cannot be
+shared by both a Perl and a C application.
+
+The vast majority of problems that are reported in this area boil down
+to the fact that C strings are NULL terminated, whilst Perl strings
+are not. See L<An Example -- the NULL termination problem.> in the DBM
+FILTERS section for a generic way to work around this problem.
+
 
 =head2 The untie Gotcha
 
@@ -1372,15 +1379,15 @@ TODO
 
 =head1 COMMON QUESTIONS
 
-This section answers some of the questions that have arisen
+This section attempts to answer some of the more common questions that
+I get asked.
 
-TODO
 
 =head2 Relationship with DB_File
 
 Before Berkeley DB 2.x was written there was only one Perl module that
 interfaced to Berkeley DB. That module is called B<DB_File>. Although
-it can be build with Berkeley DB 1.x, 2.x or 3.x, it only provides
+B<DB_File> can be build with Berkeley DB 1.x, 2.x or 3.x, it only provides
 an interface to the functionality available in Berkeley DB 1.x. That
 means that it doesn't support transactions, locking or any of the other
 new features available in DB 2.x or 3.x.
@@ -1412,7 +1419,7 @@ makes use of, namely Berkeley DB, is not. Berkeley DB has its own
 copyright and its own license. Please take the time to read it.
 
 Here are are few words taken from the Berkeley DB FAQ (at
-http://www.sleepycat.com) regarding the license:
+F<http://www.sleepycat.com>) regarding the license:
 
     Do I have to license DB to use it in Perl scripts?
 

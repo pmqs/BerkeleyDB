@@ -66,6 +66,10 @@ extern "C" {
 #    define aTHX
 #    define aTHX_
 #endif
+
+#ifndef dTHR
+#    define dTHR
+#endif
  
 #ifndef newSVpvn
 #    define newSVpvn(a,b)       newSVpv(a,b)
@@ -251,6 +255,9 @@ typedef void *	      		PV_or_NULL ;
 typedef PerlIO *      		IO_or_NULL ;
 typedef int			DualType ;
 
+static void
+hash_delete(char * hash, IV key);
+
 #ifdef TRACE
 #  define Trace(x)	printf x 
 #else
@@ -301,8 +308,6 @@ typedef int			DualType ;
 
 #define ZMALLOC(to, typ) ((to = (typ *)safemalloc(sizeof(typ))), \
 				Zero(to,1,typ))
-
-#define STRDUP(from) (from ? strcpy((char *)safemalloc(strlen(from)),from) : NULL)
 
 #define DBT_clear(x)	Zero(&x, 1, DBT) ;
 
@@ -419,6 +424,21 @@ static BerkeleyDB	CurrentDB ;
 static DBTKEY	empty ;
 static char	ErrBuff[1000] ;
 
+static char *  
+my_strdup(const char *s)
+{     
+    if (s == NULL)
+        return NULL ;
+
+    {
+        MEM_SIZE l = strlen(s);
+        char *s1 = (char *)safemalloc(l);
+    
+        Copy(s, s1, (MEM_SIZE)l, char);
+        return s1;
+    }
+}
+
 #if DB_VERSION_MAJOR == 2
 static char *
 db_strerror(int err)
@@ -470,6 +490,7 @@ my_db_strerror(int err)
 static void
 close_everything(void)
 {
+    dTHR;
     Trace(("close_everything\n")) ;
     /* Abort All Transactions */
     {
@@ -503,7 +524,7 @@ close_everything(void)
 	I32 ret = hv_iterinit(hv) ;
 	int  all = 0 ;
 	int  closed = 0 ;
-	Trace(("BerkeleyDB::Term::close_all_cursors dirty=%d\n", PL_dirty)) ;
+	Trace(("BerkeleyDB::Term::close_all_cursors \n")) ;
 	while ( he = hv_iternext(hv) ) {
 	    db = * (BerkeleyDB__Cursor*) (IV) hv_iterkey(he, &len) ;
 	    Trace(("  Closing Cursor [%d] in [%d] Active [%d]\n", db->cursor, db, db->active));
@@ -526,7 +547,7 @@ close_everything(void)
 	I32 ret = hv_iterinit(hv) ;
 	int  all = 0 ;
 	int  closed = 0 ;
-	Trace(("BerkeleyDB::Term::close_all_dbs dirty=%d\n", PL_dirty)) ;
+	Trace(("BerkeleyDB::Term::close_all_dbs\n" )) ;
 	while ( he = hv_iternext(hv) ) {
 	    db = * (BerkeleyDB*) (IV) hv_iterkey(he, &len) ;
 	    Trace(("  Closing Database [%d] in [%d] Active [%d]\n", db->dbp, db, db->active));
@@ -549,7 +570,7 @@ close_everything(void)
 	I32 ret = hv_iterinit(hv) ;
 	int  all = 0 ;
 	int  closed = 0 ;
-	Trace(("BerkeleyDB::Term::close_all_envs dirty=%d\n", PL_dirty)) ;
+	Trace(("BerkeleyDB::Term::close_all_envs\n")) ;
 	while ( he = hv_iternext(hv) ) {
 	    env = * (BerkeleyDB__Env*) (IV) hv_iterkey(he, &len) ;
 	    Trace(("  Closing Environment [%d] in [%d] Active [%d]\n", env->Env, env, env->active));
@@ -569,6 +590,38 @@ close_everything(void)
 
     Trace(("end close_everything\n")) ;
 
+}
+
+static void
+destroyDB(BerkeleyDB db)
+{
+    dTHR;
+    if (! PL_dirty && db->active) {
+      	-- db->open_cursors ;
+	((db->dbp)->close)(db->dbp, 0) ;
+    }
+    if (db->hash)
+       	  SvREFCNT_dec(db->hash) ;
+    if (db->compare)
+       	  SvREFCNT_dec(db->compare) ;
+    if (db->dup_compare)
+       	  SvREFCNT_dec(db->dup_compare) ;
+    if (db->prefix)
+       	  SvREFCNT_dec(db->prefix) ;
+#ifdef DBM_FILTERING
+    if (db->filter_fetch_key)
+          SvREFCNT_dec(db->filter_fetch_key) ;
+    if (db->filter_store_key)
+          SvREFCNT_dec(db->filter_store_key) ;
+    if (db->filter_fetch_value)
+          SvREFCNT_dec(db->filter_fetch_value) ;
+    if (db->filter_store_value)
+          SvREFCNT_dec(db->filter_store_value) ;
+#endif
+    hash_delete("BerkeleyDB::Term::Db", (IV)db) ;
+    if (db->filename)
+             Safefree(db->filename) ;
+    Safefree(db) ;
 }
 
 static void
@@ -1121,7 +1174,7 @@ my_db_open(
 #endif /* DB_VERSION_MAJOR > 2 */
     	RETVAL->recno_or_queue = (RETVAL->type == DB_RECNO || 
 	                          RETVAL->type == DB_QUEUE) ;
-	RETVAL->filename = STRDUP(file) ;
+	RETVAL->filename = my_strdup(file) ;
 	RETVAL->Status = Status ;
 	RETVAL->active = TRUE ;
 	hash_store_iv("BerkeleyDB::Term::Db", (IV)RETVAL, 1) ;
@@ -1133,6 +1186,10 @@ my_db_open(
 	}
     }
     else { 
+#if DB_VERSION_MAJOR > 2
+	dbp->close(dbp, 0) ;
+#endif
+	destroyDB(db) ;
         Trace(("db open returned %s\n", my_db_strerror(Status))) ;
     }
 
@@ -2126,6 +2183,7 @@ _db_appinit(self, ref)
 	  if (status == 0) 
 	      hash_store_iv("BerkeleyDB::Term::Env", (IV)RETVAL, 1) ;
 	  else {
+	      env->close(env, 0) ;
               if (RETVAL->ErrHandle)
                   SvREFCNT_dec(RETVAL->ErrHandle) ;
               if (RETVAL->ErrPrefix)
@@ -2790,31 +2848,7 @@ dab__DESTROY(db)
 	CODE:
 	  CurrentDB = db ;
 	  Trace(("In BerkeleyDB::Common::_DESTROY db %d dirty=%d\n", db, PL_dirty)) ;
-      	  if (! PL_dirty && db->active) {
-	      	-- db->open_cursors ;
-		((db->dbp)->close)(db->dbp, 0) ;
-	  }
-      	  if (db->hash)
-        	  SvREFCNT_dec(db->hash) ;
-      	  if (db->compare)
-        	  SvREFCNT_dec(db->compare) ;
-      	  if (db->dup_compare)
-        	  SvREFCNT_dec(db->dup_compare) ;
-      	  if (db->prefix)
-        	  SvREFCNT_dec(db->prefix) ;
-#ifdef DBM_FILTERING
-          if (db->filter_fetch_key)
-              SvREFCNT_dec(db->filter_fetch_key) ;
-          if (db->filter_store_key)
-              SvREFCNT_dec(db->filter_store_key) ;
-          if (db->filter_fetch_value)
-              SvREFCNT_dec(db->filter_fetch_value) ;
-          if (db->filter_store_value)
-              SvREFCNT_dec(db->filter_store_value) ;
-#endif
-	  hash_delete("BerkeleyDB::Term::Db", (IV)db) ;
-          Safefree(db->filename) ;
-          Safefree(db) ;
+	  destroyDB(db) ;
 	  Trace(("End of BerkeleyDB::Common::DESTROY \n")) ;
 
 #if DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR < 6
@@ -2841,7 +2875,7 @@ _db_cursor(db, flags=0)
 	      RETVAL->dbp     = db->dbp ;
               RETVAL->type    = db->type ;
               RETVAL->recno_or_queue    = db->recno_or_queue ;
-              RETVAL->filename    = STRDUP(db->filename) ;
+              RETVAL->filename    = my_strdup(db->filename) ;
               RETVAL->compare = db->compare ;
               RETVAL->dup_compare = db->dup_compare ;
               RETVAL->prefix  = db->prefix ;
@@ -2905,7 +2939,7 @@ _db_join(db, cursors, flags=0)
 	      RETVAL->cursor  = join_cursor ;
 	      RETVAL->dbp     = db->dbp ;
               RETVAL->type    = db->type ;
-              RETVAL->filename    = STRDUP(db->filename) ;
+              RETVAL->filename    = my_strdup(db->filename) ;
               RETVAL->compare = db->compare ;
               RETVAL->dup_compare = db->dup_compare ;
               RETVAL->prefix  = db->prefix ;

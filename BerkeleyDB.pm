@@ -16,7 +16,7 @@ use strict;
 use Carp;
 use vars qw($VERSION @ISA @EXPORT $AUTOLOAD);
 
-$VERSION = '0.09';
+$VERSION = '0.10';
 
 require Exporter;
 require DynaLoader;
@@ -363,6 +363,12 @@ sub txn_begin
     my $obj ;
     $obj = bless [$addr, $env] , "BerkeleyDB::Txn" if $addr ;
     return $obj ;
+}
+
+sub DESTROY
+{
+    my $self = shift ;
+    $self->_DESTROY() ;
 }
 
 package BerkeleyDB::Hash ;

@@ -1,8 +1,8 @@
                                    BerkeleyDB
 
-                                  Version 0.09
+                                  Version 0.10
 
-                                 29th Nov 1999
+                                 8th Dec 1999
 
 	Copyright (c) 1997-1999 Paul Marquess. All rights reserved. This
 	program is free software; you can redistribute it and/or modify
@@ -18,11 +18,10 @@ to use version 1 of Berkeley DB with Perl you need the DB_File module).
 
 Berkeley DB is a C library which provides a consistent interface to a
 number of database formats. BerkeleyDB provides an interface to all
-three of the database types (hash, btree and recno) currently supported
-by Berkeley DB.
+four of the database types (hash, btree, queue and recno) currently
+supported by Berkeley DB.
 
-For further details see the documentation included at the end of the
-file BerkeleyDB.pm.
+For further details see the documentation in the file BerkeleyDB.pod.
 
 PREREQUISITES
 -------------
@@ -44,7 +43,6 @@ installed on your system:
       to access database files created by a third-party application,
       like Sendmail. In these cases you must build BerkeleyDB with a
       compatible version of Berkeley DB.
-
 
 
 BUILDING THE MODULE
@@ -228,7 +226,7 @@ Solution: Setting the LIB & INCLUDE variables in config.in to point to the
           of db.h and libdb.a that you don't want BerkeleyDB to use.
 
 
-Incompatable versions of db.h and libdb
+Incompatible versions of db.h and libdb
 ---------------------------------------
 
 BerkeleyDB seems to have built correctly, but you get an error like this
@@ -308,8 +306,8 @@ How to report a problem with BerkeleyDB.
 To help me help you, I need of the following information:
 
  1. The version of Perl and the operating system name and version you
-    are running. The output from running "perl -V" will tell me all I
-    need to know.
+    are running. The complete output from running "perl -V" will tell
+    me all I need to know.  
     If your perl does not understand the "-V" option is is too old.
     BerkeleyDB needs Perl version 5.004_04 or better.
 
