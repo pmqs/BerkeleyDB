@@ -1,8 +1,8 @@
                                    BerkeleyDB
 
-                                  Version 0.04
+                                  Version 0.06
 
-                                  19th May 1998 
+                                 19th  Dec 1998 
 
 	Copyright (c) 1997/8 Paul Marquess. All rights reserved. This
 	program is free software; you can redistribute it and/or modify
@@ -37,7 +37,7 @@ PREREQUISITES
 Before you can build BerkeleyDB you need to have the following
 installed on your system:
 
-    * Perl 5.004_02 or greater. 
+    * Perl 5.004_04 or greater. 
 
     * Berkeley DB. Version 2.3.14 or greater 
 
@@ -50,8 +50,10 @@ BUILDING THE MODULE
 -------------------
 
 Assuming you have met all the prerequisites, building the module should
-be relatively straightforward. If you are running Solaris 2.5 read the
-Solaris Notes section below.
+be relatively straightforward. If you are running either Solaris 2.5 or
+HP-UX 10 have a look at one of the Solaris Notes or HP-UX Notes sections
+below before building this module.
+
 
 The first step is to edit the file config.in to suit you local
 installation. Instructions are given in the file.
@@ -83,6 +85,34 @@ Sun patch 103187-25 (or later revisions) fixes this problem.
 
 To find out if you have the patch installed, the command "showrev -p"
 will display the patches that are currently installed on your system.
+
+
+
+HP-UX Notes
+-----------
+      
+Some people running HP-UX 10 have reported getting an error like this
+when building this module with the native HP-UX compiler.
+    
+    ld: (Warning) At least one PA 2.0 object file (DB_File.o) was detected.
+    The linked output may not run on a PA 1.x system.
+    ld: Invalid loader fixup for symbol "$000000A5".
+ 
+If this is the case for you, Berkeley DB needs to be recompiled with
+the +z or +Z option and the resulting library placed in a .sl file. The
+following steps should do the trick:
+    
+  1: Configure the Berkeley DB distribution with the +z or +Z C compiler
+     flag:
+    
+        env "CFLAGS=+z" ../dist/configure ...
+    
+  2: Edit the Berkeley DB Makefile and change:
+    
+        "libdb= libdb.a" to "libdb= libdb.sl".
+    
+  3: Build and install the Berkeley DB distribution as usual.
+    
 
 
 
@@ -137,5 +167,5 @@ CHANGES
 
 See the Changes file.
  
-Paul Marquess <pmarquess@bfsec.bt.co.uk>
+Paul Marquess <Paul.Marquess@btinternet.com>
 

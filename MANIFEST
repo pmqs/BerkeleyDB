@@ -13,3 +13,4 @@ t/env.t
 t/hash.t
 t/btree.t
 t/unknown.t
+t/filter.t

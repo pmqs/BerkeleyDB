@@ -17,7 +17,7 @@ use strict;
 use Carp;
 use vars qw($VERSION @ISA @EXPORT $AUTOLOAD);
 
-$VERSION = '0.04';
+$VERSION = '0.06';
 
 require Exporter;
 require DynaLoader;
@@ -72,6 +72,7 @@ use IO ;
 	DB_FIXEDLEN
 	DB_FLUSH
 	DB_GET_RECNO
+	DB_GET_BOTH
 	DB_HASH
 	DB_HASHMAGIC
 	DB_HASHOLDVER
@@ -116,6 +117,7 @@ use IO ;
 	DB_MUTEXDEBUG
 	DB_NEEDSPLIT
 	DB_NEXT
+	DB_NEXT_DUP
 	DB_NOMMAP
 	DB_NOOVERWRITE
 	DB_NOSYNC
@@ -135,6 +137,8 @@ use IO ;
 	DB_RE_PAD
 	DB_RE_RENUMBER
 	DB_RE_SNAPSHOT
+	DB_RMW
+	DB_RUNRECOVERY
 	DB_SEQUENTIAL
 	DB_SET
 	DB_SET_RANGE
@@ -681,7 +685,7 @@ sub CLEAR
     my $self = shift ;
     my ($key, $value) = (0, 0) ;
     my $cursor = $self->db_cursor() ;
-    while ($cursor->c_get($key, $value, BerkeleyDB::DB_NEXT()) == 0) 
+    while ($cursor->c_get($key, $value, BerkeleyDB::DB_PREV()) == 0) 
 	{ $cursor->c_del() }
     #1 while $cursor->c_del() == 0 ;
     # cursor will self-destruct

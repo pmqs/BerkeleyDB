@@ -17,3 +17,12 @@ Revision history for Perl extension BerkeleyDB.
 0.04  19 May 1998
 	Define DEFSV & SAVE_DEFSV if not already defined. This allows
 	the module to be built with Perl 5.004_04.
+
+0.05  9 November 1998
+	Added a note to README about how to build Berkeley DB 2.x
+	when using HP-UX.
+	Minor modifications to get the module to build with DB 2.5.x
+
+0.06  19 December 1998
+	Minor modifications to get the module to build with DB 2.6.x
+	Added support for DB 2.6.x's  Concurrent Access Method 

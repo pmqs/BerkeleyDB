@@ -1,6 +1,6 @@
 # Filename:	config.in
 #
-# written by Paul Marquess (pmarquess@bfsec.bt.co.uk)
+# written by Paul Marquess <Paul.Marquess@btinternet.com>
 # SCCS: %I%, %G%
 
 # 1. Where is the file db.h?
@@ -27,7 +27,7 @@ LIB	= ../latest
 #    include the version number of the library can help.
 #
 #    For example, if you have Berkeley DB 2.3.12 you could rename the
-#    Berkeley DB library from libdb.a to lib-2.3.12.a and change the
+#    Berkeley DB library from libdb.a to libdb-2.3.12.a and change the
 #    DBNAME line below to look like this:
 #
 #        DBNAME = -ldb-2.3.12

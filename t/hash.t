@@ -68,7 +68,7 @@ umask(0) ;
     ok 1, $@ =~ /unknown key value\(s\) Stupid/  ;
 
     eval ' $db = new BerkeleyDB::Hash -Bad => 2, -Mode => 0345, -Stupid => 3; ' ;
-    ok 2, $@ =~ /unknown key value\(s\) Bad Stupid/  ;
+    ok 2, $@ =~ /unknown key value\(s\) (Bad |Stupid ){2}/  ;
 
     eval ' $db = new BerkeleyDB::Hash -Env => 2 ' ;
     ok 3, $@ =~ /^Env not of type BerkeleyDB::Env/ ;

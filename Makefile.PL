@@ -6,7 +6,7 @@
 # BerkeleyDB is controlled from the file config.in
 
 
-BEGIN { die "BerkeleyDB needs Perl 5.004_02 or greater" if $] < 5.004_02 ; }
+BEGIN { die "BerkeleyDB needs Perl 5.004_04 or greater" if $] < 5.004_04 ; }
 
 use strict ;
 use ExtUtils::MakeMaker ;

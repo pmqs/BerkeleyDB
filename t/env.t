@@ -77,7 +77,7 @@ umask(0);
     ok 7, $@ =~ /unknown key value\(s\) Stupid/  ;
 
     eval ' $env = new BerkeleyDB::Env( -Bad => 2, -Home => "/tmp", -Stupid => 3) ; ' ;
-    ok 8, $@ =~ /unknown key value\(s\) Bad Stupid/  ;
+    ok 8, $@ =~ /unknown key value\(s\) (Bad |Stupid ){2}/  ;
 
     eval ' $env = new BerkeleyDB::Env( -Config => {"fred" => ""} ) ; ' ;
     ok 9, !$env ;

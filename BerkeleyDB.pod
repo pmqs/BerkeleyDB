@@ -33,6 +33,7 @@ BerkeleyDB - Perl extension for Berkeley DB version 2
   $hash_ref = $db->db_stat() ;
   $type = $db->type() ;
   $type = $db->status() ;
+  $type = $db->byteswapped() ;
 
   ($flag, $old_offset, $old_length) = $db->partial_set($offset, $length) ;
   ($flag, $old_offset, $old_length) = $db->partial_clear() ;
@@ -357,8 +358,7 @@ The most recent version of B<BerkeleyDB> can always be found on CPAN
 F<modules/by-module/BerkeleyDB>.
 
 The official web site for Berkeley DB is
-F<http://www.sleepycat.com/db>. The ftp equivalent is
-F<ftp.sleepycat.com:/pub>.
+F<http://www.sleepycat.com/db>. 
 
 =head1 COPYRIGHT
 
@@ -389,7 +389,7 @@ See L<"AUTHOR"> for details.
 
 =head1 AUTHOR
 
-Paul Marquess E<lt>pmarquess@bfsec.bt.co.uk<gt>.
+Paul Marquess E<lt>Paul.Marquess@btinternet.com<gt>.
 
 Questions about Berkeley DB may be addressed to
 E<lt>db@sleepycat.com<gt>.
