@@ -7,6 +7,8 @@ BerkeleyDB/Hash.pm
 Changes
 config.in
 dbinfo
+hints/solaris.pl
+hints/irix_6_5.pl
 Makefile.PL
 MANIFEST
 mkpod

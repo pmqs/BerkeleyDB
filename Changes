@@ -87,3 +87,7 @@ Revision history for Perl extension BerkeleyDB.
 	  memory)
 	* Can be built with Berkeley DB 3.1
    
+
+0.12  2nd August 2000
+	* Serious bug with get fixed. Spotted by Sleepycat.
+	* Added hints file for Solaris & Irix (courtesy of Albert Chin-A-Young)
