@@ -2366,9 +2366,9 @@ _db_appinit(self, ref)
 
 BerkeleyDB::Txn::Raw
 _txn_begin(env, pid=NULL, flags=0)
+	u_int32_t		flags
 	BerkeleyDB::Env		env
 	BerkeleyDB::Txn		pid
-	u_int32_t		flags
 	CODE:
 	{
 	    DB_TXN *txn ;
@@ -2572,21 +2572,6 @@ _TxnMgr(env)
 	    RETVAL
 
 int
-set_data_dir(env, dir)
-        BerkeleyDB::Env  env
-	char *		 dir
-	INIT:
-	  ckActive_Database(env->active) ;
-	CODE:
-#ifndef AT_LEAST_DB_3_1
-	    softCrash("$env->set_data_dir needs Berkeley DB 3.1 or better") ;
-#else
-	    RETVAL = env->Status = env->Env->set_data_dir(env->Env, dir);
-#endif
-	OUTPUT:
-	    RETVAL
-
-int
 set_lg_dir(env, dir)
         BerkeleyDB::Env  env
 	char *		 dir
@@ -2597,6 +2582,51 @@ set_lg_dir(env, dir)
 	    softCrash("$env->set_lg_dir needs Berkeley DB 3.1 or better") ;
 #else
 	    RETVAL = env->Status = env->Env->set_lg_dir(env->Env, dir);
+#endif
+	OUTPUT:
+	    RETVAL
+
+int
+set_lg_bsize(env, bsize)
+        BerkeleyDB::Env  env
+	u_int32_t	 bsize
+	INIT:
+	  ckActive_Database(env->active) ;
+	CODE:
+#ifndef AT_LEAST_DB_3
+	    softCrash("$env->set_lg_bsize needs Berkeley DB 3.0.55 or better") ;
+#else
+	    RETVAL = env->Status = env->Env->set_lg_bsize(env->Env, bsize);
+#endif
+	OUTPUT:
+	    RETVAL
+
+int
+set_lg_max(env, lg_max)
+        BerkeleyDB::Env  env
+	u_int32_t	 lg_max
+	INIT:
+	  ckActive_Database(env->active) ;
+	CODE:
+#ifndef AT_LEAST_DB_3
+	    softCrash("$env->set_lg_max needs Berkeley DB 3.0.55 or better") ;
+#else
+	    RETVAL = env->Status = env->Env->set_lg_max(env->Env, lg_max);
+#endif
+	OUTPUT:
+	    RETVAL
+
+int
+set_data_dir(env, dir)
+        BerkeleyDB::Env  env
+	char *		 dir
+	INIT:
+	  ckActive_Database(env->active) ;
+	CODE:
+#ifndef AT_LEAST_DB_3_1
+	    softCrash("$env->set_data_dir needs Berkeley DB 3.1 or better") ;
+#else
+	    RETVAL = env->Status = env->Env->set_data_dir(env->Env, dir);
 #endif
 	OUTPUT:
 	    RETVAL
@@ -2704,8 +2734,8 @@ _db_open_hash(self, ref)
 
 HV *
 db_stat(db, flags=0)
-	BerkeleyDB::Common	db
 	int			flags
+	BerkeleyDB::Common	db
 	HV *			RETVAL = NULL ;
 	INIT:
 	  ckActive_Database(db->active) ;
@@ -2857,8 +2887,8 @@ _db_open_btree(self, ref)
 
 HV *
 db_stat(db, flags=0)
-	BerkeleyDB::Common	db
 	int			flags
+	BerkeleyDB::Common	db
 	HV *			RETVAL = NULL ;
 	INIT:
 	  ckActive_Database(db->active) ;
@@ -3034,8 +3064,8 @@ _db_open_queue(self, ref)
 
 HV *
 db_stat(db, flags=0)
-	BerkeleyDB::Common	db
 	int			flags
+	BerkeleyDB::Common	db
 	HV *			RETVAL = NULL ;
 	INIT:
 	  ckActive_Database(db->active) ;
@@ -3083,8 +3113,8 @@ MODULE = BerkeleyDB::Common  PACKAGE = BerkeleyDB::Common	PREFIX = dab_
 
 DualType
 db_close(db,flags=0)
-        BerkeleyDB::Common 	db
 	int 			flags
+        BerkeleyDB::Common 	db
 	INIT:
 	    ckActive_Database(db->active) ;
 	    CurrentDB = db ;
@@ -3123,8 +3153,8 @@ dab__DESTROY(db)
 #endif
 BerkeleyDB::Cursor::Raw
 _db_cursor(db, flags=0)
-        BerkeleyDB::Common 	db
 	u_int32_t		flags
+        BerkeleyDB::Common 	db
         BerkeleyDB::Cursor 	RETVAL = NULL ;
 	INIT:
 	    ckActive_Database(db->active) ;
@@ -3168,9 +3198,9 @@ _db_cursor(db, flags=0)
 
 BerkeleyDB::Cursor::Raw
 _db_join(db, cursors, flags=0)
+	u_int32_t		flags
         BerkeleyDB::Common 	db
 	AV *			cursors
-	u_int32_t		flags
         BerkeleyDB::Cursor 	RETVAL = NULL ;
 	INIT:
 	    ckActive_Database(db->active) ;
@@ -3375,9 +3405,9 @@ partial_clear(db)
 	(db->Status = ((db->dbp)->del)(db->dbp, db->txn, &key, flags))
 DualType
 db_del(db, key, flags=0)
+	u_int		flags
 	BerkeleyDB::Common	db
 	DBTKEY		key
-	u_int		flags
 	INIT:
 	    ckActive_Database(db->active) ;
 	    CurrentDB = db ;
@@ -3387,8 +3417,8 @@ db_del(db, key, flags=0)
 	(db->Status = ((db->dbp)->get)(db->dbp, db->txn, &key, &data, flags))
 DualType
 db_get(db, key, data, flags=0)
-	BerkeleyDB::Common	db
 	u_int		flags
+	BerkeleyDB::Common	db
 	DBTKEY_B	key
 	DBT_OPT		data
 	INIT:
@@ -3403,10 +3433,10 @@ db_get(db, key, data, flags=0)
 		(db->Status = (db->dbp->put)(db->dbp,db->txn,&key,&data,flag))
 DualType
 db_put(db, key, data, flags=0)
+	u_int			flags
 	BerkeleyDB::Common	db
 	DBTKEY			key
 	DBT			data
-	u_int			flags
 	INIT:
 	  ckActive_Database(db->active) ;
 	  CurrentDB = db ;
@@ -3418,12 +3448,12 @@ db_put(db, key, data, flags=0)
 	(db->Status = ((db->dbp)->key_range)(db->dbp, db->txn, &key, &range, flags))
 DualType
 db_key_range(db, key, less, equal, greater, flags=0)
+	u_int32_t	flags
 	BerkeleyDB::Common	db
 	DBTKEY_B	key
 	double          less = NO_INIT
 	double          equal = NO_INIT
 	double          greater = NO_INIT
-	u_int32_t	flags
 	CODE:
 	{
 #ifndef AT_LEAST_DB_3_1
@@ -3464,8 +3494,8 @@ db_fd(db)
 #define db_sync(db, fl)	(db->Status = (db->dbp->sync)(db->dbp, fl))
 DualType
 db_sync(db, flags=0)
-	BerkeleyDB::Common	db
 	u_int			flags
+	BerkeleyDB::Common	db
 	INIT:
 	  ckActive_Database(db->active) ;
 	  CurrentDB = db ;
@@ -3494,8 +3524,8 @@ MODULE = BerkeleyDB::Cursor              PACKAGE = BerkeleyDB::Cursor	PREFIX = c
 
 BerkeleyDB::Cursor::Raw
 _c_dup(db, flags=0)
-    	BerkeleyDB::Cursor	db
 	u_int32_t		flags
+    	BerkeleyDB::Cursor	db
         BerkeleyDB::Cursor 	RETVAL = NULL ;
 	INIT:
 	    CurrentDB = db->parent_db ;
@@ -3585,8 +3615,8 @@ status(db)
 #define cu_c_del(c,f)	(c->Status = ((c->cursor)->c_del)(c->cursor,f))
 DualType
 cu_c_del(db, flags=0)
-    BerkeleyDB::Cursor	db
     int			flags
+    BerkeleyDB::Cursor	db
 	INIT:
 	  CurrentDB = db->parent_db ;
 	  ckActive_Cursor(db->active) ;
@@ -3597,8 +3627,8 @@ cu_c_del(db, flags=0)
 #define cu_c_get(c,k,d,f) (c->Status = (c->cursor->c_get)(c->cursor,&k,&d,f))
 DualType
 cu_c_get(db, key, data, flags=0)
-    BerkeleyDB::Cursor	db
     int			flags
+    BerkeleyDB::Cursor	db
     DBTKEY_B		key
     DBT_B		data
 	INIT:
@@ -3616,10 +3646,10 @@ cu_c_get(db, key, data, flags=0)
 #define cu_c_put(c,k,d,f)  (c->Status = (c->cursor->c_put)(c->cursor,&k,&d,f))
 DualType
 cu_c_put(db, key, data, flags=0)
+    int			flags
     BerkeleyDB::Cursor	db
     DBTKEY		key
     DBT			data
-    int			flags
 	INIT:
 	  CurrentDB = db->parent_db ;
 	  ckActive_Cursor(db->active) ;
@@ -3630,9 +3660,9 @@ cu_c_put(db, key, data, flags=0)
 #define cu_c_count(c,p,f) (c->Status = (c->cursor->c_count)(c->cursor,&p,f))
 DualType
 cu_c_count(db, count, flags=0)
+    int			flags
     BerkeleyDB::Cursor	db
     u_int32_t           count = NO_INIT
-    int			flags
 	CODE:
 #ifndef AT_LEAST_DB_3_1
           softCrash("c_count needs at least Berkeley DB 3.1.x");
@@ -3651,9 +3681,9 @@ MODULE = BerkeleyDB::TxnMgr           PACKAGE = BerkeleyDB::TxnMgr	PREFIX = xx_
 
 BerkeleyDB::Txn::Raw
 _txn_begin(txnmgr, pid=NULL, flags=0)
+	u_int32_t		flags
 	BerkeleyDB::TxnMgr	txnmgr
 	BerkeleyDB::Txn		pid
-	u_int32_t		flags
 	CODE:
 	{
 	    DB_TXN *txn ;
@@ -3757,8 +3787,8 @@ txn_stat(txnp)
 
 BerkeleyDB::TxnMgr
 txn_open(dir, flags, mode, dbenv)
-    const char *	dir
     int 		flags
+    const char *	dir
     int 		mode
     BerkeleyDB::Env 	dbenv
         NOT_IMPLEMENTED_YET
@@ -3810,8 +3840,8 @@ xx_txn_prepare(tid)
 #endif
 DualType
 _txn_commit(tid, flags=0)
-	BerkeleyDB::Txn	tid
 	u_int32_t	flags
+	BerkeleyDB::Txn	tid
 	INIT:
 	    ckActive_Transaction(tid->active) ;
 	    hash_delete("BerkeleyDB::Term::Txn", (char *)tid) ;

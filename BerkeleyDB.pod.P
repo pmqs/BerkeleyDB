@@ -62,10 +62,19 @@ BerkeleyDB - Perl extension for Berkeley DB version 2 or 3
   $status = $env->setmutexlocks()
 
   $txn = $env->txn_begin() ;
+  $db->Txn($txn);
+  $txn->Txn($db1, $db2,...);
   $status = $txn->txn_prepare()
   $status = $txn->txn_commit()
   $status = $txn->txn_abort()
   $status = $txn->txn_id()
+
+  $status = $env->set_lg_dir();
+  $status = $env->set_lg_bsize();
+  $status = $env->set_lg_max();
+
+  $status = $env->set_data_dir() ;
+  $status = $env->set_tmp_dir() ;
 
   $BerkeleyDB::Error
   $BerkeleyDB::db_version

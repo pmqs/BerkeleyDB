@@ -116,3 +116,8 @@ Revision history for Perl extension BerkeleyDB.
           takes an age to do the queue test, but it does eventually pass.
         * Mentioned the problems that occur when perl is built with sfio.
 
+0.15 5th April 2001
+        * Fixed a bug in the processing of the flags options in
+          db_key_range.
+        * added support for set_lg_max & set_lg_bsize
+
