@@ -2,7 +2,7 @@
 package BerkeleyDB;
 
 
-#     Copyright (c) 1997-2002 Paul Marquess. All rights reserved.
+#     Copyright (c) 1997-2003 Paul Marquess. All rights reserved.
 #     This program is free software; you can redistribute it and/or
 #     modify it under the same terms as Perl itself.
 #
@@ -17,7 +17,7 @@ use Carp;
 use vars qw($VERSION @ISA @EXPORT $AUTOLOAD
 		$use_XSLoader);
 
-$VERSION = '0.20';
+$VERSION = '0.21';
 
 require Exporter;
 #require DynaLoader;
@@ -448,6 +448,30 @@ sub ParseParameters($@)
     return \%got ;
 }
 
+sub parseEncrypt
+{
+    my $got = shift ;
+
+
+    if (defined $got->{Encrypt}) {
+    	croak("Encrypt parameter must be a hash reference")
+            if !ref $got->{Encrypt} || ref $got->{Encrypt} ne 'HASH' ;
+
+	my %config = %{ $got->{Encrypt} } ;
+
+        my $p = BerkeleyDB::ParseParameters({
+					Password	=> undef,
+					Flags		=> undef,
+				}, %config);
+
+        croak("Must specify Password and Flags with Encrypt parameter")
+	    if ! (defined $p->{Password} && defined $p->{Flags});
+
+        $got->{"Enc_Passwd"} = $p->{Password};
+        $got->{"Enc_Flags"} = $p->{Flags};
+    }
+}
+
 use UNIVERSAL qw( isa ) ;
 
 sub env_remove
@@ -580,6 +604,8 @@ sub new
     #			[ -Cachesize	=> number ]
     #			[ -LockDetect	=>  ]
     #			[ -Verbose	=> boolean ]
+    #			[ -Encrypt	=> { Password => string, Flags => value}
+    #
     #			;
 
     my $pkg = shift ;
@@ -595,6 +621,7 @@ sub new
 					LockDetect     	=> 0,
 					Verbose		=> 0,
 					Config		=> undef,
+					Encrypt		=> undef,
 					}, @_) ;
 
     if (defined $got->{ErrFile}) {
@@ -617,7 +644,7 @@ sub new
         @BerkeleyDB::a = () ;
 	my $k = "" ; my $v = "" ;
 	while (($k, $v) = each %config) {
-	    if ($BerkeleyDB::db_version >= 3.1 && ! $valid_config_keys{$k} ) {
+	    if ($BerkeleyDB::db_version >= 3.1 && ! $valid_config_keys{$k} ){
 	        $BerkeleyDB::Error = "illegal name-value pair: $k $v\n" ; 
                 croak $BerkeleyDB::Error ;
 	    }
@@ -627,6 +654,8 @@ sub new
         $got->{"Config"} = pack("p*", @BerkeleyDB::a, undef) 
 	    if @BerkeleyDB::a ;
     }
+
+    BerkeleyDB::parseEncrypt($got);
 
     my ($addr) = _db_appinit($pkg, $got) ;
     my $obj ;
@@ -699,6 +728,7 @@ sub new
 			Env		=> undef,
 			#Tie 		=> undef,
 			Txn		=> undef,
+			Encrypt		=> undef,
 
 			# Hash specific
 			Ffactor		=> 0,
@@ -721,6 +751,8 @@ sub new
 
     croak("-Tie needs a reference to a hash")
 	if defined $got->{Tie} and $got->{Tie} !~ /HASH/ ;
+
+    BerkeleyDB::parseEncrypt($got);
 
     my ($addr) = _db_open_hash($self, $got);
     my $obj ;
@@ -761,6 +793,7 @@ sub new
 			Env		=> undef,
 			#Tie 		=> undef,
 			Txn		=> undef,
+			Encrypt		=> undef,
 
 			# Btree specific
 			Minkey		=> 0,
@@ -777,6 +810,8 @@ sub new
 
     croak("-Tie needs a reference to a hash")
 	if defined $got->{Tie} and $got->{Tie} !~ /HASH/ ;
+
+    BerkeleyDB::parseEncrypt($got);
 
     my ($addr) = _db_open_btree($self, $got);
     my $obj ;
@@ -817,6 +852,7 @@ sub new
 			Env		=> undef,
 			#Tie 		=> undef,
 			Txn		=> undef,
+			Encrypt		=> undef,
 
 			# Recno specific
 			Delim		=> undef,
@@ -838,6 +874,8 @@ sub new
     croak("ArrayBase can only be 0 or 1, parsed $got->{ArrayBase}")
 	if $got->{ArrayBase} != 1 and $got->{ArrayBase} != 0 ;
 
+
+    BerkeleyDB::parseEncrypt($got);
 
     $got->{Fname} = $got->{Filename} if defined $got->{Filename} ;
 
@@ -880,6 +918,7 @@ sub new
 			Env		=> undef,
 			#Tie 		=> undef,
 			Txn		=> undef,
+			Encrypt		=> undef,
 
 			# Queue specific
 			Len		=> undef,
@@ -899,6 +938,8 @@ sub new
 
     croak("ArrayBase can only be 0 or 1, parsed $got->{ArrayBase}")
 	if $got->{ArrayBase} != 1 and $got->{ArrayBase} != 0 ;
+
+    BerkeleyDB::parseEncrypt($got);
 
     $got->{Fname} = $got->{Filename} if defined $got->{Filename} ;
 
@@ -997,6 +1038,7 @@ sub new
 			Env		=> undef,
 			#Tie 		=> undef,
 			Txn		=> undef,
+			Encrypt		=> undef,
 
 		      }, @_) ;
 
@@ -1008,6 +1050,8 @@ sub new
 
     croak("-Tie needs a reference to a hash")
 	if defined $got->{Tie} and $got->{Tie} !~ /HASH/ ;
+
+    BerkeleyDB::parseEncrypt($got);
 
     my ($addr, $type) = _db_open_unknown($got);
     my $obj ;
@@ -1104,11 +1148,9 @@ sub CLEAR
 {
     my $self = shift ;
     my ($key, $value) = (0, 0) ;
-    my $cursor = $self->db_cursor() ;
+    my $cursor = $self->_db_write_cursor() ;
     while ($cursor->c_get($key, $value, BerkeleyDB::DB_PREV()) == 0) 
 	{ $cursor->c_del() }
-    #1 while $cursor->c_del() == 0 ;
-    # cursor will self-destruct
 }
 
 #sub DESTROY
@@ -1384,11 +1426,22 @@ sub db_cursor
     return $obj ;
 }
 
+sub _db_write_cursor
+{
+    my $db = shift ;
+    my ($addr) = $db->__db_write_cursor(@_) ;
+    my $obj ;
+    $obj = bless [$addr, $db] , "BerkeleyDB::Cursor" if $addr ;
+    return $obj ;
+}
+
 sub db_join
 {
-    croak 'Usage: $db->BerkeleyDB::Common::db_join([cursors], flags=0)'
+    croak 'Usage: $db->BerkeleyDB::db_join([cursors], flags=0)'
 	if @_ < 2 || @_ > 3 ;
     my $db = shift ;
+    croak 'db_join: first parameter is not an array reference'
+	if ! ref $_[0] || ref $_[0] ne 'ARRAY';
     my ($addr) = $db->_db_join(@_) ;
     my $obj ;
     $obj = bless [$addr, $db, $_[0]] , "BerkeleyDB::Cursor" if $addr ;

@@ -24,16 +24,6 @@ BEGIN
 
 print "1..201\n";
 
-sub fillout
-{
-    my $var = shift ;
-    my $length = shift ;
-    my $pad = shift || " " ;
-    my $template = $pad x $length ;
-    substr($template, 0, length($var)) = $var ;
-    return $template ;
-}
- 
 my $Dfile = "dbhash.tmp";
 my $Dfile2 = "dbhash2.tmp";
 my $Dfile3 = "dbhash3.tmp";

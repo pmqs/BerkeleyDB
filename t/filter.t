@@ -259,3 +259,71 @@ umask(0) ;
    untie %h;
    unlink $Dfile;
 }
+
+if(0)
+{
+    # Filter without tie
+    use strict ;
+    my (%h, $db) ;
+
+    unlink $Dfile;
+    ok 53, $db = tie %h, 'BerkeleyDB::Hash', 
+    		-Filename   => $Dfile, 
+	        -Flags      => DB_CREATE; 
+
+    my %result = () ;
+
+    sub INC { return ++ $_[0] }
+    sub DEC { return -- $_[0] }
+    $db->filter_fetch_key   (sub { warn "FFK $_\n"; $_ = INC($_); warn "XX\n" }) ;
+    $db->filter_store_key   (sub { warn "FSK $_\n"; $_ = DEC($_); warn "XX\n" }) ;
+    $db->filter_fetch_value (sub { warn "FFV $_\n"; $_ = INC($_); warn "XX\n"}) ;
+    $db->filter_store_value (sub { warn "FSV $_\n"; $_ = DEC($_); warn "XX\n" }) ;
+
+    #$db->filter_fetch_key   (sub { warn "FFK $_\n"; $_ = pack("i", $_); warn "XX\n" }) ;
+    #$db->filter_store_key   (sub { warn "FSK $_\n"; $_ = unpack("i", $_); warn "XX\n" }) ;
+    #$db->filter_fetch_value (sub { warn "FFV $_\n"; $_ = pack("i", $_); warn "XX\n"}) ;
+    #$db->filter_store_value (sub { warn "FSV $_\n"; $_ = unpack("i", $_); warn "XX\n" }) ;
+
+    #$db->filter_fetch_key   (sub { ++ $_ }) ;
+    #$db->filter_store_key   (sub { -- $_ }) ;
+    #$db->filter_fetch_value (sub { ++ $_ }) ;
+    #$db->filter_store_value (sub { -- $_ }) ;
+
+    my ($k, $v) = (0,0);
+    ok 54, ! $db->db_put(3,5);
+    exit;
+    ok 55, ! $db->db_get(3, $v);
+    ok 56, $v == 5 ;
+
+    $h{4} = 7 ;
+    ok 57, $h{4} == 7;
+
+    $k = 10;
+    $v = 30;
+    $h{$k} = $v ;
+    ok 58, $k == 10;
+    ok 59, $v == 30;
+    ok 60, $h{$k} == 30;
+
+    $k = 3;
+    ok 61, ! $db->db_get($k, $v, DB_GET_BOTH);
+    ok 62, $k == 3 ;
+    ok 63, $v == 5 ;
+
+    my $cursor = $db->db_cursor();
+
+    my %tmp = ();
+    while ($cursor->c_get($k, $v, DB_NEXT) == 0)
+    {
+	$tmp{$k} = $v;
+    }
+
+    ok 64, keys %tmp == 3 ;
+    ok 65, $tmp{3} == 5;
+
+    undef $cursor ;
+    undef $db ;
+    untie %h;
+    unlink $Dfile;
+}

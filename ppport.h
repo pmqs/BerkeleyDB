@@ -305,6 +305,7 @@ SV *sv;
 
 #define DBM_ckFilter(arg,type,name)				\
 	if (db->type) {						\
+	    /*printf("Filtering %s\n", name);*/			\
 	    if (db->filtering) {				\
 	        croak("recursion detected in %s", name) ;	\
 	    }                     				\
@@ -313,6 +314,8 @@ SV *sv;
 	    SAVEINT(db->filtering) ;				\
 	    db->filtering = TRUE ;				\
 	    SAVESPTR(DEFSV) ;					\
+	    if (1 && name[7] == 's')				\
+	        arg = newSVsv(arg);				\
 	    DEFSV = arg ;					\
 	    SvTEMP_off(arg) ;					\
 	    PUSHMARK(SP) ;					\
@@ -322,6 +325,10 @@ SV *sv;
 	    PUTBACK ;						\
 	    FREETMPS ;						\
 	    LEAVE ;						\
+	    if (1 && name[7] == 's'){				\
+	        arg = sv_2mortal(arg);				\
+	    }							\
+	        SvOKp(arg);					\
 	}
 
 #endif /* DBM_setFilter */
