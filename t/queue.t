@@ -25,14 +25,14 @@ BEGIN
 print "1..197\n";
 
 my %DB_errors = (
-	DB_INCOMPLETE	=> "DB_INCOMPLETE: Sync was unable to complete",
-	DB_KEYEMPTY	=> "DB_KEYEMPTY: Non-existent key/data pair",
-	DB_KEYEXIST	=> "DB_KEYEXIST: Key/data pair already exists",
-	DB_LOCK_DEADLOCK => "DB_LOCK_DEADLOCK: Locker killed to resolve a deadlock",
-	DB_LOCK_NOTGRANTED => "DB_LOCK_NOTGRANTED: Lock not granted",
-	DB_NOTFOUND	=> "DB_NOTFOUND: No matching key/data pair found",
-	DB_OLD_VERSION	=> "DB_OLDVERSION: Database requires a version upgrade",
-	DB_RUNRECOVERY	=> "DB_RUNRECOVERY: Fatal error, run database recovery",
+	'DB_INCOMPLETE'	=> "DB_INCOMPLETE: Sync was unable to complete",
+	'DB_KEYEMPTY'	=> "DB_KEYEMPTY: Non-existent key/data pair",
+	'DB_KEYEXIST'	=> "DB_KEYEXIST: Key/data pair already exists",
+	'DB_LOCK_DEADLOCK' => "DB_LOCK_DEADLOCK: Locker killed to resolve a deadlock",
+	'DB_LOCK_NOTGRANTED' => "DB_LOCK_NOTGRANTED: Lock not granted",
+	'DB_NOTFOUND'	=> "DB_NOTFOUND: No matching key/data pair found",
+	'DB_OLD_VERSION'=> "DB_OLDVERSION: Database requires a version upgrade",
+	'DB_RUNRECOVERY'=> "DB_RUNRECOVERY: Fatal error, run database recovery",
 	) ;
 
 {
@@ -175,11 +175,11 @@ umask(0) ;
     ok 14, $db->db_del(1) == 0 ;
     ok 15, ($status = $db->db_get(1, $value)) == DB_KEYEMPTY ;
     ok 16, $db->status() == DB_KEYEMPTY ;
-    ok 17, $db->status() eq $DB_errors{DB_KEYEMPTY} ;
+    ok 17, $db->status() eq $DB_errors{'DB_KEYEMPTY'} ;
 
     ok 18, ($status = $db->db_get(7, $value)) == DB_NOTFOUND ;
     ok 19, $db->status() == DB_NOTFOUND ;
-    ok 20, $db->status() eq $DB_errors{DB_NOTFOUND} ;
+    ok 20, $db->status() eq $DB_errors{'DB_NOTFOUND'} ;
 
     ok 21, $db->db_sync() == 0 ;
 
@@ -187,7 +187,7 @@ umask(0) ;
     # an existing record.
 
     ok 22, $db->db_put( 2, 'x', DB_NOOVERWRITE) == DB_KEYEXIST ;
-    ok 23, $db->status() eq $DB_errors{DB_KEYEXIST} ;
+    ok 23, $db->status() eq $DB_errors{'DB_KEYEXIST'} ;
     ok 24, $db->status() == DB_KEYEXIST ;
 
 
@@ -270,7 +270,7 @@ umask(0) ;
     }
 
     ok 36, $cursor->status() == DB_NOTFOUND ;
-    ok 37, $cursor->status() eq $DB_errors{DB_NOTFOUND} ;
+    ok 37, $cursor->status() eq $DB_errors{'DB_NOTFOUND'} ;
     ok 38, keys %copy == 0 ;
     ok 39, $extras == 0 ;
 
@@ -287,7 +287,7 @@ umask(0) ;
 	    { ++ $extras }
     }
     ok 40, $status == DB_NOTFOUND ;
-    ok 41, $status eq $DB_errors{DB_NOTFOUND} ;
+    ok 41, $status eq $DB_errors{'DB_NOTFOUND'} ;
     ok 42, $cursor->status() == $status ;
     ok 43, $cursor->status() eq $status ;
     ok 44, keys %copy == 0 ;

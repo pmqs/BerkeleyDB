@@ -66,3 +66,6 @@ Revision history for Perl extension BerkeleyDB.
 	    + subdatabases 
 	    + db_stat for Hash & Queue
 
+0.09  29th November 1999
+	* the queue.t & subdb.t test harnesses were outputting a few
+	  spurious warnings. This has been fixed.

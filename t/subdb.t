@@ -23,14 +23,14 @@ BEGIN
 print "1..43\n";
 
 my %DB_errors = (
-	DB_INCOMPLETE	=> "DB_INCOMPLETE: Sync was unable to complete",
-	DB_KEYEMPTY	=> "DB_KEYEMPTY: Non-existent key/data pair",
-	DB_KEYEXIST	=> "DB_KEYEXIST: Key/data pair already exists",
-	DB_LOCK_DEADLOCK => "DB_LOCK_DEADLOCK: Locker killed to resolve a deadlock",
-	DB_LOCK_NOTGRANTED => "DB_LOCK_NOTGRANTED: Lock not granted",
-	DB_NOTFOUND	=> "DB_NOTFOUND: No matching key/data pair found",
-	DB_OLD_VERSION	=> "DB_OLDVERSION: Database requires a version upgrade",
-	DB_RUNRECOVERY	=> "DB_RUNRECOVERY: Fatal error, run database recovery",
+	'DB_INCOMPLETE'	=> "DB_INCOMPLETE: Sync was unable to complete",
+	'DB_KEYEMPTY'	=> "DB_KEYEMPTY: Non-existent key/data pair",
+	'DB_KEYEXIST'	=> "DB_KEYEXIST: Key/data pair already exists",
+	'DB_LOCK_DEADLOCK' => "DB_LOCK_DEADLOCK: Locker killed to resolve a deadlock",
+	'DB_LOCK_NOTGRANTED' => "DB_LOCK_NOTGRANTED: Lock not granted",
+	'DB_NOTFOUND'	=> "DB_NOTFOUND: No matching key/data pair found",
+	'DB_OLD_VERSION'	=> "DB_OLDVERSION: Database requires a version upgrade",
+	'DB_RUNRECOVERY'	=> "DB_RUNRECOVERY: Fatal error, run database recovery",
 	) ;
 
 {
