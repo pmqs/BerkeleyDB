@@ -10,47 +10,9 @@ BEGIN {
 }
 
 use BerkeleyDB; 
-use File::Path qw(rmtree);
+use t::util ;
 
 print "1..50\n";
-
-
-{
-    package LexFile ;
-
-    sub new
-    {
-        my $self = shift ;
-        unlink @_ ;
-        bless [ @_ ], $self ;
-    }
-
-    sub DESTROY
-    {
-        my $self = shift ;
-        unlink @{ $self } ;
-    }
-}
-
-sub ok
-{
-    my $no = shift ;
-    my $result = shift ;
- 
-    print "not " unless $result ;
-    print "ok $no\n" ;
-}
-
-sub docat
-{
-    my $file = shift;
-    local $/ = undef;
-    open(CAT,$file) || die "Cannot open $file:$!";
-    my $result = <CAT>;
-    close(CAT);
-    return $result;
-}
-
 
 my $Dfile = "dbhash.tmp";
 
@@ -64,8 +26,7 @@ umask(0);
     my $value ;
 
     my $home = "./fred" ;
-    rmtree $home if -e $home ;
-    ok 1, mkdir($home, 0777) ;
+    ok 1, my $lexD = new LexDir($home);
     ok 2, my $env = new BerkeleyDB::Env -Home => $home,
 				     -Flags => DB_CREATE| DB_INIT_MPOOL;
     eval { $env->txn_begin() ; } ;
@@ -74,7 +35,6 @@ umask(0);
     eval { my $txn_mgr = $env->TxnMgr() ; } ;
     ok 4, $@ =~ /^BerkeleyDB Aborting: Transaction Manager not enabled at/ ;
     undef $env ;
-    rmtree $home ;
 
 }
 
@@ -86,8 +46,7 @@ umask(0);
     my $value ;
 
     my $home = "./fred" ;
-    rmtree $home if -e $home ;
-    ok 5, mkdir($home, 0777) ;
+    ok 5, my $lexD = new LexDir($home);
     ok 6, my $env = new BerkeleyDB::Env -Home => $home,
 				     -Flags => DB_CREATE|DB_INIT_TXN|
 					  	DB_INIT_MPOOL|DB_INIT_LOCK ;
@@ -143,7 +102,6 @@ umask(0);
     undef $db1 ;
     undef $env ;
     untie %hash ;
-    rmtree $home ;
 }
 
 {
@@ -154,8 +112,7 @@ umask(0);
     my $value ;
 
     my $home = "./fred" ;
-    rmtree $home if -e $home ;
-    ok 16, mkdir($home, 0777) ;
+    ok 16, my $lexD = new LexDir($home);
     ok 17, my $env = new BerkeleyDB::Env -Home => $home,
 				     -Flags => DB_CREATE|DB_INIT_TXN|
 					  	DB_INIT_MPOOL|DB_INIT_LOCK ;
@@ -213,7 +170,6 @@ umask(0);
     undef $txn_mgr ;
     undef $env ;
     untie %hash ;
-    rmtree $home ;
 }
 
 {
@@ -224,8 +180,7 @@ umask(0);
     my $value ;
 
     my $home = "./fred" ;
-    rmtree $home if -e $home ;
-    ok 28, mkdir($home, 0777) ;
+    ok 28, my $lexD = new LexDir($home);
     ok 29, my $env = new BerkeleyDB::Env -Home => $home,
 				     -Flags => DB_CREATE|DB_INIT_TXN|
 					  	DB_INIT_MPOOL|DB_INIT_LOCK ;
@@ -280,7 +235,6 @@ umask(0);
     undef $db1 ;
     undef $env ;
     untie %hash ;
-    rmtree $home ;
 }
 
 {
@@ -291,8 +245,7 @@ umask(0);
     my $value ;
 
     my $home = "./fred" ;
-    rmtree $home if -e $home ;
-    ok 39, mkdir($home, 0777) ;
+    ok 39, my $lexD = new LexDir($home);
     ok 40, my $env = new BerkeleyDB::Env -Home => $home,
 				     -Flags => DB_CREATE|DB_INIT_TXN|
 					  	DB_INIT_MPOOL|DB_INIT_LOCK ;
@@ -349,6 +302,5 @@ umask(0);
     undef $txn_mgr ;
     undef $env ;
     untie %hash ;
-    rmtree $home ;
 }
 

@@ -23,14 +23,7 @@ BEGIN
     }
 }
 
-sub ok
-{
-    my $no = shift ;
-    my $result = shift ;
- 
-    print "not " unless $result ;
-    print "ok $no\n" ;
-}
+use t::util ;
 
 print "1..12\n";
 

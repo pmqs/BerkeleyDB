@@ -16,7 +16,7 @@ use strict;
 use Carp;
 use vars qw($VERSION @ISA @EXPORT $AUTOLOAD);
 
-$VERSION = '0.15';
+$VERSION = '0.16';
 
 require Exporter;
 require DynaLoader;
@@ -41,6 +41,7 @@ use IO ;
 	DB_BTREEVERSION
 	DB_CHECKPOINT
 	DB_CONSUME
+	DB_CONSUME_WAIT
 	DB_CREATE
 	DB_CURLSN
 	DB_CURRENT
@@ -73,6 +74,7 @@ use IO ;
 	DB_INIT_MPOOL
 	DB_INIT_TXN
 	DB_JOIN_ITEM
+	DB_JOINENV
 	DB_KEYEMPTY
 	DB_KEYEXIST
 	DB_KEYFIRST
@@ -309,7 +311,8 @@ sub isaFilehandle
 
 }
 
-%valid_config_keys = map { $_, 1 } qw( DB_DATA_DIR DB_LOG_DIR DB_TEMP_DIR ) ;
+%valid_config_keys = map { $_, 1 } qw( DB_DATA_DIR DB_LOG_DIR DB_TEMP_DIR
+DB_TMP_DIR ) ;
 
 sub new
 {
@@ -380,7 +383,7 @@ sub new
 	      { $obj->set_data_dir($v) }
 	    elsif ($k eq 'DB_LOG_DIR')
 	      { $obj->set_lg_dir($v) }
-	    elsif ($k eq 'DB_TEMP_DIR')
+	    elsif ($k eq 'DB_TEMP_DIR' || $k eq 'DB_TMP_DIR')
 	      { $obj->set_tmp_dir($v) }
 	    else {
 	      $BerkeleyDB::Error = "illegal name-value pair: $k $v\n" ; 
@@ -639,6 +642,7 @@ sub new
     croak("ArrayBase can only be 0 or 1, parsed $got->{ArrayBase}")
 	if $got->{ArrayBase} != 1 and $got->{ArrayBase} != 0 ;
 
+    $got->{Fname} = $got->{Filename} if defined $got->{Filename} ;
 
     my ($addr) = _db_open_queue($self, $got);
     my $obj ;

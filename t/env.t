@@ -12,47 +12,9 @@ BEGIN {
 }
 
 use BerkeleyDB; 
-use File::Path qw(rmtree);
+use t::util ;
 
 print "1..52\n";
-
-
-{
-    package LexFile ;
-
-    sub new
-    {
-        my $self = shift ;
-        unlink @_ ;
-        bless [ @_ ], $self ;
-    }
-
-    sub DESTROY
-    {
-        my $self = shift ;
-        unlink @{ $self } ;
-    }
-}
-
-sub ok
-{
-    my $no = shift ;
-    my $result = shift ;
- 
-    print "not " unless $result ;
-    print "ok $no\n" ;
-}
-
-sub docat
-{
-    my $file = shift;
-    local $/ = undef;
-    open(CAT,$file) || die "Cannot open $file:$!";
-    my $result = <CAT>;
-    close(CAT);
-    return $result;
-}
-
 
 my $Dfile = "dbhash.tmp";
 
@@ -87,24 +49,21 @@ umask(0);
 {
     # create a very simple environment
     my $home = "./fred" ;
-    ok 11, -d $home ? chmod 0777, $home : mkdir($home, 0777) ;
-    mkdir "./fred", 0777 ;
+    ok 11, my $lexD = new LexDir($home) ;
     chdir "./fred" ;
     ok 12, my $env = new BerkeleyDB::Env -Flags => DB_CREATE ;
     chdir ".." ;
     undef $env ;
-    rmtree $home ;
 }
 
 {
     # create an environment with a Home
     my $home = "./fred" ;
-    ok 13, -d $home ? chmod 0777, $home : mkdir($home, 0777) ;
+    ok 13, my $lexD = new LexDir($home) ;
     ok 14, my $env = new BerkeleyDB::Env -Home => $home,
     					 -Flags => DB_CREATE ;
 
     undef $env ;
-    rmtree $home ;
 }
 
 {
@@ -128,7 +87,7 @@ umask(0);
     my $data_dir = "$home/data_dir" ;
     my $log_dir = "$home/log_dir" ;
     my $data_file = "data.db" ;
-    ok 18, -d $home ? chmod 0777, $home : mkdir($home, 0777) ;
+    ok 18, my $lexD = new LexDir($home) ;
     ok 19, -d $data_dir ? chmod 0777, $data_dir : mkdir($data_dir, 0777) ;
     ok 20, -d $log_dir ? chmod 0777, $log_dir : mkdir($log_dir, 0777) ;
     my $env = new BerkeleyDB::Env -Home   => $home,
@@ -156,14 +115,13 @@ umask(0);
 
     undef $txn ;
     undef $env ;
-    rmtree $home ;
 }
 
 {
     # -ErrFile with a filename
     my $errfile = "./errfile" ;
     my $home = "./fred" ;
-    ok 24, -d $home ? chmod 0777, $home : mkdir($home, 0777) ;
+    ok 24, my $lexD = new LexDir($home) ;
     my $lex = new LexFile $errfile ;
     ok 25, my $env = new BerkeleyDB::Env( -ErrFile => $errfile, 
     					  -Flags => DB_CREATE,
@@ -180,14 +138,13 @@ umask(0);
     ok 29, $BerkeleyDB::Error eq $contents ;
 
     undef $env ;
-    rmtree $home ;
 }
 
 {
     # -ErrFile with a filehandle
     use IO ;
     my $home = "./fred" ;
-    ok 30, -d $home ? chmod 0777, $home : mkdir($home, 0777) ;
+    ok 30, my $lexD = new LexDir($home) ;
     my $errfile = "./errfile" ;
     my $lex = new LexFile $errfile ;
     ok 31, my $ef  = new IO::File ">$errfile" ;
@@ -207,14 +164,13 @@ umask(0);
     chomp $contents ;
     ok 36, $BerkeleyDB::Error eq $contents ;
     undef $env ;
-    rmtree $home ;
 }
 
 {
     # -ErrPrefix
     use IO ;
     my $home = "./fred" ;
-    ok 37, -d $home ? chmod 0777, $home : mkdir($home, 0777) ;
+    ok 37, my $lexD = new LexDir($home) ;
     my $errfile = "./errfile" ;
     my $lex = new LexFile $errfile ;
     ok 38, my $env = new BerkeleyDB::Env( -ErrFile => $errfile,
@@ -245,7 +201,6 @@ umask(0);
     chomp $contents ;
     ok 46, $contents =~ /$BerkeleyDB::Error$/ ;
     undef $env ;
-    rmtree $home ;
 }
 
 {
@@ -256,7 +211,7 @@ umask(0);
     my $data_dir = "$home/data_dir" ;
     my $log_dir = "$home/log_dir" ;
     my $data_file = "data.db" ;
-    ok 47, -d $home ? chmod 0777, $home : mkdir($home, 0777) ;
+    ok 47, my $lexD = new LexDir($home);
     ok 48, -d $data_dir ? chmod 0777, $data_dir : mkdir($data_dir, 0777) ;
     ok 49, -d $log_dir ? chmod 0777, $log_dir : mkdir($log_dir, 0777) ;
     my $env = new BerkeleyDB::Env -Home   => $home,
@@ -271,7 +226,6 @@ umask(0);
 
     ok 52, $env->db_appexit() == 0 ;
 
-    #rmtree $home ;
 }
 
 # test -Verbose

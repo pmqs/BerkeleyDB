@@ -10,47 +10,9 @@ BEGIN {
 }
 
 use BerkeleyDB; 
-use File::Path qw(rmtree);
+use t::util ;
 
 print "1..44\n";
-
-
-{
-    package LexFile ;
-
-    sub new
-    {
-        my $self = shift ;
-        unlink @_ ;
-        bless [ @_ ], $self ;
-    }
-
-    sub DESTROY
-    {
-        my $self = shift ;
-        unlink @{ $self } ;
-    }
-}
-
-sub ok
-{
-    my $no = shift ;
-    my $result = shift ;
- 
-    print "not " unless $result ;
-    print "ok $no\n" ;
-}
-
-sub docat
-{
-    my $file = shift;
-    local $/ = undef;
-    open(CAT,$file) || die "Cannot open $file:$!";
-    my $result = <CAT>;
-    close(CAT);
-    return $result;
-}
-
 
 my $Dfile = "dbhash.tmp";
 my $home = "./fred" ;
@@ -63,8 +25,7 @@ umask(0);
     my %hash ;
     my $status ;
 
-    rmtree $home if -e $home ;
-    ok 1, mkdir($home, 0777) ;
+    ok 1, my $lexD = new LexDir($home);
     ok 2, my $env = new BerkeleyDB::Env -Home => $home,
                                      -Flags => DB_CREATE|DB_INIT_TXN|
                                                 DB_INIT_MPOOL|DB_INIT_LOCK ;
@@ -80,7 +41,6 @@ umask(0);
     ok 6, $@ eq "" ;
     #print "[$@]\n" ;
 
-    rmtree $home if -e $home ;
 }
 
 {
@@ -88,8 +48,7 @@ umask(0);
     my $lex = new LexFile $Dfile ;
     my %hash ;
 
-    rmtree $home if -e $home ;
-    ok 7, mkdir($home, 0777) ;
+    ok 7, my $lexD = new LexDir($home);
     ok 8, my $env = new BerkeleyDB::Env -Home => $home,
                                      -Flags => DB_CREATE|DB_INIT_TXN|
                                                 DB_INIT_MPOOL|DB_INIT_LOCK ;
@@ -105,7 +64,6 @@ umask(0);
     undef $db1 ;
     untie %hash ;
     undef $env ;
-    rmtree $home if -e $home ;
 }
 
 {
@@ -114,8 +72,7 @@ umask(0);
     my %hash ;
     my $status ;
 
-    rmtree $home if -e $home ;
-    ok 11, mkdir($home, 0777) ;
+    ok 11, my $lexD = new LexDir($home);
     ok 12, my $env = new BerkeleyDB::Env -Home => $home,
                                      -Flags => DB_CREATE|DB_INIT_TXN|
                                                 DB_INIT_MPOOL|DB_INIT_LOCK ;
@@ -141,8 +98,7 @@ umask(0);
     my $lex = new LexFile $Dfile ;
     my %hash ;
 
-    rmtree $home if -e $home ;
-    ok 20, mkdir($home, 0777) ;
+    ok 20, my $lexD = new LexDir($home);
     ok 21, my $env = new BerkeleyDB::Env -Home => $home,
                                      -Flags => DB_CREATE|DB_INIT_TXN|
                                                 DB_INIT_MPOOL|DB_INIT_LOCK ;
@@ -171,7 +127,6 @@ umask(0);
     ok 28, $status == 0 ;
     ok 29, $@ eq "" ;
     #print "[$@]\n" ;
-    rmtree $home if -e $home ;
 }
 
 {
@@ -184,7 +139,6 @@ umask(0);
     eval { $db->db_close() ; } ;
     ok 32, $@ =~ /\QBerkeleyDB Aborting: attempted to close a database with 1 open cursor(s) at/;
     #print "[$@]\n" ;
-    rmtree $home if -e $home ;
 }
 
 {
@@ -193,8 +147,7 @@ umask(0);
     my %hash ;
     my $status ;
 
-    rmtree $home if -e $home ;
-    ok 33, mkdir($home, 0777) ;
+    ok 33, my $lexD = new LexDir($home);
     ok 34, my $env = new BerkeleyDB::Env -Home => $home,
                                      -Flags => DB_CREATE|DB_INIT_TXN|
                                                 DB_INIT_MPOOL|DB_INIT_LOCK ;
@@ -215,6 +168,5 @@ umask(0);
     ok 43, $status == 0 ;
     ok 44, $@ eq "" ;
     #print "[$@]\n" ;
-    rmtree $home if -e $home ;
 }
 

@@ -11,58 +11,10 @@ BEGIN {
     }
 }
 
-#use Config;
-#
-#BEGIN {
-#    if(-d "lib" && -f "TEST") {
-#        if ($Config{'extensions'} !~ /\bBerkeleyDB\b/ ) {
-#            print "1..74\n";
-#            exit 0;
-#        }
-#    }
-#}
-
 use BerkeleyDB; 
-use File::Path qw(rmtree);
+use t::util ;
 
 print "1..243\n";
-
-my %DB_errors = (
-    'DB_INCOMPLETE'	=> "DB_INCOMPLETE: Sync was unable to complete",
-    'DB_KEYEMPTY'	=> "DB_KEYEMPTY: Non-existent key/data pair",
-    'DB_KEYEXIST'	=> "DB_KEYEXIST: Key/data pair already exists",
-    'DB_LOCK_DEADLOCK'  => "DB_LOCK_DEADLOCK: Locker killed to resolve a deadlock",
-    'DB_LOCK_NOTGRANTED' => "DB_LOCK_NOTGRANTED: Lock not granted",
-    'DB_NOTFOUND'	=> "DB_NOTFOUND: No matching key/data pair found",
-    'DB_OLD_VERSION'	=> "DB_OLDVERSION: Database requires a version upgrade",
-    'DB_RUNRECOVERY'	=> "DB_RUNRECOVERY: Fatal error, run database recovery",
-) ;
-
-{
-    package LexFile ;
-
-    sub new
-    {
-	my $self = shift ;
-	unlink @_ ;
- 	bless [ @_ ], $self ;
-    }
-
-    sub DESTROY
-    {
-	my $self = shift ;
-	unlink @{ $self } ;
-    }
-}
-
-sub ok
-{
-    my $no = shift ;
-    my $result = shift ;
- 
-    print "not " unless $result ;
-    print "ok $no\n" ;
-}
 
 my $Dfile = "dbhash.tmp";
 my $Dfile2 = "dbhash2.tmp";
@@ -149,7 +101,7 @@ umask(0) ;
     my $lex = new LexFile $Dfile ;
 
     my $home = "./fred" ;
-    ok 27, -d $home ? chmod 0777, $home : mkdir($home, 0777) ;
+    ok 27, my $lexD = new LexDir($home) ;
 
     ok 28, my $env = new BerkeleyDB::Env -Flags => DB_CREATE|DB_INIT_MPOOL,
     					 -Home => $home ;
@@ -164,7 +116,6 @@ umask(0) ;
     ok 32, $value eq "some value" ;
     undef $db ;
     undef $env ;
-    rmtree $home ;
 }
 
  
@@ -679,8 +630,7 @@ umask(0) ;
     my $value ;
 
     my $home = "./fred" ;
-    rmtree $home if -e $home ;
-    ok 177, mkdir($home, 0777) ;
+    ok 177, my $lexD = new LexDir($home) ;
     ok 178, my $env = new BerkeleyDB::Env -Home => $home,
 				     -Flags => DB_CREATE|DB_INIT_TXN|
 					  	DB_INIT_MPOOL|DB_INIT_LOCK ;
@@ -734,7 +684,6 @@ umask(0) ;
     undef $db1 ;
     undef $env ;
     untie %hash ;
-    rmtree $home ;
 }
 
 {

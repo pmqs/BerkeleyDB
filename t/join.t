@@ -12,7 +12,7 @@ BEGIN {
 }
 
 use BerkeleyDB; 
-use File::Path qw(rmtree);
+use t::util ;
 
 if ($BerkeleyDB::db_ver < 2.005002)
 {
@@ -23,55 +23,12 @@ if ($BerkeleyDB::db_ver < 2.005002)
 
 print "1..37\n";
 
-{
-    package LexFile ;
-
-    sub new
-    {
-	my $self = shift ;
-	unlink @_ ;
- 	bless [ @_ ], $self ;
-    }
-
-    sub DESTROY
-    {
-	my $self = shift ;
-	unlink @{ $self } ;
-    }
-}
-
-
-sub ok
-{
-    my $no = shift ;
-    my $result = shift ;
- 
-    print "not " unless $result ;
-    print "ok $no\n" ;
-}
-
 my $Dfile1 = "dbhash1.tmp";
 my $Dfile2 = "dbhash2.tmp";
 my $Dfile3 = "dbhash3.tmp";
 unlink $Dfile1, $Dfile2, $Dfile3 ;
 
 umask(0) ;
-
-sub addData
-{
-    my $db = shift ;
-    my @data = @_ ;
-    die "addData odd data\n" unless @data /2 != 0 ;
-    my ($k, $v) ;
-    my $ret = 0 ;
-    while (@data) {
-        $k = shift @data ;
-        $v = shift @data ;
-        $ret += $db->db_put($k, $v) ;
-    }
-
-    return ($ret == 0) ;
-}
 
 {
     # error cases
@@ -115,8 +72,7 @@ sub addData
     my $status ;
 
     my $home = "./fred" ;
-    rmtree $home if -e $home ;
-    ok 6, mkdir($home, 0777) ;
+    ok 6, my $lexD = new LexDir($home);
     ok 7, my $env = new BerkeleyDB::Env -Home => $home,
 				     -Flags => DB_CREATE|DB_INIT_TXN
 					  	|DB_INIT_MPOOL;
@@ -265,6 +221,5 @@ sub addData
     untie %hash1 ;
     untie %hash2 ;
     untie %hash3 ;
-    rmtree $home ;
 }
 

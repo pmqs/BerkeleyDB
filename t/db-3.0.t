@@ -12,7 +12,7 @@ BEGIN {
 }
 
 use BerkeleyDB; 
-use File::Path qw(rmtree);
+use t::util ;
 
 BEGIN
 {
@@ -25,43 +25,6 @@ BEGIN
 print "1..14\n";
 
 
-{
-    package LexFile ;
-
-    sub new
-    {
-        my $self = shift ;
-        unlink @_ ;
-        bless [ @_ ], $self ;
-    }
-
-    sub DESTROY
-    {
-        my $self = shift ;
-        unlink @{ $self } ;
-    }
-}
-
-sub ok
-{
-    my $no = shift ;
-    my $result = shift ;
- 
-    print "not " unless $result ;
-    print "ok $no\n" ;
-}
-
-sub docat
-{
-    my $file = shift;
-    local $/ = undef;
-    open(CAT,$file) || die "Cannot open $file:$!";
-    my $result = <CAT>;
-    close(CAT);
-    return $result;
-}
-
-
 my $Dfile = "dbhash.tmp";
 
 umask(0);
@@ -70,14 +33,12 @@ umask(0);
     # set_mutexlocks
 
     my $home = "./fred" ;
-    ok 1, -d $home ? chmod 0777, $home : mkdir($home, 0777) ;
-    mkdir "./fred", 0777 ;
+    ok 1, my $lexD = new LexDir($home) ;
     chdir "./fred" ;
     ok 2, my $env = new BerkeleyDB::Env -Flags => DB_CREATE ;
     ok 3, $env->set_mutexlocks(0) == 0 ;
     chdir ".." ;
     undef $env ;
-    rmtree $home ;
 }
 
 {

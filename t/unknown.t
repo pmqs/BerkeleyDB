@@ -12,45 +12,9 @@ BEGIN {
 }
 
 use BerkeleyDB; 
-use File::Path qw(rmtree);
+use t::util ;
 
 print "1..41\n";
-
-{
-    package LexFile ;
-
-    sub new
-    {
-	my $self = shift ;
-	unlink @_ ;
- 	bless [ @_ ], $self ;
-    }
-
-    sub DESTROY
-    {
-	my $self = shift ;
-	unlink @{ $self } ;
-    }
-}
-
-
-sub ok
-{
-    my $no = shift ;
-    my $result = shift ;
- 
-    print "not " unless $result ;
-    print "ok $no\n" ;
-}
-
-sub writeFile
-{
-    my $name = shift ;
-    open(FH, ">$name") or return 0 ;
-    print FH @_ ;
-    close FH ;
-    return 1 ;
-}
 
 my $Dfile = "dbhash.tmp";
 unlink $Dfile;
