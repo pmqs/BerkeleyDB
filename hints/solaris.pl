@@ -1,1 +1,1 @@
-$self->{LIBS} = [ "@{$self->{LIBS}} -lthread" ];
+$self->{LIBS} = [ "@{$self->{LIBS}} -lmt" ];
