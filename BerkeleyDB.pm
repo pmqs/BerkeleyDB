@@ -16,7 +16,7 @@ use strict;
 use Carp;
 use vars qw($VERSION @ISA @EXPORT $AUTOLOAD);
 
-$VERSION = '0.07';
+$VERSION = '0.08';
 
 require Exporter;
 require DynaLoader;
@@ -216,6 +216,68 @@ sub ParseParameters($@)
     return \%got ;
 }
 
+use UNIVERSAL qw( isa ) ;
+
+sub env_remove
+{
+    # Usage:
+    #
+    #	$env = new BerkeleyDB::Env
+    #			[ -Home		=> $path, ]
+    #			[ -Config	=> { name => value, name => value }
+    #			[ -Flags	=> DB_INIT_LOCK| ]
+    #			;
+
+    my $got = BerkeleyDB::ParseParameters({
+					Home		=> undef,
+					Flags     	=> 0,
+					Config		=> undef,
+					}, @_) ;
+
+    if (defined $got->{ErrFile}) {
+	if (!isaFilehandle($got->{ErrFile})) {
+	    my $handle = new IO::File ">$got->{ErrFile}"
+		or croak "Cannot open file $got->{ErrFile}: $!\n" ;
+	    $got->{ErrFile} = $handle ;
+	}
+    }
+
+    
+    if (defined $got->{Config}) {
+    	croak("Config parameter must be a hash reference")
+            if ! ref $got->{Config} eq 'HASH' ;
+
+        @BerkeleyDB::a = () ;
+	my $k = "" ; my $v = "" ;
+	while (($k, $v) = each %{$got->{Config}}) {
+	    push @BerkeleyDB::a, "$k\t$v" ;
+	}
+
+        $got->{"Config"} = pack("p*", @BerkeleyDB::a, undef) 
+	    if @BerkeleyDB::a ;
+    }
+
+    return _env_remove($got) ;
+}
+
+sub db_remove
+{
+    my $got = BerkeleyDB::ParseParameters(
+		      {
+			Filename 	=> undef,
+			Subname		=> undef,
+			Flags		=> 0,
+			Env		=> undef,
+		      }, @_) ;
+
+    croak("Must specify a filename")
+	if ! defined $got->{Filename} ;
+
+    croak("Env not of type BerkeleyDB::Env")
+	if defined $got->{Env} and ! isa($got->{Env},'BerkeleyDB::Env');
+
+    return _db_remove($got);
+}
 
 package BerkeleyDB::Env ;
 
@@ -317,6 +379,7 @@ sub new
 		      {
 			# Generic Stuff
 			Filename 	=> undef,
+			Subname		=> undef,
 			#Flags		=> BerkeleyDB::DB_CREATE(),
 			Flags		=> 0,
 			Property	=> 0,
@@ -377,6 +440,7 @@ sub new
 		      {
 			# Generic Stuff
 			Filename 	=> undef,
+			Subname		=> undef,
 			#Flags		=> BerkeleyDB::DB_CREATE(),
 			Flags		=> 0,
 			Property	=> 0,
@@ -431,6 +495,7 @@ sub new
 		      {
 			# Generic Stuff
 			Filename 	=> undef,
+			Subname		=> undef,
 			#Flags		=> BerkeleyDB::DB_CREATE(),
 			Flags		=> 0,
 			Property	=> 0,
@@ -477,6 +542,63 @@ sub new
 
 *BerkeleyDB::Recno::TIEARRAY = \&BerkeleyDB::Recno::new ;
 *BerkeleyDB::Recno::db_stat = \&BerkeleyDB::Btree::db_stat ;
+
+package BerkeleyDB::Queue ;
+
+use vars qw(@ISA) ;
+@ISA = qw( BerkeleyDB::Common BerkeleyDB::_tiedArray ) ;
+use UNIVERSAL qw( isa ) ;
+use Carp ;
+
+sub new
+{
+    my $self = shift ;
+    my $got = BerkeleyDB::ParseParameters(
+		      {
+			# Generic Stuff
+			Filename 	=> undef,
+			Subname		=> undef,
+			#Flags		=> BerkeleyDB::DB_CREATE(),
+			Flags		=> 0,
+			Property	=> 0,
+			Mode		=> 0666,
+			Cachesize 	=> 0,
+			Lorder 		=> 0,
+			Pagesize 	=> 0,
+			Env		=> undef,
+			#Tie 		=> undef,
+			Txn		=> undef,
+
+			# Queue specific
+			Len		=> undef,
+			Pad		=> undef,
+			ArrayBase 	=> 1, # lowest index in array
+		      }, @_) ;
+
+    croak("Env not of type BerkeleyDB::Env")
+	if defined $got->{Env} and ! isa($got->{Env},'BerkeleyDB::Env');
+
+    croak("Txn not of type BerkeleyDB::Txn")
+	if defined $got->{Txn} and ! isa($got->{Txn},'BerkeleyDB::Txn');
+
+    croak("Tie needs a reference to an array")
+	if defined $got->{Tie} and $got->{Tie} !~ /ARRAY/ ;
+
+    croak("ArrayBase can only be 0 or 1, parsed $got->{ArrayBase}")
+	if $got->{ArrayBase} != 1 and $got->{ArrayBase} != 0 ;
+
+
+    my ($addr) = _db_open_queue($self, $got);
+    my $obj ;
+    if ($addr) {
+        $obj = bless [$addr] , $self ;
+	push @{ $obj }, $got->{Env} if $got->{Env} ;
+        $obj->Txn($got->{Txn}) if $got->{Txn} ;
+    }	
+    return $obj ;
+}
+
+*BerkeleyDB::Queue::TIEARRAY = \&BerkeleyDB::Queue::new ;
 
 ## package BerkeleyDB::Text ;
 ## 
@@ -543,6 +665,7 @@ sub new
 		      {
 			# Generic Stuff
 			Filename 	=> undef,
+			Subname		=> undef,
 			#Flags		=> BerkeleyDB::DB_CREATE(),
 			Flags		=> 0,
 			Property	=> 0,
@@ -759,6 +882,8 @@ sub SHIFT
 sub UNSHIFT
 {
     my $self = shift;
+    croak "unshift is unsupported with Queue databases"
+        if $self->type == BerkeleyDB::DB_QUEUE() ;
     if (@_)
     {
         my ($key, $value) = (0, 0) ;

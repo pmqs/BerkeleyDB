@@ -53,4 +53,16 @@ Revision history for Perl extension BerkeleyDB.
 	* Deprecated the TxnMgr class. As with Berkeley DB version 3,
 	  txn_begin etc are now accessed via the environment object.
 	
-	
+0.08  28nd November 1999
+	* More documentation updates
+	* Changed reference to files in /tmp in examples.t
+	* Fixed a typo in softCrash that caused problems when building
+	  with a thread-enabled Perl.
+	* BerkeleyDB::Error wasn't initialised properly.
+	* ANSI-ified all the static C functions in BerkeleyDB.xs
+	* Added support for the following DB 3.x features:
+	    + The Queue database type
+	    + db_remove
+	    + subdatabases 
+	    + db_stat for Hash & Queue
+

@@ -51,13 +51,17 @@ Possibles
 Environment Verbose
 Env->open mode
 DB cache size extra parameter
-DB->open subdatabases
+DB->open subdatabases	Done
 An empty environment causes DB->open to fail
-where is __db.001 coming from?
-Change db_strerror for 0 to ""?
-Queue
-db_stat for Hash & Queue
+where is __db.001 coming from? db_remove seems to create it. Bug in 3.0.55
+Change db_strerror for 0 to ""? Done
+Queue	Done
+db_stat for Hash & Queue	Done
 No TxnMgr
+DB->remove
+ENV->remove
+ENV->set_verbose
+upgrade
 
     $env = BerkeleyDB::Env::Create
     $env = create BerkeleyDB::Env
