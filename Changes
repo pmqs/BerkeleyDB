@@ -1,5 +1,16 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.19 5th June 2002
+        * Removed the targets that used mkconsts from Makefile.PL. They relied
+          on a module that is not available in all versions of Perl.
+        * added support for env->set_verbose
+        * added support for db->truncate
+        * added support for db->rename via BerkeleyDB::db_rename
+        * added support for db->verify via BerkeleyDB::db_verify
+        * added support for db->associate, db->pget & cursor->c_pget
+        * Builds with Berkeley DB 4.1.x
+ 
+
 0.18 6th January 2002
         * Dropped support for ErrFile as a file handle. It was proving too
           difficult to get at the underlying FILE * in XS.

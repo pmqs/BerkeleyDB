@@ -9,6 +9,7 @@ config.in
 constants.h
 constants.xs
 dbinfo
+hints/dec_osf.pl
 hints/solaris.pl
 hints/irix_6_5.pl
 Makefile.PL
@@ -21,6 +22,7 @@ t/btree.t
 t/db-3.0.t
 t/db-3.1.t
 t/db-3.2.t
+t/db-3.3.t
 t/destroy.t
 t/env.t
 t/examples.t
@@ -51,3 +53,4 @@ patches/5.005_01
 patches/5.005_02
 patches/5.005_03
 patches/5.6.0
+scan

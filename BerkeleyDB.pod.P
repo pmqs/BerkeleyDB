@@ -23,6 +23,8 @@ BerkeleyDB - Perl extension for Berkeley DB version 2, 3 or 4
   $db  = new BerkeleyDB::Unknown [OPTIONS] ;
 
   $status = BerkeleyDB::db_remove [OPTIONS]
+  $status = BerkeleyDB::db_rename [OPTIONS]
+  $status = BerkeleyDB::db_verify [OPTIONS]
 
   $hash{$key} = $value ;
   $value = $hash{$key} ;
@@ -35,11 +37,14 @@ BerkeleyDB - Perl extension for Berkeley DB version 2, 3 or 4
   $status = $db->db_del() ;
   $status = $db->db_sync() ;
   $status = $db->db_close() ;
+  $status = $db->db_close() ;
+  $status = $db->db_pget()
   $hash_ref = $db->db_stat() ;
   $status = $db->db_key_range();
   $type = $db->type() ;
   $status = $db->status() ;
   $boolean = $db->byteswapped() ;
+  $status = $db->truncate($count) ;
 
   ($flag, $old_offset, $old_length) = $db->partial_set($offset, $length) ;
   ($flag, $old_offset, $old_length) = $db->partial_clear() ;
@@ -50,6 +55,7 @@ BerkeleyDB - Perl extension for Berkeley DB version 2, 3 or 4
   $status = $cursor->c_put() ;
   $status = $cursor->c_del() ;
   $status = $cursor->c_count() ;
+  $status = $cursor->c_pget() ;
   $status = $cursor->status() ;
   $status = $cursor->c_close() ;
 
@@ -60,6 +66,7 @@ BerkeleyDB - Perl extension for Berkeley DB version 2, 3 or 4
   $status = $env->txn_checkpoint()
   $hash_ref = $env->txn_stat()
   $status = $env->setmutexlocks()
+  $status = $env->set_flags()
 
   $txn = $env->txn_begin() ;
   $db->Txn($txn);
@@ -76,6 +83,7 @@ BerkeleyDB - Perl extension for Berkeley DB version 2, 3 or 4
 
   $status = $env->set_data_dir() ;
   $status = $env->set_tmp_dir() ;
+  $status = $env->set_verbose() ;
 
   $BerkeleyDB::Error
   $BerkeleyDB::db_version
@@ -136,6 +144,7 @@ shouldn't need to make use of B<BerkeleyDB::Env>.
              [ -ErrFile      => filename, ]
              [ -ErrPrefix    => "string", ]
              [ -Flags        => number, ]
+             [ -SetFlags     => bitmask, ]
              [ -LockDetect   => number, ]
              [ -Verbose      => boolean, ]
 
@@ -264,6 +273,13 @@ B<DB_USE_ENVIRON>
 
 B<DB_USE_ENVIRON_ROOT>
 
+=item -SetFlags
+
+Calls ENV->set_flags with the supplied bitmask. Use this when you need to make
+use of DB_ENV->set_flags before DB_ENV->open is called.
+
+Only valid when Berkeley DB 3.x or better is used.
+
 =item -LockDetect
 
 Specifies what to do when a lock conflict occurs. The value should be one of
@@ -292,6 +308,8 @@ The environment class has the following methods:
 
 This method is identical to the B<-ErrPrefix> flag. It allows the
 error prefix string to be changed dynamically.
+
+=item $env->set_flags(bitmask, 1|0);
 
 =item $txn = $env->TxnMgr()
 
@@ -329,6 +347,12 @@ Berkeley DB 3.0 or 3.2 and better it calls B<DBENV-E<gt>set_mutexlocks>.
 
 TODO.
 
+=head1 Global Classes
+
+  $status = BerkeleyDB::db_remove [OPTIONS]
+  $status = BerkeleyDB::db_rename [OPTIONS]
+  $status = BerkeleyDB::db_verify [OPTIONS]
+  
 =head1 THE DATABASE CLASSES
 
 B<BerkeleyDB> supports the following database formats:
@@ -1100,6 +1124,11 @@ B<BerkeleyDB::Btree>.
 =head2 $status = $db->status()
 
 Returns the status of the last C<$db> method called.
+
+=head2 $status = $db->truncate($count)
+
+Truncates the datatabase and returns the number or records deleted
+in C<$count>.
 
 =head1 CURSORS
 
