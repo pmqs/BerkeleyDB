@@ -1,6 +1,6 @@
 #!./perl -w
 
-# ID: 1.3, 11/11/97   
+# ID: %I%, %G%   
 
 use strict ;
 
@@ -25,7 +25,7 @@ BEGIN {
 use BerkeleyDB; 
 use File::Path qw(rmtree);
 
-print "1..159\n";
+print "1..208\n";
 
 {
     package LexFile ;
@@ -93,26 +93,33 @@ umask(0) ;
 
     # Add a k/v pair
     my $value ;
+    my $status ;
     ok 7, $db->db_put("some key", "some value") == 0  ;
-    ok 8, $db->db_get("some key", $value) == 0 ;
-    ok 9, $value eq "some value" ;
-    ok 10, $db->db_put("key", "value") == 0  ;
-    ok 11, $db->db_get("key", $value) == 0 ;
-    ok 12, $value eq "value" ;
-    ok 13, $db->db_del("some key") == 0 ;
-    ok 14, $db->db_get("some key", $value) == DB_NOTFOUND ;
+    ok 8, $db->status() == 0 ;
+    ok 9, $db->db_get("some key", $value) == 0 ;
+    ok 10, $value eq "some value" ;
+    ok 11, $db->db_put("key", "value") == 0  ;
+    ok 12, $db->db_get("key", $value) == 0 ;
+    ok 13, $value eq "value" ;
+    ok 14, $db->db_del("some key") == 0 ;
+    ok 15, ($status = $db->db_get("some key", $value)) == DB_NOTFOUND ;
+    ok 16, $db->status() == DB_NOTFOUND ;
+    ok 17, $db->status() eq "Key/data pair not found (EOF)";
 
-    ok 15, $db->db_sync() == 0 ;
+    ok 18, $db->db_sync() == 0 ;
 
     # Check NOOVERWRITE will make put fail when attempting to overwrite
     # an existing record.
 
-    ok 16, $db->db_put( 'key', 'x', DB_NOOVERWRITE) == DB_KEYEXIST ;
+    ok 19, $db->db_put( 'key', 'x', DB_NOOVERWRITE) == DB_KEYEXIST ;
+    ok 20, $db->status() eq "The key/data pair already exists";
+    ok 21, $db->status() == DB_KEYEXIST ;
+
 
     # check that the value of the key  has not been changed by the
     # previous test
-    ok 17, $db->db_get("key", $value) == 0 ;
-    ok 18, $value eq "value" ;
+    ok 22, $db->db_get("key", $value) == 0 ;
+    ok 23, $value eq "value" ;
 
 
 }
@@ -121,16 +128,16 @@ umask(0) ;
     # Check simple env works with a hash.
     my $lex = new LexFile $Dfile ;
 
-    ok 19, my $env = new BerkeleyDB::Env ;
-    ok 20, my $db = new BerkeleyDB::Btree -Filename => $Dfile, 
+    ok 24, my $env = new BerkeleyDB::Env ;
+    ok 25, my $db = new BerkeleyDB::Btree -Filename => $Dfile, 
 				    -Env      => $env,
 				    -Flags    => DB_CREATE ;
 
     # Add a k/v pair
     my $value ;
-    ok 21, $db->db_put("some key", "some value") == 0 ;
-    ok 22, $db->db_get("some key", $value) == 0 ;
-    ok 23, $value eq "some value" ;
+    ok 26, $db->db_put("some key", "some value") == 0 ;
+    ok 27, $db->db_get("some key", $value) == 0 ;
+    ok 28, $value eq "some value" ;
 }
 
  
@@ -140,7 +147,7 @@ umask(0) ;
     my $lex = new LexFile $Dfile ;
     my %hash ;
     my ($k, $v) ;
-    ok 24, my $db = new BerkeleyDB::Btree -Filename => $Dfile, 
+    ok 29, my $db = new BerkeleyDB::Btree -Filename => $Dfile, 
 				     -Flags    => DB_CREATE ;
 
     # create some data
@@ -154,10 +161,10 @@ umask(0) ;
     while (($k, $v) = each %data) {
         $ret += $db->db_put($k, $v) ;
     }
-    ok 25, $ret == 0 ;
+    ok 30, $ret == 0 ;
 
     # create the cursor
-    ok 26, my $cursor = $db->db_cursor() ;
+    ok 31, my $cursor = $db->db_cursor() ;
 
     $k = $v = "" ;
     my %copy = %data ;
@@ -169,13 +176,16 @@ umask(0) ;
 	else
 	    { ++ $extras }
     }
-    ok 27, keys %copy == 0 ;
-    ok 28, $extras == 0 ;
+    ok 32, $cursor->status() == DB_NOTFOUND ;
+    ok 33, $cursor->status() eq "Key/data pair not found (EOF)";
+    ok 34, keys %copy == 0 ;
+    ok 35, $extras == 0 ;
 
     # sequence backwards
     %copy = %data ;
     $extras = 0 ;
-    for ( my $status = $cursor->c_get($k, $v, DB_LAST) ;
+    my $status ;
+    for ( $status = $cursor->c_get($k, $v, DB_LAST) ;
 	  $status == 0 ;
     	  $status = $cursor->c_get($k, $v, DB_PREV)) {
         if ( $copy{$k} eq $v ) 
@@ -183,8 +193,12 @@ umask(0) ;
 	else
 	    { ++ $extras }
     }
-    ok 29, keys %copy == 0 ;
-    ok 30, $extras == 0 ;
+    ok 36, $status == DB_NOTFOUND ;
+    ok 37, $status eq "Key/data pair not found (EOF)";
+    ok 38, $cursor->status() == $status ;
+    ok 39, $cursor->status() eq $status ;
+    ok 40, keys %copy == 0 ;
+    ok 41, $extras == 0 ;
 }
  
 {
@@ -192,7 +206,7 @@ umask(0) ;
 
     my $lex = new LexFile $Dfile ;
     my %hash ;
-    ok 31, tie %hash, 'BerkeleyDB::Btree', -Filename => $Dfile,
+    ok 42, tie %hash, 'BerkeleyDB::Btree', -Filename => $Dfile,
                                       -Flags    => DB_CREATE ;
 
     # check "each" with an empty database
@@ -200,20 +214,28 @@ umask(0) ;
     while (my ($k, $v) = each %hash) {
 	++ $count ;
     }
-    ok 32, $count == 0 ;
+    ok 43, (tied %hash)->status() == DB_NOTFOUND ;
+    ok 44, $count == 0 ;
 
     # Add a k/v pair
     my $value ;
     $hash{"some key"} = "some value";
-    ok 33, $hash{"some key"} eq "some value";
-    ok 34, defined $hash{"some key"} ;
-    ok 35, exists $hash{"some key"} ;
-    ok 36, !defined $hash{"jimmy"} ;
-    ok 37, !exists $hash{"jimmy"} ;
+    ok 45, (tied %hash)->status() == 0 ;
+    ok 46, $hash{"some key"} eq "some value";
+    ok 47, defined $hash{"some key"} ;
+    ok 48, (tied %hash)->status() == 0 ;
+    ok 49, exists $hash{"some key"} ;
+    ok 50, !defined $hash{"jimmy"} ;
+    ok 51, (tied %hash)->status() == DB_NOTFOUND ;
+    ok 52, !exists $hash{"jimmy"} ;
+    ok 53, (tied %hash)->status() == DB_NOTFOUND ;
 
     delete $hash{"some key"} ;
-    ok 38, ! defined $hash{"some key"} ;
-    ok 39, ! exists $hash{"some key"} ;
+    ok 54, (tied %hash)->status() == 0 ;
+    ok 55, ! defined $hash{"some key"} ;
+    ok 56, (tied %hash)->status() == DB_NOTFOUND ;
+    ok 57, ! exists $hash{"some key"} ;
+    ok 58, (tied %hash)->status() == DB_NOTFOUND ;
 
     $hash{1} = 2 ;
     $hash{10} = 20 ;
@@ -226,13 +248,13 @@ umask(0) ;
 	$values += $v ;
 	++ $count ;
     }
-    ok 40, $count == 3 ;
-    ok 41, $keys == 1011 ;
-    ok 42, $values == 2022 ;
+    ok 59, $count == 3 ;
+    ok 60, $keys == 1011 ;
+    ok 61, $values == 2022 ;
 
     # now clear the hash
     %hash = () ;
-    ok 43, keys %hash == 0 ;
+    ok 62, keys %hash == 0 ;
 
     untie %hash ;
 }
@@ -243,15 +265,15 @@ umask(0) ;
     my $value ;
     my (%h, %g, %k) ;
     my @Keys = qw( 0123 12 -1234 9 987654321 def  ) ; 
-    ok 44, tie %h, "BerkeleyDB::Btree", -Filename => $Dfile, 
+    ok 63, tie %h, "BerkeleyDB::Btree", -Filename => $Dfile, 
 				     -Compare   => sub { $_[0] <=> $_[1] },
 				     -Flags    => DB_CREATE ;
 
-    ok 45, tie %g, 'BerkeleyDB::Btree', -Filename => $Dfile2, 
+    ok 64, tie %g, 'BerkeleyDB::Btree', -Filename => $Dfile2, 
 				     -Compare   => sub { $_[0] cmp $_[1] },
 				     -Flags    => DB_CREATE ;
 
-    ok 46, tie %k, 'BerkeleyDB::Btree', -Filename => $Dfile3, 
+    ok 65, tie %k, 'BerkeleyDB::Btree', -Filename => $Dfile3, 
 				   -Compare   => sub { length $_[0] <=> length $_[1] },
 				   -Flags    => DB_CREATE ;
 
@@ -283,9 +305,9 @@ umask(0) ;
         1 ;
     }
 
-    ok 47, ArrayCompare (\@srt_1, [keys %h]);
-    ok 48, ArrayCompare (\@srt_2, [keys %g]);
-    ok 49, ArrayCompare (\@srt_3, [keys %k]);
+    ok 66, ArrayCompare (\@srt_1, [keys %h]);
+    ok 67, ArrayCompare (\@srt_2, [keys %g]);
+    ok 68, ArrayCompare (\@srt_3, [keys %k]);
 
 }
 
@@ -296,11 +318,11 @@ umask(0) ;
     my %hash ;
     my $fd ;
     my $value ;
-    ok 50, my $db = tie %hash, 'BerkeleyDB::Btree' ;
+    ok 69, my $db = tie %hash, 'BerkeleyDB::Btree' ;
 
-    ok 51, $db->db_put("some key", "some value") == 0  ;
-    ok 52, $db->db_get("some key", $value) == 0 ;
-    ok 53, $value eq "some value" ;
+    ok 70, $db->db_put("some key", "some value") == 0  ;
+    ok 71, $db->db_get("some key", $value) == 0 ;
+    ok 72, $value eq "some value" ;
 
 }
  
@@ -310,8 +332,8 @@ umask(0) ;
 
     my $lex = new LexFile $Dfile ;
     my $value ;
-    ok 54, my $env = new BerkeleyDB::Env ;
-    ok 55, my $db = new BerkeleyDB::Btree, -Filename => $Dfile,
+    ok 73, my $env = new BerkeleyDB::Env ;
+    ok 74, my $db = new BerkeleyDB::Btree, -Filename => $Dfile,
                                       	       -Flags    => DB_CREATE ,
 					       -Env 	 => $env ;
 
@@ -326,65 +348,65 @@ umask(0) ;
     while (my ($k, $v) = each %data) {
         $ret += $db->db_put($k, $v) ;
     }
-    ok 56, $ret == 0 ;
+    ok 75, $ret == 0 ;
 
 
     # do a partial get
     my ($pon, $off, $len) = $db->partial_set(0,2) ;
-    ok 57, ! $pon && $off == 0 && $len == 0 ;
-    ok 58, ! $db->db_get("red", $value) && $value eq "bo" ;
-    ok 59, ! $db->db_get("green", $value) && $value eq "ho" ;
-    ok 60, ! $db->db_get("blue", $value) && $value eq "se" ;
+    ok 76, ! $pon && $off == 0 && $len == 0 ;
+    ok 77, ! $db->db_get("red", $value) && $value eq "bo" ;
+    ok 78, ! $db->db_get("green", $value) && $value eq "ho" ;
+    ok 79, ! $db->db_get("blue", $value) && $value eq "se" ;
 
     # do a partial get, off end of data
     ($pon, $off, $len) = $db->partial_set(3,2) ;
-    ok 61, $pon ;
-    ok 62, $off == 0 ;
-    ok 63, $len == 2 ;
-    ok 64, ! $db->db_get("red", $value) && $value eq "t" ;
-    ok 65, ! $db->db_get("green", $value) && $value eq "se" ;
-    ok 66, ! $db->db_get("blue", $value) && $value eq "" ;
+    ok 80, $pon ;
+    ok 81, $off == 0 ;
+    ok 82, $len == 2 ;
+    ok 83, ! $db->db_get("red", $value) && $value eq "t" ;
+    ok 84, ! $db->db_get("green", $value) && $value eq "se" ;
+    ok 85, ! $db->db_get("blue", $value) && $value eq "" ;
 
     # switch of partial mode
     ($pon, $off, $len) = $db->partial_clear() ;
-    ok 67, $pon ;
-    ok 68, $off == 3 ;
-    ok 69, $len == 2 ;
-    ok 70, ! $db->db_get("red", $value) && $value eq "boat" ;
-    ok 71, ! $db->db_get("green", $value) && $value eq "house" ;
-    ok 72, ! $db->db_get("blue", $value) && $value eq "sea" ;
+    ok 86, $pon ;
+    ok 87, $off == 3 ;
+    ok 88, $len == 2 ;
+    ok 89, ! $db->db_get("red", $value) && $value eq "boat" ;
+    ok 90, ! $db->db_get("green", $value) && $value eq "house" ;
+    ok 91, ! $db->db_get("blue", $value) && $value eq "sea" ;
 
     # now partial put
     $db->partial_set(0,2) ;
-    ok 73, ! $db->db_put("red", "") ;
-    ok 74, ! $db->db_put("green", "AB") ;
-    ok 75, ! $db->db_put("blue", "XYZ") ;
-    ok 76, ! $db->db_put("new", "KLM") ;
+    ok 92, ! $db->db_put("red", "") ;
+    ok 93, ! $db->db_put("green", "AB") ;
+    ok 94, ! $db->db_put("blue", "XYZ") ;
+    ok 95, ! $db->db_put("new", "KLM") ;
 
     ($pon, $off, $len) = $db->partial_clear() ;
-    ok 77, $pon ;
-    ok 78, $off == 0 ;
-    ok 79, $len == 2 ;
-    ok 80, ! $db->db_get("red", $value) && $value eq "at" ;
-    ok 81, ! $db->db_get("green", $value) && $value eq "ABuse" ;
-    ok 82, ! $db->db_get("blue", $value) && $value eq "XYZa" ;
-    ok 83, ! $db->db_get("new", $value) && $value eq "KLM" ;
+    ok 96, $pon ;
+    ok 97, $off == 0 ;
+    ok 98, $len == 2 ;
+    ok 99, ! $db->db_get("red", $value) && $value eq "at" ;
+    ok 100, ! $db->db_get("green", $value) && $value eq "ABuse" ;
+    ok 101, ! $db->db_get("blue", $value) && $value eq "XYZa" ;
+    ok 102, ! $db->db_get("new", $value) && $value eq "KLM" ;
 
     # now partial put
     ($pon, $off, $len) = $db->partial_set(3,2) ;
-    ok 84, ! $pon ;
-    ok 85, $off == 0 ;
-    ok 86, $len == 0 ;
-    ok 87, ! $db->db_put("red", "PPP") ;
-    ok 88, ! $db->db_put("green", "Q") ;
-    ok 89, ! $db->db_put("blue", "XYZ") ;
-    ok 90, ! $db->db_put("new", "TU") ;
+    ok 103, ! $pon ;
+    ok 104, $off == 0 ;
+    ok 105, $len == 0 ;
+    ok 106, ! $db->db_put("red", "PPP") ;
+    ok 107, ! $db->db_put("green", "Q") ;
+    ok 108, ! $db->db_put("blue", "XYZ") ;
+    ok 109, ! $db->db_put("new", "TU") ;
 
     $db->partial_clear() ;
-    ok 91, ! $db->db_get("red", $value) && $value eq "at\0PPP" ;
-    ok 92, ! $db->db_get("green", $value) && $value eq "ABuQ" ;
-    ok 93, ! $db->db_get("blue", $value) && $value eq "XYZXYZ" ;
-    ok 94, ! $db->db_get("new", $value) && $value eq "KLMTU" ;
+    ok 110, ! $db->db_get("red", $value) && $value eq "at\0PPP" ;
+    ok 111, ! $db->db_get("green", $value) && $value eq "ABuQ" ;
+    ok 112, ! $db->db_get("blue", $value) && $value eq "XYZXYZ" ;
+    ok 113, ! $db->db_get("new", $value) && $value eq "KLMTU" ;
 }
 
 {
@@ -394,8 +416,8 @@ umask(0) ;
     my $lex = new LexFile $Dfile ;
     my %hash ;
     my $value ;
-    ok 95, my $env = new BerkeleyDB::Env ;
-    ok 96, my $db = tie %hash, 'BerkeleyDB::Btree', -Filename => $Dfile,
+    ok 114, my $env = new BerkeleyDB::Env ;
+    ok 115, my $db = tie %hash, 'BerkeleyDB::Btree', -Filename => $Dfile,
                                       	       -Flags    => DB_CREATE ,
 					       -Env 	 => $env ;
 
@@ -413,47 +435,47 @@ umask(0) ;
 
     # do a partial get
     $db->partial_set(0,2) ;
-    ok 97, $hash{"red"} eq "bo" ;
-    ok 98, $hash{"green"} eq "ho" ;
-    ok 99, $hash{"blue"}  eq "se" ;
+    ok 116, $hash{"red"} eq "bo" ;
+    ok 117, $hash{"green"} eq "ho" ;
+    ok 118, $hash{"blue"}  eq "se" ;
 
     # do a partial get, off end of data
     $db->partial_set(3,2) ;
-    ok 100, $hash{"red"} eq "t" ;
-    ok 101, $hash{"green"} eq "se" ;
-    ok 102, $hash{"blue"} eq "" ;
+    ok 119, $hash{"red"} eq "t" ;
+    ok 120, $hash{"green"} eq "se" ;
+    ok 121, $hash{"blue"} eq "" ;
 
     # switch of partial mode
     $db->partial_clear() ;
-    ok 103, $hash{"red"} eq "boat" ;
-    ok 104, $hash{"green"} eq "house" ;
-    ok 105, $hash{"blue"} eq "sea" ;
+    ok 122, $hash{"red"} eq "boat" ;
+    ok 123, $hash{"green"} eq "house" ;
+    ok 124, $hash{"blue"} eq "sea" ;
 
     # now partial put
     $db->partial_set(0,2) ;
-    ok 106, $hash{"red"} = "" ;
-    ok 107, $hash{"green"} = "AB" ;
-    ok 108, $hash{"blue"} = "XYZ" ;
-    ok 109, $hash{"new"} = "KLM" ;
+    ok 125, $hash{"red"} = "" ;
+    ok 126, $hash{"green"} = "AB" ;
+    ok 127, $hash{"blue"} = "XYZ" ;
+    ok 128, $hash{"new"} = "KLM" ;
 
     $db->partial_clear() ;
-    ok 110, $hash{"red"} eq "at" ;
-    ok 111, $hash{"green"} eq "ABuse" ;
-    ok 112, $hash{"blue"} eq "XYZa" ;
-    ok 113, $hash{"new"} eq "KLM" ;
+    ok 129, $hash{"red"} eq "at" ;
+    ok 130, $hash{"green"} eq "ABuse" ;
+    ok 131, $hash{"blue"} eq "XYZa" ;
+    ok 132, $hash{"new"} eq "KLM" ;
 
     # now partial put
     $db->partial_set(3,2) ;
-    ok 114, $hash{"red"} = "PPP" ;
-    ok 115, $hash{"green"} = "Q" ;
-    ok 116, $hash{"blue"} = "XYZ" ;
-    ok 117, $hash{"new"} = "TU" ;
+    ok 133, $hash{"red"} = "PPP" ;
+    ok 134, $hash{"green"} = "Q" ;
+    ok 135, $hash{"blue"} = "XYZ" ;
+    ok 136, $hash{"new"} = "TU" ;
 
     $db->partial_clear() ;
-    ok 118, $hash{"red"} eq "at\0PPP" ;
-    ok 119, $hash{"green"} eq "ABuQ" ;
-    ok 120, $hash{"blue"} eq "XYZXYZ" ;
-    ok 121, $hash{"new"} eq "KLMTU" ;
+    ok 137, $hash{"red"} eq "at\0PPP" ;
+    ok 138, $hash{"green"} eq "ABuQ" ;
+    ok 139, $hash{"blue"} eq "XYZXYZ" ;
+    ok 140, $hash{"new"} eq "KLMTU" ;
 }
 
 {
@@ -465,12 +487,13 @@ umask(0) ;
 
     my $home = "./fred" ;
     rmtree $home if -e $home ;
-    ok 122, mkdir($home, 0777) ;
-    ok 123, my $env = new BerkeleyDB::Env -Home => $home,
+    ok 141, mkdir($home, 0777) ;
+    ok 142, my $env = new BerkeleyDB::Env -Home => $home,
 				     -Flags => DB_CREATE|DB_INIT_TXN|
 					  	DB_INIT_MPOOL|DB_INIT_LOCK ;
-    ok 124, my $txn = $env->txn_begin() ;
-    ok 125, my $db1 = tie %hash, 'BerkeleyDB::Btree', -Filename => $Dfile,
+    ok 143, my $mgr = $env->TxnMgr() ;
+    ok 144, my $txn = $mgr->txn_begin() ;
+    ok 145, my $db1 = tie %hash, 'BerkeleyDB::Btree', -Filename => $Dfile,
                                       	       -Flags    =>  DB_CREATE ,
 					       -Env 	 => $env,
 					       -Txn	 => $txn ;
@@ -487,35 +510,37 @@ umask(0) ;
     while (my ($k, $v) = each %data) {
         $ret += $db1->db_put($k, $v) ;
     }
-    ok 126, $ret == 0 ;
+    ok 146, $ret == 0 ;
 
     # should be able to see all the records
 
-    ok 127, my $cursor = $db1->db_cursor() ;
+    ok 147, my $cursor = $db1->db_cursor() ;
     my ($k, $v) = ("", "") ;
     my $count = 0 ;
     # sequence forwards
     while ($cursor->c_get($k, $v, DB_NEXT) == 0) {
         ++ $count ;
     }
-    ok 128, $count == 3 ;
+    ok 148, $count == 3 ;
     undef $cursor ;
 
     # now abort the transaction
-    ok 129, $txn->txn_abort() == 0 ;
+    #ok 151, $txn->txn_abort() == 0 ;
+    ok 149, (my $Z = $txn->txn_abort()) == 0 ;
 
     # there shouldn't be any records in the database
     $count = 0 ;
     # sequence forwards
-    ok 130, $cursor = $db1->db_cursor() ;
+    ok 150, $cursor = $db1->db_cursor() ;
     while ($cursor->c_get($k, $v, DB_NEXT) == 0) {
         ++ $count ;
     }
-    ok 131, $count == 0 ;
+    ok 151, $count == 0 ;
 
     undef $txn ;
     undef $cursor ;
     undef $db1 ;
+    undef $mgr ;
     undef $env ;
     untie %hash ;
     rmtree $home ;
@@ -526,7 +551,7 @@ umask(0) ;
 
     my $lex = new LexFile $Dfile ;
     my %hash ;
-    ok 132, my $db = tie %hash, 'BerkeleyDB::Btree', -Filename => $Dfile,
+    ok 152, my $db = tie %hash, 'BerkeleyDB::Btree', -Filename => $Dfile,
 				      -Property  => DB_DUP,
                                       -Flags    => DB_CREATE ;
 
@@ -537,24 +562,24 @@ umask(0) ;
     $hash{'Wall'} = 'Brick' ;
     $hash{'mouse'} = 'mickey' ;
 
-    ok 133, keys %hash == 6 ;
+    ok 153, keys %hash == 6 ;
 
     # create a cursor
-    ok 134, my $cursor = $db->db_cursor() ;
+    ok 154, my $cursor = $db->db_cursor() ;
 
     my $key = "Wall" ;
     my $value ;
-    ok 135, $cursor->c_get($key, $value, DB_SET) == 0 ;
-    ok 136, $key eq "Wall" && $value eq "Larry" ;
-    ok 137, $cursor->c_get($key, $value, DB_NEXT) == 0 ;
-    ok 138, $key eq "Wall" && $value eq "Stone" ;
-    ok 139, $cursor->c_get($key, $value, DB_NEXT) == 0 ;
-    ok 140, $key eq "Wall" && $value eq "Brick" ;
-    ok 141, $cursor->c_get($key, $value, DB_NEXT) == 0 ;
-    ok 142, $key eq "Wall" && $value eq "Brick" ;
+    ok 155, $cursor->c_get($key, $value, DB_SET) == 0 ;
+    ok 156, $key eq "Wall" && $value eq "Larry" ;
+    ok 157, $cursor->c_get($key, $value, DB_NEXT) == 0 ;
+    ok 158, $key eq "Wall" && $value eq "Stone" ;
+    ok 159, $cursor->c_get($key, $value, DB_NEXT) == 0 ;
+    ok 160, $key eq "Wall" && $value eq "Brick" ;
+    ok 161, $cursor->c_get($key, $value, DB_NEXT) == 0 ;
+    ok 162, $key eq "Wall" && $value eq "Brick" ;
 
     my $ref = $db->db_stat() ; 
-    ok 143, $ref->{bt_flags} | DB_DUP ;
+    ok 163, $ref->{bt_flags} | DB_DUP ;
 
     undef $db ;
     undef $cursor ;
@@ -563,21 +588,21 @@ umask(0) ;
 }
 
 {
-    # stat
+    # db_stat
 
     my $lex = new LexFile $Dfile ;
     my %hash ;
     my ($k, $v) ;
-    ok 144, my $db = new BerkeleyDB::Btree -Filename => $Dfile, 
+    ok 164, my $db = new BerkeleyDB::Btree -Filename => $Dfile, 
 				     -Flags    => DB_CREATE,
 				 	-Minkey	=>3 ,
 					-Pagesize	=> 5 * 1024,
 					;
 
     my $ref = $db->db_stat() ; 
-    ok 145, $ref->{'bt_nrecs'} == 0;
-    ok 146, $ref->{'bt_minkey'} == 3;
-    ok 147, $ref->{'bt_pagesize'} == 5 * 1024;
+    ok 165, $ref->{'bt_nrecs'} == 0;
+    ok 166, $ref->{'bt_minkey'} == 3;
+    ok 167, $ref->{'bt_pagesize'} == 5 * 1024;
 
     # create some data
     my %data =  (
@@ -590,10 +615,10 @@ umask(0) ;
     while (($k, $v) = each %data) {
         $ret += $db->db_put($k, $v) ;
     }
-    ok 148, $ret == 0 ;
+    ok 168, $ret == 0 ;
 
     $ref = $db->db_stat() ; 
-    ok 149, $ref->{'bt_nrecs'} == 3;
+    ok 169, $ref->{'bt_nrecs'} == 3;
 }
 
 {
@@ -644,7 +669,7 @@ EOM
 
     BEGIN { push @INC, '.'; }    
     eval 'use SubDB ; ';
-    main::ok 150, $@ eq "" ;
+    main::ok 170, $@ eq "" ;
     my %h ;
     my $X ;
     eval '
@@ -653,32 +678,107 @@ EOM
 			-Mode => 0640 );
 	' ;
 
-    main::ok 151, $@ eq "" ;
+    main::ok 171, $@ eq "" ;
 
     my $ret = eval '$h{"fred"} = 3 ; return $h{"fred"} ' ;
-    main::ok 152, $@ eq "" ;
-    main::ok 153, $ret == 7 ;
+    main::ok 172, $@ eq "" ;
+    main::ok 173, $ret == 7 ;
 
     my $value = 0;
     $ret = eval '$X->db_put("joe", 4) ; $X->db_get("joe", $value) ; return $value' ;
-    main::ok 154, $@ eq "" ;
-    main::ok 155, $ret == 10 ;
+    main::ok 174, $@ eq "" ;
+    main::ok 175, $ret == 10 ;
 
     $ret = eval ' DB_NEXT eq main::DB_NEXT ' ;
-    main::ok 156, $@ eq ""  ;
-    main::ok 157, $ret == 1 ;
+    main::ok 176, $@ eq ""  ;
+    main::ok 177, $ret == 1 ;
 
     $ret = eval '$X->A_new_method("joe") ' ;
-    main::ok 158, $@ eq "" ;
-    main::ok 159, $ret eq "[[10]]" ;
+    main::ok 178, $@ eq "" ;
+    main::ok 179, $ret eq "[[10]]" ;
 
     unlink "SubDB.pm", "dbbtree.tmp" ;
 
 }
 
-# TODO
-#
-# DB_RECNUM
-# DB_APPEND for put
-# DB_SET_RECNO & DB_GET_RECNO for cursors
+{
+    # DB_RECNUM, DB_SET_RECNO & DB_GET_RECNO
+
+    my $lex = new LexFile $Dfile ;
+    my %hash ;
+    my ($k, $v) ;
+    ok 180, my $db = new BerkeleyDB::Btree 
+				-Filename  => $Dfile, 
+			     	-Flags     => DB_CREATE,
+			     	-Property  => DB_RECNUM ;
+
+
+    # create some data
+    my @data =  (
+		"A zero",
+		"B one",
+		"C two",
+		"D three",
+		"E four"
+		) ;
+
+    my $ix = 0 ;
+    my $ret = 0 ;
+    foreach (@data) {
+        $ret += $db->db_put($_, $ix) ;
+	++ $ix ;
+    }
+    ok 181, $ret == 0 ;
+
+    # db_get & DB_SET_RECNO
+    $k = 1 ;
+    ok 182, $db->db_get($k, $v, DB_SET_RECNO) == 0;
+    ok 183, $k eq "B one" && $v == 1 ;
+
+    $k = 3 ;
+    ok 184, $db->db_get($k, $v, DB_SET_RECNO) == 0;
+    ok 185, $k eq "D three" && $v == 3 ;
+
+    $k = 4 ;
+    ok 186, $db->db_get($k, $v, DB_SET_RECNO) == 0;
+    ok 187, $k eq "E four" && $v == 4 ;
+
+    $k = 0 ;
+    ok 188, $db->db_get($k, $v, DB_SET_RECNO) == 0;
+    ok 189, $k eq "A zero" && $v == 0 ;
+
+    # cursor & DB_SET_RECNO
+
+    # create the cursor
+    ok 190, my $cursor = $db->db_cursor() ;
+
+    $k = 2 ;
+    ok 191, $db->db_get($k, $v, DB_SET_RECNO) == 0;
+    ok 192, $k eq "C two" && $v == 2 ;
+
+    $k = 0 ;
+    ok 193, $cursor->c_get($k, $v, DB_SET_RECNO) == 0;
+    ok 194, $k eq "A zero" && $v == 0 ;
+
+    $k = 3 ;
+    ok 195, $db->db_get($k, $v, DB_SET_RECNO) == 0;
+    ok 196, $k eq "D three" && $v == 3 ;
+
+    # cursor & DB_GET_RECNO
+    ok 197, $cursor->c_get($k, $v, DB_FIRST) == 0 ;
+    ok 198, $k eq "A zero" && $v == 0 ;
+    ok 199, $cursor->c_get($k, $v, DB_GET_RECNO) == 0;
+    ok 200, $v == 0 ;
+
+    ok 201, $cursor->c_get($k, $v, DB_NEXT) == 0 ;
+    ok 202, $k eq "B one" && $v == 1 ;
+    ok 203, $cursor->c_get($k, $v, DB_GET_RECNO) == 0;
+    ok 204, $v == 1 ;
+
+    ok 205, $cursor->c_get($k, $v, DB_LAST) == 0 ;
+    ok 206, $k eq "E four" && $v == 4 ;
+    ok 207, $cursor->c_get($k, $v, DB_GET_RECNO) == 0;
+    ok 208, $v == 4 ;
+
+}
 

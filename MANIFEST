@@ -8,6 +8,8 @@ README
 Todo
 typemap
 config.in
+dbinfo
 t/env.t
 t/hash.t
 t/btree.t
+t/unknown.t

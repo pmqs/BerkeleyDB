@@ -14,6 +14,12 @@ BerkeleyDB - Perl extension for Berkeley DB version 2
   $db  = tie %hash, 'BerkeleyDB::Btree', [OPTIONS] ;
   $db  = new BerkeleyDB::Btree [OPTIONS] ;
 
+  $db  = tie %hash, 'BerkeleyDB::Recno', [OPTIONS] ;
+  $db  = new BerkeleyDB::Recno [OPTIONS] ;
+
+  $db  = tie %hash, 'BerkeleyDB::Unknown', [OPTIONS] ;
+  $db  = new BerkeleyDB::Unknown [OPTIONS] ;
+
   $hash{$key} = $value ;
   $value = $hash{$key} ;
   each %hash ;
@@ -25,6 +31,8 @@ BerkeleyDB - Perl extension for Berkeley DB version 2
   $status = $db->db_del() ;
   $status = $db->db_sync() ;
   $hash_ref = $db->db_stat() ;
+  $type = $db->type() ;
+  $type = $db->status() ;
 
   ($flag, $old_offset, $old_length) = $db->partial_set($offset, $length) ;
   ($flag, $old_offset, $old_length) = $db->partial_clear() ;
@@ -33,14 +41,17 @@ BerkeleyDB - Perl extension for Berkeley DB version 2
   $status = $cursor->c_get() ;
   $status = $cursor->c_put() ;
   $status = $cursor->c_del() ;
+  $status = $cursor->status() ;
 
-  $txn = $env->txn_begin() ;
+  $txn_mgr = $env->TxnMgr();
+  $status = $txn_mgr->txn_checkpoint()
+  $hash_ref = $txn_mgr->txn_stat()
+
+  $txn = $txn_mgr->txn_begin() ;
   $status = $txn->txn_prepare()
   $status = $txn->txn_commit()
   $status = $txn->txn_abort()
-  $status = $txn->txn_checkpoint()
   $status = $txn->txn_id()
-  $status = $txn->txn_stat()
 
   $BerkeleyDB::Error
   $BerkeleyDB::db_version
@@ -58,6 +69,9 @@ The reader is expected to be familiar with the Berkeley DB
 documentation. The db_appinit, db_cursor, db_open and db_txn man pages
 are particularly relevant.
 
+The interface to Berkeley DB is implemented with a number of Perl
+classes.
+
 =head1 ENVIRONMENT CLASS
 
 The equivalent of the Berkeley DB function C<db_appinit>. It is only
@@ -65,7 +79,7 @@ needed when you want to make use of locking, logging or transactions.
 
 =head2 Synopsis
 
-    $env = new BerkeleyDB::Env [OPTIONS]
+    $env = new BerkeleyDB::Env 
              [ -Home         => $path, ]
              [ -Config       => { name => value, name => value }, ]
              [ -ErrFile      => filename or filehandle, ]
@@ -77,15 +91,27 @@ needed when you want to make use of locking, logging or transactions.
              [ -TxnMax       => number, ]
 
 
-Where the OPTIONS consist of any of the following:
 
 =over 5
 
 =item -Home
 
+Directory name
+
 =item -Config
 
+A reference to a hash. Valid keys are:
+
+    DB_DATA_DIR
+    DB_LOG_DIR
+    DB_TMP_DIR
+
+Values are directory names.
+
+
 =item -ErrFile
+
+Expects either the name of a file or a reference to a filehandle. 
 
 =item -ErrPrefix
 
@@ -192,7 +218,7 @@ See L<COMMON DATABASE METHODS>.
     my $filename = "database" ;
     tie %hash, 'BerkeleyDB::Hash',
                 -Filename  => $filename,
-                -Flags     => DB_CREATE,
+                -Flags     => DB_CREATE
         or die "Cannot open file $filename: $! $BerkeleyDB::Error\n" ;
 
     $hash{"fred"} = "barney" ;
@@ -217,7 +243,7 @@ Not implemented yet.
 =head1 COMMON OPTIONS
 
 All database access class constructors support the common set of
-parameters defined below.
+parameters defined below. All parameters are optional. 
 
 =over 5
 
@@ -245,9 +271,22 @@ to 0666.
 
 =item -Cachesize
 
+A suggested maximum size for the memory pool cache. Defaults to an
+appropriate value.
+
 =item -Lorder
 
+The byte order for integers. For example the big endian orderis 4321,
+and little endian is 1234. Defaults to the ordering of the host where
+the Berkeley DB library was built.
+
 =item -Pagesize
+
+The size of the pages used to hold items in the database, in bytes. The
+minimum is 512 bytes and the maximum is 64K bytes.
+
+Defaults to a page size based on the underlying filesystem I/O block
+size.
 
 =item -Env
 
@@ -256,6 +295,9 @@ When working under a Berkeley DB environment, this parameter
 Defaults to no environment.
 
 =item -Txn
+
+If the database connection is to be under the control of a transaction,
+this parameter must be an object returned from
 
 
 =back
@@ -320,38 +362,29 @@ F<ftp.sleepycat.com:/pub>.
 
 =head1 COPYRIGHT
 
-Copyright (c) 1997 Paul Marquess. All rights reserved. This program is
-free software; you can redistribute it and/or modify it under the same
-terms as Perl itself.
+Copyright (c) 1997/8 Paul Marquess. All rights reserved. This program
+is free software; you can redistribute it and/or modify it under the  
+same terms as Perl itself.
 
 Although B<BerkeleyDB> is covered by the Perl license, the library it
-makes use of, namely Berkeley DB version 2, is not. Berkeley DB has its
-own copyright and its own license. Please take the time to read it.
+makes use of, namely Berkeley DB, is not. Berkeley DB has its own
+copyright and its own license. Please take the time to read it.
 
-The license for Berkeley DB version 2, and how it relates to BerkeleyDB
-does need some extra clarification. Here are are few words taken from
-the Berkeley DB FAQ regarding the version 2 license:
+Here are are few words taken from the Berkeley DB FAQ (at
+http://www.sleepycat.com) regarding the license:
 
-    The major difference is that the license for DB 2.0, when
-    downloaded from the net, requires that the software that uses DB
-    2.0 be freely redistributable.
-
-That means that if you want to use BerkeleyDB, and you have changed
-either the source for Berkeley DB or Perl, then the changes must be
-freely available.
-
-In the case of Perl, the term source refers to the complete source code
-for Perl (e.g. sv.c, toke.c, perl.h) and any external modules that you
-are using (e.g. BerkeleyDB, Tk).
-
-Note that any Perl scripts that you write are your property - this
-includes scripts that make use of BerkeleyDB. Neither the Perl license
-or the Berkeley DB license place any restriction on what you have to do
-with them.
+    Do I have to license DB to use it in Perl scripts?
+    
+    No. The Berkeley DB license requires that software that uses
+    Berkeley DB be freely redistributable. In the case of Perl, that
+    software is Perl, and not your scripts. Any Perl scripts that you
+    write are your property, including scripts that make use of
+    Berkeley DB. Neither the Perl license nor the Berkeley DB license
+    place any restriction on what you may do with them.
 
 If you are in any doubt about the license situation, contact either the
-Berkeley DB authors or the author of BerkeleyDB. See L<"AUTHOR"> for
-details.
+Berkeley DB authors or the author of BerkeleyDB. 
+See L<"AUTHOR"> for details.
 
 
 =head1 AUTHOR

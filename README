@@ -1,10 +1,10 @@
                                    BerkeleyDB
 
-                                  Version 0.02
+                                  Version 0.03
 
-                                 10th Nov 1997 
+                                  5th May 1998 
 
-	Copyright (c) 1997 Paul Marquess. All rights reserved. This
+	Copyright (c) 1997/8 Paul Marquess. All rights reserved. This
 	program is free software; you can redistribute it and/or modify
 	it under the same terms as Perl itself.
 
@@ -39,7 +39,7 @@ installed on your system:
 
     * Perl 5.004_02 or greater. 
 
-    * Berkeley DB. Version 2.3.11 or greater 
+    * Berkeley DB. Version 2.3.14 or greater 
 
       The official web site for Berkeley DB is
       http://www.sleepycat.com/db. The ftp equivalent is

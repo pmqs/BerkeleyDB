@@ -1,21 +1,23 @@
 # Filename:	config.in
 #
 # written by Paul Marquess (pmarquess@bfsec.bt.co.uk)
-# SCCS: 1.3, 11/11/97
+# SCCS: %I%, %G%
 
 # 1. Where is the file db.h?
 #
 #    Change the path below to point to the directory where dh.h is
 #    installed on your system.
 
-INCLUDE	= /usr/local/include
+#INCLUDE	= /usr/local/include
+INCLUDE	= ../latest
 
 # 2. Where is libdb?
 #
 #    Change the path below to point to the directory where libdb is
 #    installed on your system.
 
-LIB	= /usr/local/lib
+#LIB	= /usr/local/lib
+LIB	= ../latest
 
 # 3. Is the library called libdb?
 #
@@ -34,9 +36,9 @@ LIB	= /usr/local/lib
 #    used by default.
 #
 #    If you have changed the name of the library, uncomment the line
-#    below (by removing the leading #) and edit the line to use the nae
+#    below (by removing the leading #) and edit the line to use the name
 #    you have picked.
 
-#DBNAME = -ldb-2.3.12
+#DBNAME = -ldb-2.3.16
 
 # end of file config.in

@@ -2,11 +2,11 @@
 package BerkeleyDB;
 
 
-#     Copyright (c) 1997 Paul Marquess. All rights reserved.
+#     Copyright (c) 1997,8 Paul Marquess. All rights reserved.
 #     This program is free software; you can redistribute it and/or
 #     modify it under the same terms as Perl itself.
 #
-# SCCS: 1.7, 11/11/97  
+# SCCS: %I%, %G%  
 
 # The documentation for this module is at the bottom of this file,
 # after the line __END__.
@@ -15,9 +15,9 @@ BEGIN { require 5.004_02 }
 
 use strict;
 use Carp;
-use vars qw($VERSION @ISA @EXPORT $AUTOLOAD $Error);
+use vars qw($VERSION @ISA @EXPORT $AUTOLOAD);
 
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 require Exporter;
 require DynaLoader;
@@ -48,6 +48,7 @@ use IO ;
 	DB_ARCH_DATA
 	DB_ARCH_LOG
 	DB_BEFORE
+	DB_BTREE
 	DB_BTREEMAGIC
 	DB_BTREEOLDVER
 	DB_BTREEVERSION
@@ -71,6 +72,7 @@ use IO ;
 	DB_FIXEDLEN
 	DB_FLUSH
 	DB_GET_RECNO
+	DB_HASH
 	DB_HASHMAGIC
 	DB_HASHOLDVER
 	DB_HASHVERSION
@@ -121,6 +123,7 @@ use IO ;
 	DB_PAD
 	DB_PREV
 	DB_RDONLY
+	DB_RECNO
 	DB_RECNUM
 	DB_RECORDCOUNT
 	DB_RECOVER
@@ -162,6 +165,12 @@ use IO ;
 	DB_VERSION_MAJOR
 	DB_VERSION_MINOR
 	DB_VERSION_PATCH
+
+	DB_REGION_ANON
+	DB_REGION_INIT
+	DB_REGION_NAME
+	DB_TSL_SPINS
+	
 );
 
 sub AUTOLOAD {
@@ -231,6 +240,29 @@ sub ParseParameters($@)
     return \%got ;
 }
 
+package BerkeleyDB::Term ;
+
+END
+{
+if (1) { ###
+    my $ref ;
+#print "BerkeleyDB::Term::END cursors\n" ;
+##    foreach $ref ( keys %{ $BerkeleyDB::Term::opened{cur} } )
+##	{ cur_close($ref) }
+
+##print "BerkeleyDB::Term::END dbs\n" ;
+close_dbs() ;
+##    foreach $ref ( keys %BerkeleyDB::Term::Db )
+##	{ print "closing $ref\n" ; db_close($ref) }
+###print "BerkeleyDB::Term::END envs\n" ;
+##    foreach $ref ( keys %{ $BerkeleyDB::Term::opened{txn_mgr} } )
+##	{ txnmgr_close($ref) }
+###print "BerkeleyDB::Term::END txn_mgr\n" ;
+##    foreach $ref ( keys %{ $BerkeleyDB::Term::opened{env} } )
+##	{ env_close($ref) }
+##print "---end of BerkeleyDB::Term::END\n" ;
+}
+}
 
 package BerkeleyDB::Env ;
 
@@ -256,9 +288,6 @@ sub new
     #			[ -ErrPrefix 	=> "string", ]
     #			[ -Flags	=> DB_INIT_LOCK| ]
     #			[ -Verbose	=> boolean ]
-    #			[ -LockMax	=> number ]
-    #			[ -LogMax	=> number ]
-    #			[ -TxnMax	=> number ]
     #			;
 
     my $pkg = shift ;
@@ -269,9 +298,6 @@ sub new
 					Flags     	=> 0,
 					Verbose		=> 0,
 					Config		=> undef,
-					LockMax		=> 0,
-					LogMax		=> 0,
-					TxnMax		=> 0,
 					}, @_) ;
 
     if (defined $got->{ErrFile}) {
@@ -297,14 +323,8 @@ sub new
 	    if @BerkeleyDB::a ;
     }
 
-    my $obj =  _db_appinit($got) ;
-    bless $obj, $pkg if $obj ;
-
-    return $obj ;
-
+    return _db_appinit($pkg, $got) ;
 }
-
-#*Hash = \&BerkeleyDB::Hash::new ;
 
 package BerkeleyDB::Hash ;
 
@@ -346,50 +366,36 @@ sub new
     croak("-Tie needs a reference to a hash")
 	if defined $got->{Tie} and $got->{Tie} !~ /HASH/ ;
 
-    my $obj = _db_open_hash($got);
-    if ($obj) {
-        bless $obj, $self ;
-
-        tie %{ $got->{Tie} }, $self, $obj 
-            if $got->{Tie};
-
-    }
-
-    return $obj ;
+    return  _db_open_hash($self, $got);
 }
 
 *TIEHASH = \&new ;
-#sub TIEHASH  
-#{ 
-#    my $self = shift ;
-#
-#    return $self->new(@_) ;
-#}
 
 package BerkeleyDB::Common ;
 
-sub Tie
-{
-    # Usage:
-    #
-    #   $db->Tie \%hash ;
-    #
+#sub Tie
+#{
+#    # Usage:
+#    #
+#    #   $db->Tie \%hash ;
+#    #
+#
+#    my $self = shift ;
+#
+##print "Tie method REF=[$self] [" . (ref $self) . "]\n" ;
+#
+#    croak("usage \$x->Tie \\%hash\n") unless @_ ;
+#    my $ref  = shift ; 
+#
+#    croak("Tie needs a reference to a hash")
+#	if defined $ref and $ref !~ /HASH/ ;
+#
+#    #tie %{ $ref }, ref($self), $self ; 
+#    tie %{ $ref }, "BerkeleyDB::_tiedHash", $self ; 
+#    return undef ;
+#}
 
-    my $self = shift ;
-
-print "Tie method REF=[$self] [" . (ref $self) . "]\n" ;
-
-    croak("usage \$x->Tie \\%hash\n") unless @_ ;
-    my $ref  = shift ; 
-
-    croak("Tie needs a reference to a hash")
-	if defined $ref and $ref !~ /HASH/ ;
-
-    #tie %{ $ref }, ref($self), $self ; 
-    tie %{ $ref }, "BerkeleyDB::_tiedHash", $self ; 
-    return undef ;
-}
-
+ 
 package BerkeleyDB::Btree ;
 
 use vars qw(@ISA) ;
@@ -430,16 +436,7 @@ sub new
     croak("-Tie needs a reference to a hash")
 	if defined $got->{Tie} and $got->{Tie} !~ /HASH/ ;
 
-    my $obj = _db_open_btree($got);
-    if ($obj) {
-        bless $obj, $self ;
-
-        tie %{ $got->{Tie} }, $self, $obj 
-            if $got->{Tie};
-
-    }
-
-    return $obj ;
+    return _db_open_btree($self, $got);
 }
 
 *BerkeleyDB::Btree::TIEHASH = \&BerkeleyDB::Btree::new ;
@@ -475,6 +472,7 @@ sub new
 			Len		=> undef,
 			Pad		=> undef,
 			Source 		=> undef,
+			ArrayBase 	=> 1, # lowest index in array
 		      }, @_) ;
 
     croak("Env not of type BerkeleyDB::Env")
@@ -483,25 +481,74 @@ sub new
     croak("Txn not of type BerkeleyDB::Txn")
 	if defined $got->{Txn} and ! isa($got->{Txn},'BerkeleyDB::Txn');
 
-    croak("-Tie needs a reference to a hash")
-	if defined $got->{Tie} and $got->{Tie} !~ /HASH/ ;
+    croak("Tie needs a reference to an array")
+	if defined $got->{Tie} and $got->{Tie} !~ /ARRAY/ ;
 
-    my $obj = _db_open_recno($got);
-    if ($obj) {
-        bless $obj, $self ;
+    croak("ArrayBase can only be 0 or 1, parsed $got->{ArrayBase}")
+	if $got->{ArrayBase} != 1 and $got->{ArrayBase} != 0 ;
 
-        tie %{ $got->{Tie} }, $self, $obj 
-            if $got->{Tie};
 
-    }
+    $got->{Fname} = $got->{Filename} if defined $got->{Filename} ;
 
-    return $obj ;
+    return _db_open_recno($self, $got);
 }
 
 *BerkeleyDB::Recno::TIEARRAY = \&BerkeleyDB::Recno::new ;
 *BerkeleyDB::Recno::db_stat = \&BerkeleyDB::Btree::db_stat ;
 
-package BerkeleyDB::Text ;
+## package BerkeleyDB::Text ;
+## 
+## use vars qw(@ISA) ;
+## @ISA = qw( BerkeleyDB::Common BerkeleyDB::_tiedArray ) ;
+## use UNIVERSAL qw( isa ) ;
+## use Carp ;
+## 
+## sub new
+## {
+##     my $self = shift ;
+##     my $got = BerkeleyDB::ParseParameters(
+## 		      {
+## 			# Generic Stuff
+## 			Filename 	=> undef,
+## 			#Flags		=> BerkeleyDB::DB_CREATE(),
+## 			Flags		=> 0,
+## 			Property	=> 0,
+## 			Mode		=> 0666,
+## 			Cachesize 	=> 0,
+## 			Lorder 		=> 0,
+## 			Pagesize 	=> 0,
+## 			Env		=> undef,
+## 			#Tie 		=> undef,
+## 			Txn		=> undef,
+## 
+## 			# Recno specific
+## 			Delim		=> undef,
+## 			Len		=> undef,
+## 			Pad		=> undef,
+## 			Btree 		=> undef,
+## 		      }, @_) ;
+## 
+##     croak("Env not of type BerkeleyDB::Env")
+## 	if defined $got->{Env} and ! isa($got->{Env},'BerkeleyDB::Env');
+## 
+##     croak("Txn not of type BerkeleyDB::Txn")
+## 	if defined $got->{Txn} and ! isa($got->{Txn},'BerkeleyDB::Txn');
+## 
+##     croak("-Tie needs a reference to an array")
+## 	if defined $got->{Tie} and $got->{Tie} !~ /ARRAY/ ;
+## 
+##     # rearange for recno
+##     $got->{Source} = $got->{Filename} if defined $got->{Filename} ;
+##     delete $got->{Filename} ;
+##     $got->{Fname} = $got->{Btree} if defined $got->{Btree} ;
+##     #return _db_open_text($self, $got);
+##     return BerkeleyDB::Recno::_db_open_recno($self, $got);
+## }
+## 
+## *BerkeleyDB::Text::TIEARRAY = \&BerkeleyDB::Text::new ;
+## *BerkeleyDB::Text::db_stat = \&BerkeleyDB::Btree::db_stat ;
+
+package BerkeleyDB::Unknown ;
 
 use vars qw(@ISA) ;
 @ISA = qw( BerkeleyDB::Common BerkeleyDB::_tiedArray ) ;
@@ -526,11 +573,6 @@ sub new
 			#Tie 		=> undef,
 			Txn		=> undef,
 
-			# Recno specific
-			Delim		=> undef,
-			Len		=> undef,
-			Pad		=> undef,
-			Btree 		=> undef,
 		      }, @_) ;
 
     croak("Env not of type BerkeleyDB::Env")
@@ -542,22 +584,16 @@ sub new
     croak("-Tie needs a reference to a hash")
 	if defined $got->{Tie} and $got->{Tie} !~ /HASH/ ;
 
-    my $obj = _db_open_text($got);
-    if ($obj) {
-        bless $obj, $self ;
-
-        tie %{ $got->{Tie} }, $self, $obj 
-            if $got->{Tie};
-
-    }
-
+    my ($addr, $type) = _db_open_unknown($got);
+    my $obj ;
+    $obj = bless \$addr, "BerkeleyDB::$type" if $addr ;
     return $obj ;
 }
 
-*BerkeleyDB::Text::TIEARRAY = \&BerkeleyDB::Text::new ;
-*BerkeleyDB::Text::db_stat = \&BerkeleyDB::Btree::db_stat ;
 
 package BerkeleyDB::_tiedHash ;
+
+use Carp ;
 
 #sub TIEHASH  
 #{ 
@@ -568,6 +604,37 @@ package BerkeleyDB::_tiedHash ;
 #
 #    return bless { Obj => $db_object}, $self ; 
 #}
+
+sub Tie
+{
+    # Usage:
+    #
+    #   $db->Tie \%hash ;
+    #
+
+    my $self = shift ;
+
+#print "Tie method REF=[$self] [" . (ref $self) . "]\n" ;
+
+    croak("usage \$x->Tie \\%hash\n") unless @_ ;
+    my $ref  = shift ; 
+
+    croak("Tie needs a reference to a hash")
+	if defined $ref and $ref !~ /HASH/ ;
+
+    #tie %{ $ref }, ref($self), $self ; 
+    tie %{ $ref }, "BerkeleyDB::_tiedHash", $self ; 
+    return undef ;
+}
+
+ 
+sub TIEHASH  
+{ 
+    my $self = shift ;
+    my $db_object = shift ;
+    #return bless $db_object, 'BerkeleyDB::Common' ; 
+    return $db_object ;
+}
 
 sub STORE
 {
@@ -623,6 +690,31 @@ sub CLEAR
 
 package BerkeleyDB::_tiedArray ;
 
+use Carp ;
+
+sub Tie
+{
+    # Usage:
+    #
+    #   $db->Tie \@array ;
+    #
+
+    my $self = shift ;
+
+#print "Tie method REF=[$self] [" . (ref $self) . "]\n" ;
+
+    croak("usage \$x->Tie \\%hash\n") unless @_ ;
+    my $ref  = shift ; 
+
+    croak("Tie needs a reference to an array")
+	if defined $ref and $ref !~ /ARRAY/ ;
+
+    #tie %{ $ref }, ref($self), $self ; 
+    tie @{ $ref }, "BerkeleyDB::_tiedArray", $self ; 
+    return undef ;
+}
+
+ 
 #sub TIEARRAY  
 #{ 
 #    my $self = shift ;
@@ -632,6 +724,14 @@ package BerkeleyDB::_tiedArray ;
 #
 #    return bless { Obj => $db_object}, $self ; 
 #}
+
+sub TIEARRAY  
+{ 
+    my $self = shift ;
+    my $db_object = shift ;
+    #return bless $db_object, 'BerkeleyDB::Common' ; 
+    return $db_object ;
+}
 
 sub STORE
 {
@@ -651,6 +751,107 @@ sub FETCH
 
     return $value ;
 }
+
+*CLEAR =    \&BerkeleyDB::_tiedHash::CLEAR ;
+*FIRSTKEY = \&BerkeleyDB::_tiedHash::FIRSTKEY ;
+*NEXTKEY =  \&BerkeleyDB::_tiedHash::NEXTKEY ;
+
+sub EXTEND {} # don't do anything with EXTEND
+
+
+sub SHIFT
+{
+    my $self = shift;
+    my ($key, $value) = (0, 0) ;
+    my $cursor = $self->db_cursor() ;
+    return undef if $cursor->c_get($key, $value, BerkeleyDB::DB_FIRST()) != 0 ;
+    return undef if $cursor->c_del() != 0 ;
+
+    return $value ;
+}
+
+
+sub UNSHIFT
+{
+    my $self = shift;
+    if (@_)
+    {
+        my ($key, $value) = (0, 0) ;
+        my $cursor = $self->db_cursor() ;
+        if ($cursor->c_get($key, $value, BerkeleyDB::DB_FIRST()) == 0) 
+        {
+            foreach $value (reverse @_)
+            {
+	        $key = 0 ;
+	        $cursor->c_put($key, $value, BerkeleyDB::DB_BEFORE()) ;
+            }
+        }
+    }
+}
+
+sub PUSH
+{
+    my $self = shift;
+    if (@_)
+    {
+        my ($key, $value) = (0, 0) ;
+        my $cursor = $self->db_cursor() ;
+        $cursor->c_get($key, $value, BerkeleyDB::DB_LAST()) ;
+
+        foreach $value (@_)
+        {
+	    $cursor->c_put($key, $value, BerkeleyDB::DB_AFTER()) ;
+        }
+    }
+}
+
+sub POP
+{
+    my $self = shift;
+    my ($key, $value) = (0, 0) ;
+    my $cursor = $self->db_cursor() ;
+    return undef if $cursor->c_get($key, $value, BerkeleyDB::DB_LAST()) != 0 ;
+    return undef if $cursor->c_del() != 0 ;
+
+    return $value ;
+}
+
+sub SPLICE
+{
+    my $self = shift;
+    die "SPLICE is not implemented yet" ;
+}
+
+*shift = \&SHIFT ;
+*unshift = \&UNSHIFT ;
+*push = \&PUSH ;
+*pop = \&POP ;
+*clear = \&CLEAR ;
+
+sub STORESIZE
+{
+    die "STORESIZE is not implemented yet" ;
+#print "STORESIZE @_\n" ;
+#    my $self = shift;
+#    my $length = shift ;
+#    my $current_length = $self->FETCHSIZE() ;
+#print "length is $current_length\n";
+#
+#    if ($length < $current_length) {
+#print "Make smaller $length < $current_length\n" ;
+#        my $key ;
+#        for ($key = $current_length - 1 ; $key >= $length ; -- $key)
+#          { $self->db_del($key) }
+#    }
+#    elsif ($length > $current_length) {
+#print "Make larger $length > $current_length\n" ;
+#        $self->db_put($length-1, "") ;
+#    }
+#    else { print "stay the same\n" }
+
+}
+
+
 
 #sub DESTROY
 #{

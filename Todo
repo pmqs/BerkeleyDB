@@ -1,4 +1,66 @@
-  * The recno interface hasn't been done.
- 
+
+  * get Makefile.PL and/or BerkeleyDB.xs to check that a recent enough
+    version of DB is being used.
+
+  * use '~' magic to store the inner data.
+
   * Proper documentation.
+
+  * address or document the "close all cursors if you encounter an error"
+
+  * Change the $BerkeleyDB::Error to store the info in the db object,
+    if possible.
+
+  * do we need a close method? Is one needed for env, db, cursor etc?
+    Interaction with untie?
+
+    Should the close methods fail if there are still any children open,
+    e.g. if a database has one or more cursors open should the database
+    close fail?
+
+    Alternatively should the clode method arrange it so that all
+    children get closed?
+
+    If not document the fact that the destruction of the database
+    object will close the database.
+
+  * $BerkeleyDB::db_version is documented. &db_version isn't.
+
+  * migrate perl code into the .xs file where necessary
+
+  * convert as many of the DB examples files to BerkeleyDB format.
+
+
+Possibles
+
+  * for the get stuff zap the value to undef if it doesn't find the
+    key. This may be more intuitive for those folks who are used with
+    the $hash{key} interface.
+
+  * Text interface? This can be done as via Recno
+
+  * allow recno to allow base offset for arrays to be either 0 or 1.
+
+  * To make it easier to interface to databases that expect key/values
+    to be NULL terminated or as an alternative to MLDBM, add a key/value
+    filter interface
+
+        -Filter =>
+            {
+                -ReadKey => sub { ... },
+                -WriteRey
+                -ReadData
+                -WriteData
+                -ReadAny
+                -WriteAny
+            }
+
+        arrange for the key/value to be available in $_
+	e.g. to have a C friendly database use
+
+        -Filter => {
+            -ReadAny    => sub { s/\0$// },
+            -WriteAny    => sub { $_ .= '\0' }
+            } ;
+
 

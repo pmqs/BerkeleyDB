@@ -14,7 +14,7 @@ BEGIN {
 use BerkeleyDB; 
 use File::Path qw(rmtree);
 
-print "1..42\n";
+print "1..49\n";
 
 
 {
@@ -129,10 +129,11 @@ umask(0);
 					 DB_INIT_MPOOL|DB_INIT_LOCK ;
     ok 20, $env ;
 
-    ok 21, my $txn = $env->txn_begin() ;
+    ok 21, my $txn_mgr = $env->TxnMgr() ;
+    ok 22, my $txn = $txn_mgr->txn_begin() ;
 
     my %hash ;
-    ok 22, tie %hash, 'BerkeleyDB::Hash', -Filename => $data_file,
+    ok 23, tie %hash, 'BerkeleyDB::Hash', -Filename => $data_file,
                                        -Flags     => DB_CREATE ,
                                        -Env       => $env,
                                        -Txn       => $txn  ;
@@ -151,17 +152,17 @@ umask(0);
     # -ErrFile with a filename
     my $errfile = "./errfile" ;
     my $lex = new LexFile $errfile ;
-    ok 23, my $env = new BerkeleyDB::Env( -ErrFile => $errfile ) ;
+    ok 24, my $env = new BerkeleyDB::Env( -ErrFile => $errfile ) ;
     my $db = new BerkeleyDB::Hash -Filename => $Dfile,
 			     -Env      => $env,
 			     -Flags    => -1;
-    ok 24, !$db ;
+    ok 25, !$db ;
 
-    ok 25, $BerkeleyDB::Error =~ /^illegal flag specified to db_open/;
-    ok 26, -e $errfile ;
+    ok 26, $BerkeleyDB::Error =~ /^illegal flag specified to db_open/;
+    ok 27, -e $errfile ;
     my $contents = docat($errfile) ;
     chomp $contents ;
-    ok 27, $BerkeleyDB::Error eq $contents ;
+    ok 28, $BerkeleyDB::Error eq $contents ;
 
 }
 
@@ -170,19 +171,19 @@ umask(0);
     use IO ;
     my $errfile = "./errfile" ;
     my $lex = new LexFile $errfile ;
-    ok 28, my $ef  = new IO::File ">$errfile" ;
-    ok 29, my $env = new BerkeleyDB::Env( -ErrFile => $ef ) ;
+    ok 29, my $ef  = new IO::File ">$errfile" ;
+    ok 30, my $env = new BerkeleyDB::Env( -ErrFile => $ef ) ;
     my $db = new BerkeleyDB::Hash -Filename => $Dfile,
 			     -Env      => $env,
 			     -Flags    => -1;
-    ok 30, !$db ;
+    ok 31, !$db ;
 
-    ok 31, $BerkeleyDB::Error =~ /^illegal flag specified to db_open/;
+    ok 32, $BerkeleyDB::Error =~ /^illegal flag specified to db_open/;
     $ef->close() ;
-    ok 32, -e $errfile ;
+    ok 33, -e $errfile ;
     my $contents = docat($errfile) ;
     chomp $contents ;
-    ok 33, $BerkeleyDB::Error eq $contents ;
+    ok 34, $BerkeleyDB::Error eq $contents ;
 }
 
 {
@@ -190,35 +191,59 @@ umask(0);
     use IO ;
     my $errfile = "./errfile" ;
     my $lex = new LexFile $errfile ;
-    ok 34, my $env = new BerkeleyDB::Env( -ErrFile => $errfile,
+    ok 35, my $env = new BerkeleyDB::Env( -ErrFile => $errfile,
 					-ErrPrefix => "PREFIX" ) ;
     my $db = new BerkeleyDB::Hash -Filename => $Dfile,
 			     -Env      => $env,
 			     -Flags    => -1;
-    ok 35, !$db ;
+    ok 36, !$db ;
 
-    ok 36, $BerkeleyDB::Error =~ /^PREFIX: illegal flag specified to db_open/;
-    ok 37, -e $errfile ;
+    ok 37, $BerkeleyDB::Error =~ /^PREFIX: illegal flag specified to db_open/;
+    ok 38, -e $errfile ;
     my $contents = docat($errfile) ;
     chomp $contents ;
-    ok 38, $BerkeleyDB::Error eq $contents ;
+    ok 39, $BerkeleyDB::Error eq $contents ;
 
     # change the prefix on the fly
     my $old = $env->errPrefix("NEW ONE") ;
-    ok 39, $old eq "PREFIX" ;
+    ok 40, $old eq "PREFIX" ;
 
     $db = new BerkeleyDB::Hash -Filename => $Dfile,
 			     -Env      => $env,
 			     -Flags    => -1;
-    ok 40, !$db ;
-    ok 41, $BerkeleyDB::Error =~ /^NEW ONE: illegal flag specified to db_open/;
+    ok 41, !$db ;
+    ok 42, $BerkeleyDB::Error =~ /^NEW ONE: illegal flag specified to db_open/;
     $contents = docat($errfile) ;
     chomp $contents ;
-    ok 42, $contents =~ /$BerkeleyDB::Error$/ ;
+    ok 43, $contents =~ /$BerkeleyDB::Error$/ ;
+}
+
+{
+    # test db_appexit
+    use Cwd ;
+    my $cwd = cwd() ;
+    my $home = "$cwd/fred" ;
+    my $data_dir = "$home/data_dir" ;
+    my $log_dir = "$home/log_dir" ;
+    my $data_file = "data.db" ;
+    ok 44, -d $home ? chmod 0777, $home : mkdir($home, 0777) ;
+    ok 45, -d $data_dir ? chmod 0777, $data_dir : mkdir($data_dir, 0777) ;
+    ok 46, -d $log_dir ? chmod 0777, $log_dir : mkdir($log_dir, 0777) ;
+    my $env = new BerkeleyDB::Env -Home   => $home,
+			      -Config => { DB_DATA_DIR => $data_dir,
+					   DB_LOG_DIR  => $log_dir
+					 },
+			      -Flags  => DB_CREATE|DB_INIT_TXN|DB_INIT_LOG|
+					 DB_INIT_MPOOL|DB_INIT_LOCK ;
+    ok 47, $env ;
+
+    ok 48, my $txn_mgr = $env->TxnMgr() ;
+
+    ok 49, $env->db_appexit() == 0 ;
+
+    rmtree $home ;
 }
 
 # test -Verbose
 # test -Flags
-# test -LockMax
-# test -LogMax
-# test -TxnMax
+# db_value_set

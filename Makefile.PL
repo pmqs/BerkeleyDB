@@ -1,6 +1,6 @@
 #! perl -w
 
-# SCCS: 1.4, 11/11/97     
+# SCCS: %I%, %G%     
 
 # It should not be necessary to edit this file. The configuration for
 # BerkeleyDB is controlled from the file config.in
@@ -69,7 +69,7 @@ sub ParseCONFIG
 
     print "Parsing $CONFIG...\n" ;
 
-    # DB_OPEN is optional, so pretend it has been parsed.
+    # DBNAME is optional, so pretend it has been parsed.
     delete $Parsed{'DBNAME'} ;
 
     open(F, "$CONFIG") or die "Cannot open file $CONFIG: $!\n" ;

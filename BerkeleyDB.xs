@@ -4,13 +4,15 @@
  
  written by Paul Marquess (pmarquess@bfsec.bt.co.uk)
 
- SCCS: 1.7, 11/11/97  
+ SCCS: %I%, %G%  
 
  All comments/suggestions/problems are welcome
  
      Copyright (c) 1997 Paul Marquess. All rights reserved.
      This program is free software; you can redistribute it and/or
      modify it under the same terms as Perl itself.
+
+     Please refer to the COPYRIGHT section in 
  
  Changes:
         0.01 -  First Alpha Release
@@ -26,12 +28,22 @@ extern "C" {
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
+
+/* Being the Berkeley DB we prefer the <sys/cdefs.h> (which will be
+ * shortly #included by the <db.h>) __attribute__ to the possibly
+ * already defined __attribute__, for example by GNUC or by Perl. */
+
+#undef __attribute__
+
 #include <db.h>
+
 #ifdef __cplusplus
 }
 #endif
 
 /* #define TRACE */
+/* #define ALLOW_RECNO_OFFSET */
+#define ALLOW_KV_FILTER
 
 
 typedef struct {
@@ -49,6 +61,17 @@ typedef struct {
 	u_int32_t	partial ;
 	u_int32_t	dlen ;
 	u_int32_t	doff ;
+	int		active ;
+#ifdef ALLOW_RECNO_OFFSET
+	int		array_base ;
+#endif
+#ifdef ALLOW_KV_FILTER
+	int		filtering ;
+        SV *    	readKey ;
+        SV *    	writeKey ;
+        SV *    	readValue ;
+        SV *    	writeValue ;
+#endif
         } BerkeleyDB_type;
 
 typedef struct {
@@ -57,26 +80,48 @@ typedef struct {
 	SV *		ErrPrefix ;
 	SV *		ErrHandle ;
 	DB_ENV		Env ;
+	int		TxnMgrStatus ;
+	int		active ;
 	} BerkeleyDB_ENV_type ;
 
+typedef struct {
+	BerkeleyDB_ENV_type *	env ;
+	SV *			ref2env ;
+	} BerkeleyDB_TxnMgr_type ;
+
+#if 1
+typedef struct {
+	int		Status ;
+	DB_TXN *	txn ;
+	int		active ;
+	} BerkeleyDB_Txn_type ;
+#else
+typedef DB_TXN                BerkeleyDB_Txn_type ;
+#endif
+
 typedef BerkeleyDB_ENV_type *	BerkeleyDB__Env ;
+typedef BerkeleyDB_ENV_type *	BerkeleyDB__Env__Inner ;
 typedef BerkeleyDB_type * 	BerkeleyDB ;
 typedef BerkeleyDB_type *	BerkeleyDB__Common ;
+typedef BerkeleyDB_type *	BerkeleyDB__Common__Inner ;
 typedef BerkeleyDB_type * 	BerkeleyDB__Hash ;
 typedef BerkeleyDB_type * 	BerkeleyDB__Btree ;
 typedef BerkeleyDB_type * 	BerkeleyDB__Recno ;
-typedef BerkeleyDB_type * 	BerkeleyDB__Text ;
 typedef BerkeleyDB_type   	BerkeleyDB__Cursor_type ;
 typedef BerkeleyDB_type * 	BerkeleyDB__Cursor ;
-typedef DB_TXNMGR *   		BerkeleyDB__TxnMgr ;
-typedef DB_TXN *      		BerkeleyDB__Txn ;
+typedef BerkeleyDB_TxnMgr_type * BerkeleyDB__TxnMgr ;
+typedef BerkeleyDB_TxnMgr_type * BerkeleyDB__TxnMgr__Inner ;
+typedef BerkeleyDB_Txn_type *	BerkeleyDB__Txn ;
+typedef BerkeleyDB_Txn_type *	BerkeleyDB__Txn__Inner ;
 typedef DB_LOG *      		BerkeleyDB__Log ;
 typedef DB_LOCKTAB *  		BerkeleyDB__Lock ;
 typedef DBT 			DBTKEY ;
+typedef DBT 			DBT_B ;
 typedef DBT 			DBTKEY_B ;
 typedef DBT 			DBTVALUE ;
 typedef void *	      		PV_or_NULL ;
 typedef PerlIO *      		IO_or_NULL ;
+typedef int			DualType ;
 
 #ifdef TRACE
 #define Trace(x)	printf x 
@@ -84,10 +129,41 @@ typedef PerlIO *      		IO_or_NULL ;
 #define Trace(x)	
 #endif
 
+#ifdef ALLOW_RECNO_OFFSET
+#define RECNO_BASE	db->array_base
+#else
+#define RECNO_BASE	1
+#endif
+
+#ifdef ALLOW_KV_FILTER
+#define ckFilter(arg,type)                              \
+        if (db->type) {                                 \
+            if (db->filtering)                          \
+                croak("recusrion detected") ;           \
+            db->filtering = TRUE ;                      \
+            SAVE_DEFSV ;   /* save $_ */                \
+            /* DEFSV = sv_2mortal(newSVsv(arg)) ; */            \
+            DEFSV = arg ;                               \
+                                                        \
+            PUSHMARK(sp) ;                              \
+                                                        \
+            (void) perl_call_sv(db->type, G_DISCARD|G_NOARGS);  \
+            SPAGAIN ;                                   \
+            /* sv_setsv(arg, DEFSV) ; */                \
+            arg =  DEFSV ;                              \
+            PUTBACK ;                                   \
+            db->filtering = FALSE ;                     \
+        }
+#else
+#define ckFilter(type, sv)
+#endif
+
 #define ERR_BUFF "BerkeleyDB::Error" 
 
 #define ZMALLOC(to, typ) ((to = (typ *)safemalloc(sizeof(typ))), \
 				Zero(to,1,typ))
+
+#define my_sv_setpvn(sv, d, s) (s ? sv_setpvn(sv, d, s) : sv_setpv(sv, "") )
 
 #define SetValue_iv(i, k) if ((sv = readHash(hash, k)) && sv != &sv_undef) \
 				i = SvIV(sv)
@@ -104,9 +180,46 @@ typedef PerlIO *      		IO_or_NULL ;
 				i = (t) tmp ;			\
 			  }
 
+#define SetValue_ovx(i,k,t) if ((sv = readHash(hash, k)) && sv != &sv_undef) {\
+				HV * hv = (HV *)GetInternalObject(sv);		\
+				SV ** svp = hv_fetch(hv, "db", 2, FALSE);\
+				IV tmp = SvIV(*svp);			\
+				i = (t) tmp ;				\
+			  }
+
+#define SetValue_ovX(i,k,t) if ((sv = readHash(hash, k)) && sv != &sv_undef) {\
+				IV tmp = SvIV(GetInternalObject(sv));\
+				i = (t) tmp ;				\
+			  }
+
+#define LastDBerror DB_NOTFOUND
+
+#define setDUALerrno(var, err)					\
+		sv_setnv(var, (double)err) ;			\
+		sv_setpv(var, (err < LastDBerror		\
+				? "Unknown"			\
+				: err == 0 ? ""			\
+				    : err < 0 			\
+					? db_err_str[abs(err)] 	\
+					: Strerror(err))) ;	\
+		SvNOK_on(var); 					
+
 #define OutputValue(arg, name)                                  \
         { if (RETVAL == 0) {                                    \
-              sv_setpvn(arg, name.data, name.size) ;            \
+              my_sv_setpvn(arg, name.data, name.size) ;         \
+              ckFilter(arg, readValue) ;                        \
+          }                                                     \
+        }
+
+#define OutputValue_B(arg, name)                                  \
+        { if (RETVAL == 0) {                                    \
+		if (db->type == DB_BTREE && (flags & DB_GET_RECNO)){\
+                    sv_setiv(arg, (I32)(*(I32*)name.data) - RECNO_BASE); \
+                }                                               \
+                else {                                          \
+                    my_sv_setpvn(arg, name.data, name.size) ;   \
+                }                                               \
+                ckFilter(arg, readValue) ;                      \
           }                                                     \
         }
 
@@ -114,10 +227,11 @@ typedef PerlIO *      		IO_or_NULL ;
         { if (RETVAL == 0) 					\
           {                                                     \
                 if (db->type != DB_RECNO) {                     \
-                    sv_setpvn(arg, name.data, name.size);       \
+                    my_sv_setpvn(arg, name.data, name.size);    \
                 }                                               \
                 else                                            \
-                    sv_setiv(arg, (I32)*(I32*)name.data - 1);   \
+                    sv_setiv(arg, (I32)*(I32*)name.data - RECNO_BASE);   \
+                ckFilter(arg, readKey) ;                       \
           }                                                     \
         }
 
@@ -125,19 +239,33 @@ typedef PerlIO *      		IO_or_NULL ;
         { if (RETVAL == 0) 					\
           {                                                     \
                 if (db->type == DB_RECNO || 			\
-		(db->type == DB_BTREE && flags & DB_GET_RECNO)){\
-                    sv_setiv(arg, (I32)*(I32*)name.data - 1);   \
+		(db->type == DB_BTREE && 			\
+			(flags & DB_GET_RECNO))){		\
+                    sv_setiv(arg, (I32)(*(I32*)name.data) - RECNO_BASE); \
                 }                                               \
                 else {                                          \
-                    sv_setpvn(arg, name.data, name.size);       \
+                    my_sv_setpvn(arg, name.data, name.size);    \
                 }                                               \
+                ckFilter(arg, readKey) ;                       \
           }                                                     \
         }
 
-#define SetPartial(data) 		\
-	data.flags = db->partial ;	\
-	data.dlen  = db->dlen ;		\
+#define SetPartial(data) 					\
+	data.flags = db->partial ;				\
+	data.dlen  = db->dlen ;					\
 	data.doff  = db->doff ;	
+
+#define ckActive(active, type) 					\
+    {								\
+	if (!active)  						\
+	    croak("%s is already closed", type) ;		\
+    }
+
+#define ckActive_Environment(a)	ckActive(a, "Environment")
+#define ckActive_TxnMgr(a)	ckActive(a, "Transaction Manager")
+#define ckActive_Transaction(a) ckActive(a, "Transaction")
+#define ckActive_Database(a) 	ckActive(a, "Database")
+#define ckActive_Cursor(a) 	ckActive(a, "Cursor")
 
 /* Internal Global Data */
 static db_recno_t Value ;
@@ -145,6 +273,26 @@ static db_recno_t zero = 0 ;
 static BerkeleyDB	CurrentDB ;
 static DBTKEY	empty ;
 static char	ErrBuff[1000] ;
+static char *   db_err_str[] = {
+	"",
+	"Sync didn't finish",			/* DB_INCOMPLETE 	*/
+	"The key/data pair was deleted or was never created by the user",
+						/* DB_KEYEMPTY		*/
+	"The key/data pair already exists",	/* DB_KEYEXIST 		*/
+	"Locker killed to resolve deadlock",	/* DB_LOCK_DEADLOCK 	*/
+	"Lock unavailable, no-wait set",	/* DB_LOCK_NOTGRANTED 	*/
+	"Lock not held by locker",		/* DB_LOCK_NOTHELD	*/
+	"Key/data pair not found (EOF)",	/* DB_NOTFOUND		*/
+#if 0
+	"Recovery file marked deleted",		/* DB_DELETED		*/
+	"Page needs to be split",		/* DB_NEEDSPLIT		*/
+	"Entry was previously registered",	/* DB_REGISTERED	*/
+	"Database needs byte swapping",		/* DB_SWAPBYTES		*/
+	"Encountered ckp record in log",	/* DB_TXN_CKP		*/
+#endif
+			
+	} ;
+
 
 
 static I32
@@ -153,22 +301,31 @@ BerkeleyDB db ;
 {
     DBT		key ;
     DBT		value ;
-    int		RETVAL ;
+    int		RETVAL = 0 ;
+    DBC *   	cursor ;
 
     key.flags = 0 ;
     value.flags = 0 ;
-    RETVAL = (db->cursor->c_get)(db->cursor, &key, &value, DB_LAST) ;
-    if (RETVAL == 0)
-        RETVAL = *(I32 *)key.data ;
-    else /* No key means empty file */
-        RETVAL = 0 ;
+    if ( ((db->dbp)->cursor)(db->dbp, db->txn, &cursor) == 0 )
+    {
+        RETVAL = cursor->c_get(cursor, &key, &value, DB_LAST) ;
+        if (RETVAL == 0)
+            RETVAL = *(I32 *)key.data ;
+        else /* No key means empty file */
+            RETVAL = 0 ;
+        cursor->c_close(cursor) ;
+    }
 
     Trace(("GetArrayLength got %d\n", RETVAL)) ;
     return ((I32)RETVAL) ;
 }
 
+#if 0
+
+#define GetRecnoKey(db, value)  _GetRecnoKey(db, value)
+
 static db_recno_t
-GetRecnoKey(db, value)
+_GetRecnoKey(db, value)
 BerkeleyDB  db ;
 I32      value ;
 {
@@ -178,10 +335,10 @@ I32      value ;
 	I32 length = GetArrayLength(db) ;
 
 	/* check for attempt to write before start of array */
-	if (length + value + 1 <= 0)
+	if (length + value + RECNO_BASE <= 0)
 	    croak("Modification of non-creatable array value attempted, subscript %ld", (long)value) ;
 
-	value = length + value + 1 ;
+	value = length + value + RECNO_BASE ;
     }
     else
         ++ value ;
@@ -191,6 +348,127 @@ I32      value ;
     return value ;
 }
 
+#else
+
+#if 0
+#ifdef ALLOW_RECNO_OFFSET
+#define GetRecnoKey(db, value) _GetRecnoKey(db, value)
+		
+static db_recno_t
+_GetRecnoKey(db, value)
+BerkeleyDB  db ;
+I32      value ;
+{
+    if (value + RECNO_BASE < 1)
+	croak("key value %d < base (%d)", (value), RECNO_BASE?0:1) ;
+    return value + RECNO_BASE ;
+}
+
+#else
+#endif
+#endif /* 0 */
+
+#define GetRecnoKey(db, value) ((value) + RECNO_BASE )
+
+#endif
+
+static SV *
+GetInternalObject(sv)
+SV * sv ;
+{
+    SV * info = (SV*) NULL ;
+    SV * s ;
+    MAGIC * mg ;
+
+    Trace(("in GetInternalObject %d\n", sv)) ;
+    if (sv == NULL || !SvROK(sv))
+        return NULL ;
+
+    s = SvRV(sv) ;
+    if (SvMAGICAL(s))
+    {
+        if (SvTYPE(s) == SVt_PVHV || SvTYPE(s) == SVt_PVAV)
+            mg = mg_find(s, 'P') ;
+        else
+            mg = mg_find(s, 'q') ;
+
+	 /* all this testing is probably overkill, but till I know more
+	    about global destruction it stays.
+	 */
+        /* if (mg && mg->mg_obj && SvRV(mg->mg_obj) && SvPVX(SvRV(mg->mg_obj))) */
+        if (mg && mg->mg_obj && SvRV(mg->mg_obj) ) 
+            info = SvRV(mg->mg_obj) ;
+	else
+	    info = s ;
+    }
+
+    Trace(("end of GetInternalObject %d\n", info)) ;
+    return info ;
+}
+
+static void
+destroy_env(env)
+BerkeleyDB__Env env ;
+{
+      Trace(("start destroy_env %d\n", env)) ;
+      db_appexit(&env->Env) ;
+      if (env->ErrHandle)
+          SvREFCNT_dec(env->ErrHandle) ;
+      if (env->ErrPrefix)
+          SvREFCNT_dec(env->ErrPrefix) ;
+      Trace(("end destroy_env\n")) ;
+}
+
+#if 0
+static void
+destroy_txnmgr(txnmgr)
+BerkeleyDB__TxnMgr txnmgr ;
+{
+      Trace(("start destroy_txnmgr %d\n", txnmgr)) ;
+      if (txnmgr->ref2env)
+          SvREFCNT_dec(txnmgr->ref2env) ;
+      Trace(("end destroy_txnmgr\n")) ;
+}
+#endif
+
+static void
+destroy_db(db)
+BerkeleyDB db ;
+{
+      Trace(("start destroy_db %d\n", db)) ;
+      ((db->dbp)->close)(db->dbp, 0) ;
+      if (db->hash)
+        SvREFCNT_dec(db->hash) ;
+      if (db->compare)
+        SvREFCNT_dec(db->compare) ;
+      if (db->prefix)
+        SvREFCNT_dec(db->prefix) ;
+      if (db->ref2env)
+          SvREFCNT_dec(db->ref2env) ;
+#ifdef ALLOW_KV_FILTER
+      if (db->readKey)
+          SvREFCNT_dec(db->readKey) ;
+      if (db->writeKey)
+          SvREFCNT_dec(db->writeKey) ;
+      if (db->readValue)
+          SvREFCNT_dec(db->readValue) ;
+      if (db->writeValue)
+          SvREFCNT_dec(db->writeValue) ;
+#endif
+
+      Trace(("end destroy_db\n")) ;
+}
+
+static void
+destroy_cursor(c)
+BerkeleyDB__Cursor c;
+{
+    Trace(("start destroy_cursor %d\n", c)) ;
+    ((c->cursor)->c_close)(c->cursor) ;
+    if (c->ref2db)
+       SvREFCNT_dec(c->ref2db) ;
+    Trace(("end destroy_cursor\n")) ;
+}
 
 static int
 btree_compare(key1, key2)
@@ -217,8 +495,8 @@ const DBT * key2 ;
     ENTER ;
     SAVETMPS;
 
-    PUSHMARK(sp) ;
-    EXTEND(sp,2) ;
+    PUSHMARK(SP) ;
+    EXTEND(SP,2) ;
     PUSHs(sv_2mortal(newSVpv(data1,key1->size)));
     PUSHs(sv_2mortal(newSVpv(data2,key2->size)));
     PUTBACK ;
@@ -264,8 +542,8 @@ const DBT * key2 ;
     ENTER ;
     SAVETMPS;
 
-    PUSHMARK(sp) ;
-    EXTEND(sp,2) ;
+    PUSHMARK(SP) ;
+    EXTEND(SP,2) ;
     PUSHs(sv_2mortal(newSVpv(data1,key1->size)));
     PUSHs(sv_2mortal(newSVpv(data2,key2->size)));
     PUTBACK ;
@@ -301,7 +579,7 @@ size_t size ;
     ENTER ;
     SAVETMPS;
 
-    PUSHMARK(sp) ;
+    PUSHMARK(SP) ;
 
     XPUSHs(sv_2mortal(newSVpv((char*)data,size)));
     PUTBACK ;
@@ -345,10 +623,12 @@ char *buffer ;
 #endif
 
     SV * sv = perl_get_sv(ERR_BUFF, FALSE) ;
-    if (db_errpfx)
-	sv_setpvf(sv, "%s: %s", db_errpfx, buffer) ;
-    else
-        sv_setpv(sv, buffer) ;
+    if (sv) {
+        if (db_errpfx)
+	    sv_setpvf(sv, "%s: %s", db_errpfx, buffer) ;
+        else
+            sv_setpv(sv, buffer) ;
+    }
 }
 
 static SV *
@@ -364,10 +644,30 @@ char * key ;
 }
 
 static void
+hash_delete(hash, key)
+char * hash;
+IV key;
+{
+    HV * hv = perl_get_hv(hash, TRUE);
+    (void) hv_delete(hv, (char*)&key, sizeof(key), G_DISCARD);
+}
+
+static void
+hash_store_iv(hash, key, value)
+char * hash;
+IV key;
+IV value ;
+{
+    HV * hv = perl_get_hv(hash, TRUE);
+    SV ** ret = hv_store(hv, (char*)&key, sizeof(key), newSViv(value), 0);
+    /* printf("hv_store returned %d\n", ret) ; */
+}
+
+static void
 hv_store_iv(hash, key, value)
 HV * hash;
 char * key;
-int value ;
+IV value ;
 {
     hv_store(hash, key, strlen(key), newSViv(value), 0);
 }
@@ -388,22 +688,26 @@ DB_INFO * 	info ;
     DB *	dbp ;
     int		Status ;
 
-    Trace(("_db_open(dbenv[%lu] file[%s] type[%d] flags[%d] mode[%d]\n", 
-		dbenv, file, type, flags, mode)) ;
+    Trace(("_db_open(dbenv[%lu] ref [%lu] file[%s] type[%d] flags[%d] mode[%d]\n", 
+		dbenv, ref, file, type, flags, mode)) ;
 
     CurrentDB = db ;
     if (dbenv) 
 	env = &dbenv->Env ;
 
     if ((Status = db_open(file, type, flags, mode, env, info, &dbp)) == 0) {
-	if (dbenv) 
-	    dbenv->Status = Status ;
+	Trace(("db_opened\n"));
 	RETVAL = db ;
 	RETVAL->dbp  = dbp ;
-    	RETVAL->type = type ;
-	if (ref) 
+    	RETVAL->type = dbp->type ;
+	RETVAL->Status = Status ;
+	RETVAL->active = TRUE ;
+	hash_store_iv("BerkeleyDB::Term::Db", (IV)dbp, 1) ;
+	Trace(("  storing %d in BerkeleyDB::Term::Db\n", dbp)) ;
+	if (dbenv) {
 	    RETVAL->ref2env = newRV(ref) ;
-
+	    dbenv->Status = Status ;
+	}
     }
     else { 
 	Trace(("status = %d\n", Status)) ; 
@@ -552,6 +856,8 @@ int arg;
 #else
 	    goto not_there;
 #endif
+	if (strEQ(name, "DB_BTREE"))
+	    return DB_BTREE;
 	if (strEQ(name, "DB_BTREEMAGIC"))
 #ifdef DB_BTREEMAGIC
 	    return DB_BTREEMAGIC;
@@ -690,6 +996,8 @@ int arg;
 #else
 	    goto not_there;
 #endif
+	if (strEQ(name, "DB_HASH"))
+	    return DB_HASH;
 	if (strEQ(name, "DB_HASHMAGIC"))
 #ifdef DB_HASHMAGIC
 	    return DB_HASHMAGIC;
@@ -990,6 +1298,8 @@ int arg;
 #else
 	    goto not_there;
 #endif
+	if (strEQ(name, "DB_RECNO"))
+	    return DB_RECNO;
 	if (strEQ(name, "DB_RECNUM"))
 #ifdef DB_RECNUM
 	    return DB_RECNUM;
@@ -1014,15 +1324,27 @@ int arg;
 #else
 	    goto not_there;
 #endif
-	if (strEQ(name, "DB_REGISTERED"))
-#ifdef DB_REGISTERED
-	    return DB_REGISTERED;
+	if (strEQ(name, "DB_REGION_ANON"))
+#ifdef DB_REGION_ANON
+	    return DB_REGION_ANON;
 #else
 	    goto not_there;
 #endif
-	if (strEQ(name, "DB_RENUMBER"))
-#ifdef DB_RENUMBER
-	    return DB_RENUMBER;
+	if (strEQ(name, "DB_REGION_INIT"))
+#ifdef DB_REGION_INIT
+	    return DB_REGION_INIT;
+#else
+	    goto not_there;
+#endif
+	if (strEQ(name, "DB_REGION_NAME"))
+#ifdef DB_REGION_NAME
+	    return DB_REGION_NAME;
+#else
+	    goto not_there;
+#endif
+	if (strEQ(name, "DB_REGISTERED"))
+#ifdef DB_REGISTERED
+	    return DB_REGISTERED;
 #else
 	    goto not_there;
 #endif
@@ -1053,6 +1375,12 @@ int arg;
 	if (strEQ(name, "DB_RE_SNAPSHOT"))
 #ifdef DB_RE_SNAPSHOT
 	    return DB_RE_SNAPSHOT;
+#else
+	    goto not_there;
+#endif
+	if (strEQ(name, "DB_RENUMBER"))
+#ifdef DB_RENUMBER
+	    return DB_RENUMBER;
 #else
 	    goto not_there;
 #endif
@@ -1107,6 +1435,12 @@ int arg;
 	if (strEQ(name, "DB_TRUNCATE"))
 #ifdef DB_TRUNCATE
 	    return DB_TRUNCATE;
+#else
+	    goto not_there;
+#endif
+	if (strEQ(name, "DB_TSL_SPINS"))
+#ifdef DB_TSL_SPINS
+	    return DB_TSL_SPINS;
 #else
 	    goto not_there;
 #endif
@@ -1370,14 +1704,18 @@ env_db_version(maj, min, patch)
 	  min
 	  patch
 
+int
+db_value_set(value, which)
+	int value
+	int which
 
 MODULE = BerkeleyDB::Env		PACKAGE = BerkeleyDB::Env PREFIX = env_
 
 
-BerkeleyDB::Env
-_db_appinit(ref)
+BerkeleyDB::Env 
+_db_appinit(self, ref)
+	char *		self
 	SV * 		ref
-        BerkeleyDB__Env	RETVAL = NULL ;
 	CODE:
 	{
 	    HV *	hash ;
@@ -1388,12 +1726,12 @@ _db_appinit(ref)
 	    SV *	errprefix = NULL;
 	    int status ;
 
-	    Trace(("in _db_appinit\n")) ;
+	    Trace(("in _db_appinit [%s] %d\n", self, ref)) ;
 	    hash = (HV*) SvRV(ref) ;
-	    SetValue_pv(home, "Home", char *) ;
-	    SetValue_pv(config, "Config", char **) ;
+	    SetValue_pv(home,      "Home", char *) ;
+	    SetValue_pv(config,    "Config", char **) ;
 	    SetValue_sv(errprefix, "ErrPrefix") ;
-	    SetValue_iv(flags, "Flags") ;
+	    SetValue_iv(flags,     "Flags") ;
 	    Trace(("_db_appinit(config=[%d], home=[%s],errprefix=[%s],flags=[%d]\n", 
 			config, home, errprefix, flags)) ;
 #ifdef TRACE 
@@ -1424,12 +1762,10 @@ _db_appinit(ref)
 		RETVAL->ErrHandle = newRV(sv) ;
 	    }
 	    /* SetValue_io(RETVAL->Env.db_errfile, "ErrFile") ; */
-	    SetValue_iv(RETVAL->Env.lk_max, "LockMax") ;
-	    SetValue_iv(RETVAL->Env.lg_max, "LogMax") ;
-	    SetValue_iv(RETVAL->Env.tx_max, "TxnMax") ;
 	    SetValue_iv(RETVAL->Env.db_verbose, "Verbose") ;
 	    /* RETVAL->Env.db_errbuf = RETVAL->ErrBuff ; */
 	    RETVAL->Env.db_errcall = db_errcall_cb ;
+	    RETVAL->active = TRUE ;
 	    status = db_appinit(home, config, &RETVAL->Env, flags) ;
 	    Trace(("  status = %d env %d Env %d\n", status, RETVAL, &RETVAL->Env)) ;
 	    if (status != 0)
@@ -1443,6 +1779,8 @@ _db_appinit(ref)
 void
 printEnv(env)
         BerkeleyDB::Env  env
+	INIT:
+	    ckActive_Environment(env->active) ;
 	CODE:
 	  printf("env             [0x%X]\n", env) ;
 	  /* printf("  ErrBuff       [%s]\n", env->ErrBuff) ; */
@@ -1469,6 +1807,8 @@ SV *
 errPrefix(env, prefix)
         BerkeleyDB::Env  env
 	SV * 		 prefix
+	INIT:
+	    ckActive_Environment(env->active) ;
 	CODE:
 	  if (env->ErrPrefix) {
 	      RETVAL = newSVsv(env->ErrPrefix) ;
@@ -1484,45 +1824,104 @@ errPrefix(env, prefix)
 	OUTPUT:
 	  RETVAL
 
-#define env_DESTROY(env)	db_appexit(&env->Env)
-int
-env_DESTROY(env)
+DualType
+status(env)
+        BerkeleyDB::Env 	env
+	CODE:
+	    RETVAL =  env->Status ;
+	OUTPUT: 
+	    RETVAL
+
+DualType
+db_appexit(env)
+        BerkeleyDB::Env 	env
+	INIT:
+	    ckActive_Environment(env->active) ;
+	CODE:
+	    RETVAL = db_appexit(&env->Env) ;
+	    env->active = FALSE ;
+	OUTPUT: 
+	    RETVAL
+	    
+
+void
+DESTROY(env)
+        BerkeleyDB::Env  env
+	int RETVAL = 0 ;
+	CODE:
+	  Trace(("In BerkeleyDB::Env::DESTROY\n"));
+	  Trace(("    env %ld Env %ld dirty %d\n", env, &env->Env, dirty)) ;
+	  if (env->active)
+              db_appexit(&env->Env) ;
+          if (env->ErrHandle)
+              SvREFCNT_dec(env->ErrHandle) ;
+          if (env->ErrPrefix)
+              SvREFCNT_dec(env->ErrPrefix) ;
+          Safefree(env) ;
+	  Trace(("End of BerkeleyDB::Env::DESTROY %d\n", RETVAL)) ;
+
+BerkeleyDB::TxnMgr
+TxnMgr(env)
         BerkeleyDB::Env  env
 	INIT:
-	  Trace(("In BerkeleyDB::Env::DESTROY env %ld Env %ld \n", 
-			env, &env->Env)) ;
-        CLEANUP:
-	  Trace(("start cleanup BerkeleyDB::Env::DESTROY\n")) ;
-	  if (env->ErrHandle)
-	      SvREFCNT_dec(env->ErrHandle) ;
-	  if (env->ErrPrefix)
-	      SvREFCNT_dec(env->ErrPrefix) ;
-          Safefree(env) ;
-	  Trace(("real end of BerkeleyDB::Env::DESTROY\n")) ;
-
-
-BerkeleyDB::Txn
-txn_begin(env, pid=NULL)
-	BerkeleyDB::Env	env
-	BerkeleyDB::Txn	pid
+	    ckActive_Environment(env->active) ;
 	CODE:
-	{
-	    int status ;
-	    if (env->Env.tx_info == NULL)
-		croak("Transaction Manager not enabled") ;
-	    env->Status = txn_begin(env->Env.tx_info, pid, &RETVAL) ;
-	    if (env->Status != 0) {
-		printf("XXXX\n") ;
-		RETVAL = NULL ;
-	    }
-	}
+	    ZMALLOC(RETVAL, BerkeleyDB_TxnMgr_type) ;
+	    RETVAL->env  = env ;
+	    /* hash_store_iv("BerkeleyDB::Term::TxnMgr", txn, 1) ; */
+	    /* RETVAL->ref2env = newRV(SvRV(ST(0))) ; */
 	OUTPUT:
 	    RETVAL
+
+
+MODULE = BerkeleyDB::Term		PACKAGE = BerkeleyDB::Term
+
+void
+env_close(env)
+	BerkeleyDB_ENV_type * env
+	CODE:
+	Trace(("BerkeleyDB::Term::env_close %d\n", env)) ;
+	destroy_env(env) ;
+
+void
+db_close(db)
+	DB *		  db
+	CODE:
+	/* BerkeleyDB_type * db */
+	Trace(("BerkeleyDB::Term::db_close %d\n", db)) ;
+        /* destroy_db(db) ; */
+	(db->close)(db, 0) ;
+	/* ((db->dbp)->close)(db->dbp, 0) ; */
+
+void
+close_dbs()
+	CODE:
+	DB * db ;
+	HE * he ;
+	I32 len ;
+	HV * hv = perl_get_hv("BerkeleyDB::Term::Db", TRUE);
+	I32 ret = hv_iterinit(hv) ;
+	while ( he = hv_iternext(hv) ) {
+	    db = * (DB**) (IV) hv_iterkey(he, &len) ;
+	    printf("close_dbs %d %d\n", db, len) ;
+	    (db->close)(db, 0) ;
+	    printf("close_dbs closed\n");
+	}
+	
+void
+cur_close(db)
+	BerkeleyDB__Cursor_type * db
+	CODE:
+	Trace(("BerkeleyDB::Term::cur_close %d\n", db)) ;
+        destroy_cursor(db) ;
+	
+
 
 MODULE = BerkeleyDB::Hash	PACKAGE = BerkeleyDB::Hash	PREFIX = hash_
 
 BerkeleyDB::Hash
-_db_open_hash(ref)
+_db_open_hash(self, ref)
+	char *		self
 	SV * 		ref
 	CODE:
 	{
@@ -1551,7 +1950,10 @@ _db_open_hash(ref)
 	    SetValue_iv(info.h_nelem, "Nelem") ;
 	    SetValue_iv(info.flags, "Property") ;
 	    ZMALLOC(db, BerkeleyDB_type) ; 
-	    SetValue_ov(db->txn, "Txn", BerkeleyDB__Txn) ;
+	    if ((sv = readHash(hash, "Txn")) && sv != &sv_undef) {
+		BerkeleyDB__Txn tmp = (BerkeleyDB__Txn)SvIV((SV*)SvRV(sv));
+		db->txn = tmp->txn ;
+	    }
 	    if ((sv = readHash(hash, "Hash")) && sv != &sv_undef) {
 		info.h_hash = hash_cb ;
 		db->hash = newSVsv(sv) ;
@@ -1571,10 +1973,60 @@ db_stat(db, flags=0)
         NOT_IMPLEMENTED_YET
 
 
+MODULE = BerkeleyDB::Unknown	PACKAGE = BerkeleyDB::Unknown	PREFIX = hash_
+
+void
+_db_open_unknown(ref)
+	SV * 		ref
+	PPCODE:
+	{
+	    HV *		hash ;
+	    SV * 		sv ;
+	    DB_INFO 		info ;
+	    BerkeleyDB__Env	dbenv = NULL;
+	    SV *		ref_dbenv = NULL;
+	    const char *	file = NULL ;
+	    int			flags = 0 ;
+	    int			mode = 0 ;
+    	    BerkeleyDB 		db ;
+	    BerkeleyDB		RETVAL ;
+	    static char * 		Names[] = {"", "Btree", "Hash", "Recno"} ;
+	
+	    hash = (HV*) SvRV(ref) ;
+	    SetValue_pv(file, "Filename", char *) ;
+	    SetValue_ov(dbenv, "Env", BerkeleyDB__Env) ;
+	    ref_dbenv = sv ;
+	    SetValue_iv(flags, "Flags") ;
+	    SetValue_iv(mode, "Mode") ;
+
+       	    Zero(&info, 1, DB_INFO) ;
+	    SetValue_iv(info.db_cachesize, "Cachesize") ;
+	    SetValue_iv(info.db_lorder, "Lorder") ;
+	    SetValue_iv(info.db_pagesize, "Pagesize") ;
+	    SetValue_iv(info.h_ffactor, "Ffactor") ;
+	    SetValue_iv(info.h_nelem, "Nelem") ;
+	    SetValue_iv(info.flags, "Property") ;
+	    ZMALLOC(db, BerkeleyDB_type) ; 
+	    if ((sv = readHash(hash, "Txn")) && sv != &sv_undef) {
+		BerkeleyDB__Txn tmp = (BerkeleyDB__Txn)SvIV((SV*)SvRV(sv));
+		db->txn = tmp->txn ;
+	    }
+	    
+	    RETVAL = my_db_open(db, ref_dbenv, dbenv, file, DB_UNKNOWN, flags, mode, &info) ;
+	    XPUSHs(sv_2mortal(newSViv((IV)RETVAL)));
+	    if (RETVAL)
+	        XPUSHs(sv_2mortal(newSVpv(Names[RETVAL->type], 0))) ;
+	    else
+	        XPUSHs(sv_2mortal(newSViv((IV)NULL)));
+	}
+
+
+
 MODULE = BerkeleyDB::Btree	PACKAGE = BerkeleyDB::Btree	PREFIX = btree_
 
 BerkeleyDB::Btree
-_db_open_btree(ref)
+_db_open_btree(self, ref)
+	char *		self
 	SV * 		ref
 	CODE:
 	{
@@ -1602,7 +2054,10 @@ _db_open_btree(ref)
 	    SetValue_iv(info.bt_minkey, "Minkey") ;
 	    SetValue_iv(info.flags, "Property") ;
 	    ZMALLOC(db, BerkeleyDB_type) ; 
-	    SetValue_ov(db->txn, "Txn", BerkeleyDB__Txn) ;
+	    if ((sv = readHash(hash, "Txn")) && sv != &sv_undef) {
+		BerkeleyDB__Txn tmp = (BerkeleyDB__Txn)SvIV((SV*)SvRV(sv));
+		db->txn = tmp->txn ;
+	    }
 	    if ((sv = readHash(hash, "Compare")) && sv != &sv_undef) {
 		info.bt_compare = btree_compare ;
 		db->compare = newSVsv(sv) ;
@@ -1623,6 +2078,8 @@ db_stat(db, flags=0)
 	BerkeleyDB::Common	db
 	int			flags
 	HV *			RETVAL = NULL ;
+	INIT:
+	  ckActive_Database(db->active) ;
 	CODE:
 	{
 	    DB_BTREE_STAT *	stat ;
@@ -1666,7 +2123,8 @@ db_stat(db, flags=0)
 MODULE = BerkeleyDB::Recno	PACKAGE = BerkeleyDB::Recno	PREFIX = recno_
 
 BerkeleyDB::Recno
-_db_open_recno(ref)
+_db_open_recno(self, ref)
+	char *		self
 	SV * 		ref
 	CODE:
 	{
@@ -1681,7 +2139,7 @@ _db_open_recno(ref)
     	    BerkeleyDB 		db ;
 	
 	    hash = (HV*) SvRV(ref) ;
-	    SetValue_pv(file, "Filename", char*) ;
+	    SetValue_pv(file, "Fname", char*) ;
 	    SetValue_ov(dbenv, "Env", BerkeleyDB__Env) ;
 	    ref_dbenv = sv ;
 	    SetValue_iv(flags, "Flags") ;
@@ -1694,105 +2152,88 @@ _db_open_recno(ref)
 	    SetValue_iv(info.bt_minkey, "Minkey") ;
 
 	    SetValue_iv(info.flags, "Property") ;
-	    SetValue_iv(info.re_len, "Len") ;
 	    SetValue_pv(info.re_source, "Source", char*) ;
+	    if ((sv = readHash(hash, "Len")) && sv != &sv_undef) {
+		info.re_len = SvIV(sv) ; ;
+		info.flags |= DB_FIXEDLEN ;
+	    }
 	    if ((sv = readHash(hash, "Delim")) && sv != &sv_undef) {
-		info.re_delim = SvIV(sv) ; ;
+		info.re_delim = SvPOK(sv) ? *SvPV(sv,na) : SvIV(sv) ; ;
 		info.flags |= DB_DELIMITER ;
 	    }
 	    if ((sv = readHash(hash, "Pad")) && sv != &sv_undef) {
-		info.re_pad = (u_int32_t)SvIV(sv) ; ;
+		info.re_pad = (u_int32_t)SvPOK(sv) ? *SvPV(sv,na) : SvIV(sv) ; ;
 		info.flags |= DB_PAD ;
 	    }
 	    ZMALLOC(db, BerkeleyDB_type) ; 
-	    SetValue_ov(db->txn, "Txn", BerkeleyDB__Txn) ;
+	    if ((sv = readHash(hash, "Txn")) && sv != &sv_undef) {
+		BerkeleyDB__Txn tmp = (BerkeleyDB__Txn)SvIV((SV*)SvRV(sv));
+		db->txn = tmp->txn ;
+	    }
+#ifdef ALLOW_RECNO_OFFSET
+	    SetValue_iv(db->array_base, "ArrayBase") ;
+	    db->array_base = (db->array_base == 0 ? 1 : 0) ;
+#endif
 	    
 	    RETVAL = my_db_open(db, ref_dbenv, dbenv, file, DB_RECNO, flags, mode, &info) ;
 	}
 	OUTPUT:
 	    RETVAL
 
-
-MODULE = BerkeleyDB::Text	PACKAGE = BerkeleyDB::Text	PREFIX = text_
-
-BerkeleyDB::Text
-_db_open_text(ref)
-	SV * 		ref
-	CODE:
-	{
-	    HV *		hash ;
-	    SV * 		sv ;
-	    DB_INFO 		info ;
-	    BerkeleyDB__Env	dbenv = NULL;
-	    SV *		ref_dbenv = NULL;
-	    const char *	file = NULL ;
-	    int			flags = 0 ;
-	    int			mode = 0 ;
-    	    BerkeleyDB 		db ;
-	
-	    hash = (HV*) SvRV(ref) ;
-	    SetValue_pv(file, "Btree", char*) ;
-	    SetValue_ov(dbenv, "Env", BerkeleyDB__Env) ;
-	    ref_dbenv = sv ;
-	    SetValue_iv(flags, "Flags") ;
-	    SetValue_iv(mode, "Mode") ;
-
-       	    Zero(&info, 1, DB_INFO) ;
-	    SetValue_iv(info.db_cachesize, "Cachesize") ;
-	    SetValue_iv(info.db_lorder, "Lorder") ;
-	    SetValue_iv(info.db_pagesize, "Pagesize") ;
-	    SetValue_iv(info.bt_minkey, "Minkey") ;
-
-	    SetValue_iv(info.flags, "Property") ;
-	    SetValue_iv(info.re_len, "Len") ;
-	    SetValue_pv(info.re_source, "Filename", char*) ;
-	    if ((sv = readHash(hash, "Delim")) && sv != &sv_undef) {
-		info.re_delim = SvIV(sv) ; ;
-		info.flags |= DB_DELIMITER ;
-	    }
-	    if ((sv = readHash(hash, "Pad")) && sv != &sv_undef) {
-		info.re_pad = (u_int32_t)SvIV(sv) ; ;
-		info.flags |= DB_PAD ;
-	    }
-	    info.flags |= DB_RENUMBER ;
-	    ZMALLOC(db, BerkeleyDB_type) ; 
-	    SetValue_ov(db->txn, "Txn", BerkeleyDB__Txn) ;
-	    
-	    RETVAL = my_db_open(db, ref_dbenv, dbenv, file, DB_RECNO, flags, mode, &info) ;
-	}
-	OUTPUT:
-	    RETVAL
 
 
 MODULE = BerkeleyDB::Common  PACKAGE = BerkeleyDB::Common	PREFIX = dab_
 
 
-#define dab_DESTROY(db)	((db->dbp)->close)(db->dbp, 0)
-int
+DualType
+db_close(db,flags=0)
+        BerkeleyDB::Common 	db
+	int 			flags
+	INIT:
+	    ckActive_Database(db->active) ;
+	CODE:
+	    CurrentDB = db ;
+	    RETVAL =  db->Status = ((db->dbp)->close)(db->dbp, flags) ;
+	    db->active = FALSE ;
+	OUTPUT: 
+	    RETVAL
+
+void
 dab_DESTROY(db)
 	BerkeleyDB::Common	db
-	INIT:
+	CODE:
 	  CurrentDB = db ;
-	  Trace(("In BerkeleyDB::Common::DESTROY\n")) ;
-	  if (db->cursor)
-	      ((db->cursor)->c_close)(db->cursor) ;
-	CLEANUP:
-	  if (db->hash)
-            SvREFCNT_dec(db->hash) ;
-          if (db->compare)
-            SvREFCNT_dec(db->compare) ;
-          if (db->prefix)
-            SvREFCNT_dec(db->prefix) ;
-          if (db->ref2env)
-	      SvREFCNT_dec(db->ref2env) ;
+	  Trace(("In BerkeleyDB::Common::DESTROY db %d dirty=%d\n", db, dirty)) ;
+      	  if (! dirty && db->active) ((db->dbp)->close)(db->dbp, 0) ;
+      	  if (db->hash)
+        	  SvREFCNT_dec(db->hash) ;
+      	  if (db->compare)
+        	  SvREFCNT_dec(db->compare) ;
+      	  if (db->prefix)
+        	  SvREFCNT_dec(db->prefix) ;
+      	  if (db->ref2env)
+          	  SvREFCNT_dec(db->ref2env) ;
+#ifdef ALLOW_KV_FILTER
+          if (db->readKey)
+              SvREFCNT_dec(db->readKey) ;
+          if (db->writeKey)
+              SvREFCNT_dec(db->writeKey) ;
+          if (db->readValue)
+              SvREFCNT_dec(db->readValue) ;
+          if (db->writeValue)
+              SvREFCNT_dec(db->writeValue) ;
+#endif
+	  hash_delete("BerkeleyDB::Term::Db", db->dbp) ;
           Safefree(db) ;
-	  Trace(("End of BerkeleyDB::Common::DESTROY\n")) ;
+	  Trace(("End of BerkeleyDB::Common::DESTROY \n")) ;
 
 #define db_cursor(db, txn, cur)  ((db->dbp)->cursor)(db->dbp, txn, cur)
 BerkeleyDB::Cursor
 db_cursor(db)
         BerkeleyDB::Common 	db
         BerkeleyDB::Cursor 	RETVAL = NULL ;
+	INIT:
+	    ckActive_Database(db->active) ;
 	CODE:
 	{
 	  DBC *		cursor ;
@@ -1809,19 +2250,63 @@ db_cursor(db)
 	      RETVAL->partial = db->partial ;
 	      RETVAL->doff    = db->doff ;
 	      RETVAL->dlen    = db->dlen ;
+	      RETVAL->active  = TRUE ;
+#ifdef ALLOW_RECNO_OFFSET
+	      RETVAL->array_base  = db->array_base ;
+#endif
+#ifdef ALLOW_KV_FILTER
+	      RETVAL->filtering   = FALSE ;
+	      RETVAL->readKey     = db->readKey ;
+	      RETVAL->writeKey    = db->writeKey ;
+	      RETVAL->readValue   = db->readValue ;
+	      RETVAL->writeValue  = db->writeValue ;
+#endif
               /* RETVAL->info ; */
+	      hash_store_iv("BerkeleyDB::Term::Cursor", cursor, 1) ;
 	  }
 	}
-
 	OUTPUT:
 	  RETVAL
 
+int
+ArrayOffset(db)
+        BerkeleyDB::Common 	db
+	INIT:
+	    ckActive_Database(db->active) ;
+	CODE:
+#ifdef ALLOW_RECNO_OFFSET
+	    RETVAL = db->array_base ? 0 : 1 ;
+#else
+	    RETVAL = 0 ;
+#endif
+	OUTPUT: 
+	    RETVAL
+
+int
+type(db)
+        BerkeleyDB::Common 	db
+	INIT:
+	    ckActive_Database(db->active) ;
+	CODE:
+	    RETVAL = db->type ;
+	OUTPUT: 
+	    RETVAL
+
+DualType
+status(db)
+        BerkeleyDB::Common 	db
+	CODE:
+	    RETVAL =  db->Status ;
+	OUTPUT: 
+	    RETVAL
 
 void
 partial_set(db, offset, length)
         BerkeleyDB::Common 	db
 	u_int32_t		offset
 	u_int32_t		length
+	INIT:
+	    ckActive_Database(db->active) ;
 	PPCODE:
 	    if (GIMME == G_ARRAY) {
 		XPUSHs(sv_2mortal(newSViv(db->partial == DB_DBT_PARTIAL))) ;
@@ -1836,6 +2321,8 @@ partial_set(db, offset, length)
 void
 partial_clear(db)
         BerkeleyDB::Common 	db
+	INIT:
+	    ckActive_Database(db->active) ;
 	PPCODE:
 	    if (GIMME == G_ARRAY) {
 		XPUSHs(sv_2mortal(newSViv(db->partial == DB_DBT_PARTIAL))) ;
@@ -1849,45 +2336,53 @@ partial_clear(db)
 
 #define db_del(db, key, flags)  \
 	(db->Status = ((db->dbp)->del)(db->dbp, db->txn, &key, flags))
-int
+DualType
 db_del(db, key, flags=0)
 	BerkeleyDB::Common	db
 	DBTKEY		key
 	u_int		flags
 	INIT:
-	  CurrentDB = db ;
+	    ckActive_Database(db->active) ;
+	    CurrentDB = db ;
 
 
 #define db_get(db, key, data, flags)   \
 	(db->Status = ((db->dbp)->get)(db->dbp, db->txn, &key, &data, flags))
-int
+DualType
 db_get(db, key, data, flags=0)
 	BerkeleyDB::Common	db
 	u_int		flags
 	DBTKEY_B	key
 	DBT		data = NO_INIT
 	INIT:
+	  ckActive_Database(db->active) ;
 	  CurrentDB = db ;
 	  SetPartial(data) ;
 	OUTPUT:
-	  data
+	  key	if (flags & DB_SET_RECNO) OutputValue(ST(1), key) ;
+	  data  
 
 #define db_put(db,key,data,flag)	\
 		(db->Status = (db->dbp->put)(db->dbp,db->txn,&key,&data,flag))
-int
+DualType
 db_put(db, key, data, flags=0)
 	BerkeleyDB::Common	db
 	DBTKEY			key
 	DBT			data
 	u_int			flags
 	INIT:
+	  ckActive_Database(db->active) ;
 	  CurrentDB = db ;
 	  /* SetPartial(data) ; */
+	OUTPUT:
+	  key	if (flags & DB_APPEND) OutputKey(ST(1), key) ;
 
 #define db_fd(d, x)	(db->Status = (db->dbp->fd)(db->dbp, &x))
-int
+DualType
 db_fd(db)
 	BerkeleyDB::Common	db
+	INIT:
+	  ckActive_Database(db->active) ;
 	CODE:
 	  CurrentDB = db ;
 	  db_fd(db, RETVAL) ;
@@ -1896,61 +2391,97 @@ db_fd(db)
 
 
 #define db_sync(db, fl)	(db->Status = (db->dbp->sync)(db->dbp, fl))
-int
+DualType
 db_sync(db, flags=0)
 	BerkeleyDB::Common	db
 	u_int			flags
 	INIT:
+	  ckActive_Database(db->active) ;
 	  CurrentDB = db ;
 
+void
+Txn(db, txn)
+        BerkeleyDB::Common      db
+        BerkeleyDB::Txn         txn
+	INIT:
+	  ckActive_Database(db->active) ;
+	  ckActive_Transaction(txn->active) ;
+	CODE:
+	   db->txn = txn->txn ;
 
 
 
 
 MODULE = BerkeleyDB::Cursor              PACKAGE = BerkeleyDB::Cursor	PREFIX = cu_
 
-
-#define cu_DESTROY(c)	((c->cursor)->c_close)(c->cursor)
-int
-cu_DESTROY(db)
+DualType
+c_close(db)
     BerkeleyDB::Cursor	db
 	INIT:
-	  Trace(("in cursor DESTROY\n")) ;
 	  CurrentDB = db ;
-	CLEANUP:
-	  Trace(("cursor DESTROY cleanup\n")) ;
-          if (db->ref2db)
-	      SvREFCNT_dec(db->ref2db) ;
+	  ckActive_Cursor(db->active) ;
+	  db->active = FALSE ;
+	CODE:
+	    RETVAL =  db->Status =
+    	      ((db->cursor)->c_close)(db->cursor) ;
+	OUTPUT:
+	  RETVAL
+
+void
+DESTROY(db)
+    BerkeleyDB::Cursor	db
+	CODE:
+	  CurrentDB = db ;
+	  Trace(("In BerkeleyDB::Cursor::DESTROY db %d dirty=%d\n", db, dirty));
+	  hash_delete("BerkeleyDB::Term::Cursor", db->cursor) ;
+	  if (db->active)
+    	      ((db->cursor)->c_close)(db->cursor) ;
+    	  if (db->ref2db)
+       	 	   SvREFCNT_dec(db->ref2db) ;
           Safefree(db) ;
-	  Trace(("end of cursor DESTROY\n")) ;
+	  Trace(("End of BerkeleyDB::Cursor::DESTROY\n")) ;
+
+DualType
+status(db)
+        BerkeleyDB::Cursor 	db
+	CODE:
+	    RETVAL =  db->Status ;
+	OUTPUT: 
+	    RETVAL
 
 
 #define cu_c_del(c,f)	(c->Status = ((c->cursor)->c_del)(c->cursor,f))
-int
+DualType
 cu_c_del(db, flags=0)
     BerkeleyDB::Cursor	db
     int			flags
 	INIT:
 	  CurrentDB = db ;
+	  ckActive_Cursor(db->active) ;
+	OUTPUT:
+	  RETVAL
 
 
 #define cu_c_get(c,k,d,f) (c->Status = (c->cursor->c_get)(c->cursor,&k,&d,f))
-int
+DualType
 cu_c_get(db, key, data, flags=0)
     BerkeleyDB::Cursor	db
     int			flags
     DBTKEY_B		key
-    DBT			data = NO_INIT
+    DBT_B		data = NO_INIT
 	INIT:
 	  CurrentDB = db ;
+	  ckActive_Cursor(db->active) ;
 	  SetPartial(data) ;
+	  /* key		if (! (flags & DB_GET_RECNO)) OutputKey_B(ST(1), key) ; */
 	OUTPUT:
-	  key
+	  RETVAL
+	  key		
 	  data
 
 
 #define cu_c_put(c,k,d,f)  (c->Status = (c->cursor->c_put)(c->cursor,&k,&d,f))
-int
+DualType
 cu_c_put(db, key, data, flags=0)
     BerkeleyDB::Cursor	db
     DBTKEY		key
@@ -1958,59 +2489,72 @@ cu_c_put(db, key, data, flags=0)
     int			flags
 	INIT:
 	  CurrentDB = db ;
+	  ckActive_Cursor(db->active) ;
 	  /* SetPartial(data) ; */
+	OUTPUT:
+	  RETVAL
 
 
 
 
 
-MODULE = BerkeleyDB::Txn              PACKAGE = BerkeleyDB::Txn		PREFIX = xx_
-
-BerkeleyDB::TxnMgr
-txn_open(dir, flags, mode, dbenv)
-    const char *	dir
-    int 		flags
-    int 		mode
-    BerkeleyDB::Env 	dbenv
-        NOT_IMPLEMENTED_YET
+MODULE = BerkeleyDB::TxnMgr           PACKAGE = BerkeleyDB::TxnMgr	PREFIX = xx_
 
 BerkeleyDB::Txn
-txn_begin(txnp, tid)
-	BerkeleyDB::TxnMgr	txnp
-	BerkeleyDB::Txn		tid
-        NOT_IMPLEMENTED_YET
+txn_begin(txnmgr, pid=NULL)
+	BerkeleyDB::TxnMgr	txnmgr
+	BerkeleyDB::Txn		pid
+	CODE:
+	{
+	    DB_TXN *txn ;
+	    DB_TXN *p_id = NULL ;
+	    if (txnmgr->env->Env.tx_info == NULL)
+		croak("Transaction Manager not enabled") ;
+	    if (pid)
+		p_id = pid->txn ;
+	    txnmgr->env->TxnMgrStatus = txn_begin(txnmgr->env->Env.tx_info, p_id, &txn) ;
+	    if (txnmgr->env->TxnMgrStatus == 0) {
+	      ZMALLOC(RETVAL, BerkeleyDB_Txn_type) ;
+	      RETVAL->txn  = txn ;
+	      RETVAL->active = TRUE ;
+	      hash_store_iv("BerkeleyDB::Term::Txn", txn, 1) ;
+		/* RETVAL = txn ; */
+	    }
+	    else
+		RETVAL = NULL ;
+	}
+	OUTPUT:
+	    RETVAL
 
 
-int
+DualType
+status(mgr)
+        BerkeleyDB::TxnMgr 	mgr
+	CODE:
+	    RETVAL =  mgr->env->TxnMgrStatus ;
+	OUTPUT: 
+	    RETVAL
+
+
+void
+DESTROY(mgr)
+    BerkeleyDB::TxnMgr	mgr
+	CODE:
+	  Trace(("In BerkeleyDB::TxnMgr::DESTROY dirty=%d\n", dirty)) ;
+          if (mgr->ref2env)
+              SvREFCNT_dec(mgr->ref2env) ;
+          Safefree(mgr) ;
+	  Trace(("End of BerkeleyDB::TxnMgr::DESTROY\n")) ;
+
+DualType
 txn_close(txnp)
 	BerkeleyDB::TxnMgr	txnp
         NOT_IMPLEMENTED_YET
 
-#define xx_txn_unlink(d,f,e)	txn_unlink(d,f,&(e->Env))
-int
-xx_txn_unlink(dir, force, dbenv)
-    const char *	dir
-    int 		force
-    BerkeleyDB::Env 	dbenv
 
-int
-txn_prepare(tid)
-	BerkeleyDB::Txn	tid
-
-int
-txn_commit(tid)
-	BerkeleyDB::Txn	tid
-
-int
-txn_abort(tid)
-	BerkeleyDB::Txn	tid
-
-u_int32_t
-txn_id(tid)
-	BerkeleyDB::Txn	tid
-
-int
-txn_checkpoint(txnp, kbyte, min)
+#define xx_txn_checkpoint(t,k,m) txn_checkpoint(t->env->Env.tx_info, k, m)
+DualType
+xx_txn_checkpoint(txnp, kbyte, min)
 	BerkeleyDB::TxnMgr	txnp
 	long			kbyte
 	long			min
@@ -2022,7 +2566,7 @@ txn_stat(txnp)
 	CODE:
 	{
 	    DB_TXN_STAT *	stat ;
-	    if(txn_stat(txnp, &stat, safemalloc) == 0) {
+	    if(txn_stat(txnp->env->Env.tx_info, &stat, safemalloc) == 0) {
 	    	RETVAL = (HV*)sv_2mortal((SV*)newHV()) ;
 		hv_store_iv(RETVAL, "st_time_ckp", stat->st_time_ckp) ;
 		hv_store_iv(RETVAL, "st_last_txnid", stat->st_last_txnid) ;
@@ -2036,6 +2580,76 @@ txn_stat(txnp)
 	}
 	OUTPUT:
 	    RETVAL
+
+
+BerkeleyDB::TxnMgr
+txn_open(dir, flags, mode, dbenv)
+    const char *	dir
+    int 		flags
+    int 		mode
+    BerkeleyDB::Env 	dbenv
+        NOT_IMPLEMENTED_YET
+
+
+MODULE = BerkeleyDB::Txn              PACKAGE = BerkeleyDB::Txn		PREFIX = xx_
+
+DualType
+status(tid)
+        BerkeleyDB::Txn 	tid
+	CODE:
+	    RETVAL =  tid->Status ;
+	OUTPUT: 
+	    RETVAL
+
+int
+DESTROY(tid)
+    BerkeleyDB::Txn	tid
+	CODE:
+	  Trace(("In BerkeleyDB::Txn::DESTROY dirty=%d\n", dirty)) ;
+	  if (tid->active)
+	    txn_abort(tid->txn) ;
+          RETVAL = (int)tid ;
+	  hash_delete("BerkeleyDB::Term::Txn", tid->txn) ;
+          Safefree(tid) ;
+	  Trace(("End of BerkeleyDB::Txn::DESTROY\n")) ;
+	OUTPUT:
+	  RETVAL
+
+#define xx_txn_unlink(d,f,e)	txn_unlink(d,f,&(e->Env))
+DualType
+xx_txn_unlink(dir, force, dbenv)
+    const char *	dir
+    int 		force
+    BerkeleyDB::Env 	dbenv
+        NOT_IMPLEMENTED_YET
+
+#define xx_txn_prepare(t) (t->Status = txn_prepare(t->txn))
+DualType
+xx_txn_prepare(tid)
+	BerkeleyDB::Txn	tid
+	INIT:
+	    ckActive_Transaction(tid->active) ;
+
+#define xx_txn_commit(t) (t->Status = txn_commit(t->txn))
+DualType
+xx_txn_commit(tid)
+	BerkeleyDB::Txn	tid
+	INIT:
+	    ckActive_Transaction(tid->active) ;
+	    tid->active = FALSE ;
+
+#define xx_txn_abort(t) (t->Status = txn_abort(t->txn))
+DualType
+xx_txn_abort(tid)
+	BerkeleyDB::Txn	tid
+	INIT:
+	    ckActive_Transaction(tid->active) ;
+	    tid->active = FALSE ;
+
+#define xx_txn_id(t) txn_id(t->txn)
+u_int32_t
+xx_txn_id(tid)
+	BerkeleyDB::Txn	tid
 
 MODULE = BerkeleyDB::_tiedHash        PACKAGE = BerkeleyDB::_tiedHash
 
@@ -2063,7 +2677,8 @@ FIRSTKEY(db)
 	            db->cursor  = cursor ;
 	    
 	    if (db->cursor)
-	        RETVAL = ((db->cursor)->c_get)(db->cursor, &key, &value, DB_FIRST);
+	        RETVAL = (db->Status) = 
+		    ((db->cursor)->c_get)(db->cursor, &key, &value, DB_FIRST);
 	    else
 		RETVAL = db->Status ;
 	    /* check for end of cursor */
@@ -2087,7 +2702,8 @@ NEXTKEY(db, key)
  
             CurrentDB = db ;
 	    key.flags = value.flags = 0 ;
-	    RETVAL = ((db->cursor)->c_get)(db->cursor, &key, &value, DB_NEXT);
+	    RETVAL = (db->Status) =
+		((db->cursor)->c_get)(db->cursor, &key, &value, DB_NEXT);
 
 	    /* check for end of cursor */
 	    if (RETVAL == DB_NOTFOUND) {
@@ -2098,6 +2714,17 @@ NEXTKEY(db, key)
 	    OutputKey(ST(0), key) 
         }
  
+MODULE = BerkeleyDB::_tiedArray        PACKAGE = BerkeleyDB::_tiedArray
+
+I32       
+FETCHSIZE(db)
+        BerkeleyDB::Common         db
+        CODE:
+            CurrentDB = db ;
+            RETVAL = GetArrayLength(db) ;
+        OUTPUT:
+            RETVAL
+
 
 MODULE = BerkeleyDB        PACKAGE = BerkeleyDB
 
