@@ -1,0 +1,21 @@
+# Filename:	config.in
+#
+# written by Paul Marquess (pmarquess@bfsec.bt.co.uk)
+# last modified 28th Nov 1996
+# version 0.01
+
+# 1. Where is the file db.h?
+#
+#    Change the path below to point to the directory where dh.h is
+#    installed on your system.
+
+INCLUDE	= /usr/local/include
+
+# 2. Where is libdb?
+#
+#    Change the path below to point to the directory where libdb is
+#    installed on your system.
+
+LIB	= /usr/local/lib
+
+# end of file config.in

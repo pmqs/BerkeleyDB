@@ -1,0 +1,367 @@
+=head1 NAME
+
+BerkDB - Perl extension for Berkeley DB version 2
+
+=head1 SYNOPSIS
+
+  use BerkDB;
+
+  $env = new BerkDB::Env [OPTIONS] ;
+
+  $db  = tie %hash, 'BerkDB::Hash', [OPTIONS] ;
+  $db  = new BerkDB::Hash [OPTIONS] ;
+
+  $db  = tie %hash, 'BerkDB::Btree', [OPTIONS] ;
+  $db  = new BerkDB::Btree [OPTIONS] ;
+
+  $hash{$key} = $value ;
+  $value = $hash{$key} ;
+  each %hash ;
+  keys %hash ;
+  values %hash ;
+
+  $status = $db->db_get()
+  $status = $db->db_put() ;
+  $status = $db->db_del() ;
+  $status = $db->db_sync() ;
+  $hash_ref = $db->db_stat() ;
+
+  ($flag, $old_offset, $old_length) = $db->partial_set($offset, $length) ;
+  ($flag, $old_offset, $old_length) = $db->partial_clear() ;
+
+  $cursor = $db->db_cursor() ;
+  $status = $cursor->c_get() ;
+  $status = $cursor->c_put() ;
+  $status = $cursor->c_del() ;
+
+  $txn = $env->txn_begin() ;
+  $status = $txn->txn_prepare()
+  $status = $txn->txn_commit()
+  $status = $txn->txn_abort()
+  $status = $txn->txn_checkpoint()
+  $status = $txn->txn_id()
+  $status = $txn->txn_stat()
+
+  $BerkDB::Error
+  $BerkDB::db_version
+
+
+=head1 DESCRIPTION
+
+B<NOTE: This document is still under construction, so it is likely to
+be incomplete.>
+
+This Perl module provides an interface to most of the functionality
+available in Berkeley DB version 2.
+
+The reader is expected to be familiar with the Berkeley DB
+documentation. The db_appinit, db_cursor, db_open and db_txn man pages
+are particularly relevant.
+
+=head1 ENVIRONMENT CLASS
+
+The equivalent of the Berkeley DB function C<db_appinit>. It is only
+needed when you want to make use of locking, logging or transactions.
+
+=head2 Synopsis
+
+    $env = new BerkDB::Env [OPTIONS]
+             [ -Home         => $path, ]
+             [ -Config       => { name => value, name => value }, ]
+             [ -ErrFile      => filename or filehandle, ]
+             [ -ErrPrefix    => "string", ]
+             [ -Flags        => number, ]
+             [ -Verbose      => boolean, ]
+             [ -LockMax      => number, ]
+             [ -LogMax       => number, ]
+             [ -TxnMax       => number, ]
+
+
+Where the OPTIONS consist of any of the following:
+
+=over 5
+
+=item -Home
+
+=item -Config
+
+=item -ErrFile
+
+=item -ErrPrefix
+
+=item -Flags
+
+The Flags option can consist of one of more of the following or'ed
+together.
+
+	DB_CREATE
+	DB_INIT_LOCK
+	DB_INIT_LOG
+	DB_INIT_MPOOL
+	DB_INIT_TXN
+	DB_MPOOL_PRIVATE
+	DB_NOMMAP
+	DB_RECOVER
+	DB_RECOVER_FATAL
+	DB_THREAD
+	DB_TXN_NOSYNC
+	DB_USE_ENVIRON
+	DB_USE_ENVIRON_ROOT
+
+=item -Verbose
+
+=item -LockMax
+
+=item -LogMax
+
+=item -TxnMax
+
+=back
+
+=head2 Methods
+
+The environment class has the following methods:
+
+=over 5
+
+=item txn_begin
+
+    $txn = $env->txn_begin() ;
+
+=item errPrefix
+
+    $db->errPrefix("string") ;
+
+
+=back
+
+=head1 THE HASH CLASS 
+
+The equivalent of db_open with type DB_HASH. Two forms
+
+    $db = new BerkDB::Hash
+                [ -Filename      => "filename" ]
+                [ -Flags         => ]
+                [ -Property      => ]
+                [ -Mode          => ]
+                [ -Cachesize     => ]
+                [ -Lorder        => ]
+                [ -Pagesize      => ]
+                [ -Env           => ]
+                [ -Txn           => ]
+                [ -Ffactor       => ]
+                [ -Nelem         => ]
+                [ -Hash          => ]
+                
+and this
+
+    $db = tie %hash, 'BerkDB::Hash', OPTIONS
+
+where OPTIONS are the same as for the new constructor. In addition to
+the standard set of options (see L<COMMON OPTIONS>) BerkDB::Hash
+supports these:
+
+=over 5
+
+=item -Property
+
+Used to specify additional flags.
+
+    DB_DUP
+
+=item -Ffactor
+
+=item -Nelem
+
+=item -Hash
+
+=back
+
+
+=head2 Methods
+
+See L<COMMON DATABASE METHODS>.
+
+
+=head2 A Simple Hash Example
+
+    use strict ;
+    use BerkDB ;
+
+    my %hash ;
+    my $filename = "database" ;
+    tie %hash, 'BerkDB::Hash',
+                -Filename  => $filename,
+                -Flags     => DB_CREATE,
+        or die "Cannot open file $filename: $! $BerkDB::Error\n" ;
+
+    $hash{"fred"} = "barney" ;
+    $hash{"joe"} = "harry" ;
+
+    untie %hash ;
+
+=head1 THE BTREE CLASS
+
+=head2 Methods
+
+See L<COMMON DATABASE METHODS>.
+
+Btree supports one extra method
+
+    $ref = $db->db_stat() ;
+
+=head1 THE RECNO CLASS
+
+Not implemented yet.
+
+=head1 COMMON OPTIONS
+
+All database access class constructors support the common set of
+parameters defined below.
+
+=over 5
+
+=item -Filename
+
+The database filename. If no filename is specified, the database will
+be created in-memory, and removed once the program terminates.
+
+=item -Flags
+
+Specify how the database will be opened/created. The valid flags are:
+
+        DB_CREATE
+        DB_NOMMAP
+        DB_RDONLY
+        DB_THREAD
+        DB_TRUNCATE
+
+The default is none.
+
+=item -Mode
+
+Determines the file protection when the database is created. Defaults
+to 0666.
+
+=item -Cachesize
+
+=item -Lorder
+
+=item -Pagesize
+
+=item -Env
+
+When working under a Berkeley DB environment, this parameter 
+
+Defaults to no environment.
+
+=item -Txn
+
+
+=back
+
+=head1 COMMON DATABASE METHODS
+
+All the database interfaces support a common set of methods.
+
+=head2 $status = $db->db_get($key, $value [, $flags])
+
+=head2 $status = $db->db_put($key, $value [, $flags])
+
+=head2 $status = $db->db_del($key [, $flags])
+
+=head2 $status = $db->db_sync()
+
+=head2 $cursor = $db->db_cursor()
+
+Creates a cursor object. See L<CURSORS> for details of the methods
+available when working with cursore.
+
+=head2 $fd = $db->db_fd()
+
+=head2 ($flag, $old_offset, $old_length) = $db->partial_set($offset, $length) ;
+
+=head2 ($flag, $old_offset, $old_length) = $db->partial_clear() ;
+
+When the "tie" interface is used, reading from and writing to the
+database is achieved via the tied hash.
+
+=head1 CURSORS
+
+A cursor is created with the C<db_cursor>
+
+
+=head2 $status = $cursor->c_get($key, $value [,$flags])
+
+=head2  $status = $cursor->c_put($key, $value [,$flags])
+
+=head2  $status = $cursor->c_del($key, [,$flags])
+
+
+=head1 TRANSACTIONS
+
+=head1 EXAMPLES
+
+todo.
+
+=head1 HISTORY
+ 
+See the Changes file.
+
+=head1 AVAILABILITY
+ 
+The most recent version of B<BerkDB> can always be found on CPAN (see
+L<perlmod/CPAN> for details), in the directory
+F<modules/by-module/BerkDB>.
+
+The official web site for Berkeley DB is
+F<http://www.sleepycat.com/db>. The ftp equivalent is
+F<ftp.sleepycat.com:/pub>. 
+
+=head1 COPYRIGHT
+
+Copyright (c) 1997 Paul Marquess. All rights reserved. This program is
+free software; you can redistribute it and/or modify it under the same
+terms as Perl itself.
+ 
+Although B<BerkDB> is covered by the Perl license, the library it
+makes use of, namely Berkeley DB version 2, is not. Berkeley DB has its
+own copyright and its own license. Please take the time to read it.
+
+The license for Berkeley DB version 2, and how it relates to BerkDB
+does need some extra clarification. Here are are few words taken from
+the Berkeley DB FAQ regarding the version 2 license:
+ 
+    The major difference is that the license for DB 2.0, when
+    downloaded from the net, requires that the software that
+    uses DB 2.0 be freely redistributable.
+ 
+That means that if you want to use BerkDB, and you have changed either
+the source for Berkeley DB or Perl, then the changes must be freely
+available.
+ 
+In the case of Perl, the term source refers to the complete source
+code for Perl (e.g. sv.c, toke.c, perl.h) and any external modules that
+you are using (e.g. BerkDB, Tk).
+ 
+Note that any Perl scripts that you write are your property - this
+includes scripts that make use of BerkDB. Neither the Perl license or
+the Berkeley DB license place any restriction on what you have to do
+with them.
+ 
+If you are in any doubt about the license situation, contact either the
+Berkeley DB authors or the author of BerkDB. See L<"AUTHOR"> for details.
+ 
+
+=head1 AUTHOR
+
+Paul Marquess E<lt>pmarquess@bfsec.bt.co.uk<gt>.
+
+Questions about Berkeley DB may be addressed to
+E<lt>db@sleepycat.com<gt>.
+
+=head1 SEE ALSO
+
+perl(1), DB_File, Berkeley DB.
+
+=cut
