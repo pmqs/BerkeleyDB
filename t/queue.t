@@ -626,7 +626,7 @@ umask(0) ;
 
    require Exporter ;
    use BerkeleyDB;
-   @ISA=qw(BerkeleyDB::Queue);
+   @ISA=qw(BerkeleyDB BerkeleyDB::Queue);
    @EXPORT = @BerkeleyDB::EXPORT ;
 
    sub db_put { 

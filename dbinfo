@@ -4,8 +4,8 @@
 #			  a database file
 #
 # Author:	Paul Marquess  <Paul.Marquess@btinternet.com>
-# Version: 	1.04 
-# Date		7th April 2003
+# Version: 	1.05 
+# Date		1sh November 2003
 #
 #     Copyright (c) 1998-2003 Paul Marquess. All rights reserved.
 #     This program is free software; you can redistribute it and/or
@@ -67,15 +67,23 @@ open (F, "<$ARGV[0]") or die "Cannot open file $ARGV[0]: $!\n" ;
 my $buff ;
 read F, $buff, 30 ;
 
+
 my (@info) = unpack("NNNNNNC", $buff) ;
 my (@info1) = unpack("VVVVVVC", $buff) ;
 my ($magic, $version, $endian, $encrypt) ;
 
-if ($Data{$info[0]}) # first try DB 1.x format
+if ($Data{$info[0]}) # first try DB 1.x format, big endian
 {
     $magic = $info[0] ;
     $version = $info[1] ;
-    $endian  = "Unknown" ;
+    $endian  = "Big Endian" ;
+    $encrypt = "Not Supported";
+}
+elsif ($Data{$info1[0]}) # first try DB 1.x format, little endian
+{
+    $magic = $info1[0] ;
+    $version = $info1[1] ;
+    $endian  = "Little Endian" ;
     $encrypt = "Not Supported";
 }
 elsif ($Data{$info[3]}) # next DB 2.x big endian

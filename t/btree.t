@@ -784,7 +784,7 @@ print "[$db] [$!] $BerkeleyDB::Error\n" ;
 
    require Exporter ;
    use BerkeleyDB;
-   @ISA=qw(BerkeleyDB::Btree);
+   @ISA=qw(BerkeleyDB BerkeleyDB::Btree );
    @EXPORT = @BerkeleyDB::EXPORT ;
 
    sub db_put { 

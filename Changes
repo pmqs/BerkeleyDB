@@ -1,5 +1,12 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.25  1st November 2003
+
+	* Minor update to dbinfo
+
+	* Fixed a bug in the test harnesses that is only apparent in
+	  perl 5.8.2.  Original patch courtesy of Michael Schwern.
+
 0.24 27th September 2003
 
         * Mentioned comp.databases.berkeley-db in README
