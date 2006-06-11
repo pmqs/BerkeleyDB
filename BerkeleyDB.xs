@@ -6,7 +6,7 @@
 
  All comments/suggestions/problems are welcome
 
-     Copyright (c) 1997-2005 Paul Marquess. All rights reserved.
+     Copyright (c) 1997-2006 Paul Marquess. All rights reserved.
      This program is free software; you can redistribute it and/or
      modify it under the same terms as Perl itself.
 
@@ -344,6 +344,7 @@ typedef DBT 			DBT_OPT ;
 typedef DBT 			DBT_B ;
 typedef DBT 			DBTKEY_B ;
 typedef DBT 			DBTKEY_Br ;
+typedef DBT 			DBTKEY_Bpr ;
 typedef DBT 			DBTVALUE ;
 typedef void *	      		PV_or_NULL ;
 typedef PerlIO *      		IO_or_NULL ;
@@ -477,6 +478,21 @@ hash_delete(char * hash, char * key);
         { if (RETVAL == 0) 					\
           {                                                     \
                 if (db->recno_or_queue || db->primary_recno_or_queue	\
+			|| (db->type == DB_BTREE && 		\
+			    flagSet(DB_GET_RECNO))){		\
+                    sv_setiv(arg, (I32)(*(I32*)name.data) - RECNO_BASE); \
+                }                                               \
+                else {                                          \
+                    my_sv_setpvn(arg, name.data, name.size);    \
+                }                                               \
+                DBM_ckFilter(arg, filter_fetch_key, "filter_fetch_key") ;            \
+          }                                                     \
+        }
+
+#define OutputKey_Bpr(arg, name)                                  \
+        { if (RETVAL == 0) 					\
+          {                                                     \
+                if (db->primary_recno_or_queue	\
 			|| (db->type == DB_BTREE && 		\
 			    flagSet(DB_GET_RECNO))){		\
                     sv_setiv(arg, (I32)(*(I32*)name.data) - RECNO_BASE); \
@@ -1143,6 +1159,7 @@ associate_cb(DB_callback const DBT * pkey, const DBT * pdata, DBT * skey)
     
     /* retrieve the secondary key */
     DBT_clear(*skey);
+
     skey_ptr = SvPV(skey_SV, skey_len);
     skey->flags = DB_DBT_APPMALLOC;
     /* skey->size = SvCUR(skey_SV); */
@@ -1151,6 +1168,80 @@ associate_cb(DB_callback const DBT * pkey, const DBT * pdata, DBT * skey)
     skey->data = (char*)safemalloc(skey_len);
     memcpy(skey->data, skey_ptr, skey_len);
     Trace(("key is %d -- %.*s\n", skey->size, skey->size, skey->data));
+
+    FREETMPS ;
+    LEAVE ;
+
+    return (retval) ;
+}
+
+static int
+associate_cb_recno(DB_callback const DBT * pkey, const DBT * pdata, DBT * skey)
+{
+    dSP ;
+    char * pk_dat, * pd_dat ;
+    /* char *sk_dat ; */
+    int retval ;
+    int count ;
+    SV * skey_SV ;
+    STRLEN skey_len;
+    char * skey_ptr ;
+    db_recno_t Value;
+
+    Trace(("In associate_cb_recno \n")) ;
+    if (getCurrentDB->associated == NULL){
+        Trace(("No Callback registered\n")) ;
+        return EINVAL ;
+    }
+
+    skey_SV = newSVpv("",0);
+
+
+    pk_dat = (char*) pkey->data ;
+    pd_dat = (char*) pdata->data ;
+
+#ifndef newSVpvn
+    /* As newSVpv will assume that the data pointer is a null terminated C
+       string if the size parameter is 0, make sure that data points to an
+       empty string if the length is 0
+    */
+    if (pkey->size == 0)
+        pk_dat = "" ;
+    if (pdata->size == 0)
+        pd_dat = "" ;
+#endif
+
+    ENTER ;
+    SAVETMPS;
+
+    PUSHMARK(SP) ;
+    EXTEND(SP,2) ;
+    PUSHs(sv_2mortal(newSVpvn(pk_dat,pkey->size)));
+    PUSHs(sv_2mortal(newSVpvn(pd_dat,pdata->size)));
+    PUSHs(sv_2mortal(skey_SV));
+    PUTBACK ;
+
+    Trace(("calling associated cb\n"));
+    count = perl_call_sv(getCurrentDB->associated, G_SCALAR);
+    Trace(("called associated cb\n"));
+
+    SPAGAIN ;
+
+    if (count != 1)
+        softCrash ("associate: expected 1 return value from prefix sub, got %d", count) ;
+
+    retval = POPi ;
+
+    PUTBACK ;
+    
+    /* retrieve the secondary key */
+    DBT_clear(*skey);
+
+    Value = GetRecnoKey(getCurrentDB, SvIV(skey_SV)) ; 
+    skey->flags = DB_DBT_APPMALLOC;
+    skey->size = (int)sizeof(db_recno_t);
+    skey->data = (char*)safemalloc(skey->size);
+    memcpy(skey->data, &Value, skey->size);
 
     FREETMPS ;
     LEAVE ;
@@ -3267,7 +3358,7 @@ db_pget(db, key, pkey, data, flags=0)
 	u_int		flags
 	BerkeleyDB::Common	db
 	DBTKEY_B	key
-	DBTKEY_B	pkey = NO_INIT
+	DBTKEY_Bpr	pkey = NO_INIT
 	DBT_OPT		data
 	CODE:
 #ifndef AT_LEAST_DB_3_3
@@ -3425,7 +3516,10 @@ associate(db, secondary, callback, flags=0)
 	  secondary->primary_recno_or_queue = db->recno_or_queue ;
 	  /* secondary->dbp->app_private = secondary->associated ; */
 	  secondary->secondary_db = TRUE;
-	  RETVAL = db_associate(db, secondary, associate_cb, flags);
+      if (secondary->recno_or_queue)
+          RETVAL = db_associate(db, secondary, associate_cb_recno, flags);
+      else
+          RETVAL = db_associate(db, secondary, associate_cb, flags);
 #endif
 	OUTPUT:
 	  RETVAL
@@ -3566,7 +3660,7 @@ cu_c_pget(db, key, pkey, data, flags=0)
     int			flags
     BerkeleyDB::Cursor	db
     DBTKEY_B		key
-    DBTKEY_Br		pkey = NO_INIT
+    DBTKEY_Bpr		pkey = NO_INIT
     DBT_B		data
 	CODE:
 #ifndef AT_LEAST_DB_3_3

@@ -1,10 +1,19 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.28  11th June 2006 
+
+        * Fixes for secondary where primary os recno.
+
+        * GET_BOTH_RANGE wasn't working. It is now.
+
+        * Added FreeBSD hints to README - patch supplied by David Landgren
+          in #17675 from rt.cpan.org
+
 0.27  1st Novemver 2005 
 
         * Added support for Berkeley DB 4.4
 
-        * Fixed decondary key issue with recno databases
+        * Fixed secondary key issue with recno databases
 
         * Added libscan to Makefile.PL
 

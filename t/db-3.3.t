@@ -18,7 +18,7 @@ BEGIN
 
 umask(0);
 
-print "1..44\n";        
+print "1..109\n";        
 
 {
     # db->truncate
@@ -232,3 +232,218 @@ print "1..44\n";
 
 }
 
+{
+    # db->associate -- primary recno, secondary hash
+
+    sub sec_key3
+    {
+        #print "in sec_key\n";
+        my $pkey = shift ;
+        my $pdata = shift ;
+
+       $_[0] = $pdata ;
+        return 0;
+    }
+
+    my ($Dfile1, $Dfile2);
+    my $lex = new LexFile $Dfile1, $Dfile2 ;
+    my %hash ;
+    my $status;
+    my ($k, $v, $pk) = ('','','');
+
+    # create primary database
+    ok 45, my $primary = new BerkeleyDB::Recno -Filename => $Dfile1, 
+				     -Flags    => DB_CREATE ;
+
+    # create secondary database
+    ok 46, my $secondary = new BerkeleyDB::Hash -Filename => $Dfile2, 
+				     -Flags    => DB_CREATE ;
+
+    # associate primary with secondary
+    ok 47, $primary->associate($secondary, \&sec_key3) == 0;
+
+    # add data to the primary
+    my %data =  (
+		0 => "flag",
+		1 => "house",
+		2 => "sea",
+		) ;
+
+    my $ret = 0 ;
+    while (($k, $v) = each %data) {
+        my $r = $primary->db_put($k, $v) ;
+	#print "put $r $BerkeleyDB::Error\n";
+        $ret += $r;
+    }
+    ok 48, $ret == 0 ;
+
+    # check the records in the secondary
+    ok 49, countRecords($secondary) == 3 ;
+
+    ok 50, $secondary->db_get("flag", $v) == 0;
+    ok 51, $v eq "flag";
+
+    ok 52, $secondary->db_get("house", $v) == 0;
+    ok 53, $v eq "house";
+
+    ok 54, $secondary->db_get("sea", $v) == 0;
+    ok 55, $v eq "sea" ;
+
+    # pget to primary database is illegal
+    ok 56, $primary->db_pget(0, $pk, $v) != 0 ;
+
+    # pget to secondary database is ok
+    ok 57, $secondary->db_pget('house', $pk, $v) == 0 ;
+    ok 58, $pk == 1 ;
+    ok 59, $v  eq 'house';
+
+    ok 60, my $p_cursor = $primary->db_cursor();
+    ok 61, my $s_cursor = $secondary->db_cursor();
+
+    # c_get from primary 
+    $k = 1;
+    ok 62, $p_cursor->c_get($k, $v, DB_FIRST) == 0;
+
+    # c_get from secondary
+    ok 63, $s_cursor->c_get($k, $v, DB_FIRST) == 0;
+
+    # c_pget from primary database should fail
+    $k = 1;
+    ok 64, $p_cursor->c_pget($k, $pk, $v, DB_FIRST) != 0;
+
+    # c_pget from secondary database 
+    ok 65, $s_cursor->c_pget($k, $pk, $v, DB_FIRST) == 0;
+
+    # check put to secondary is illegal
+    ok 66, $secondary->db_put("tom", "dick") != 0;
+    ok 67, countRecords($secondary) == 3 ;
+
+    # delete from primary
+    ok 68, $primary->db_del(2) == 0 ;
+    ok 69, countRecords($primary) == 2 ;
+
+    # check has been deleted in secondary
+    ok 70, $secondary->db_get("sea", $v) != 0;
+    ok 71, countRecords($secondary) == 2 ;
+
+    # delete from secondary
+    ok 72, $secondary->db_del('flag') == 0 ;
+    ok 73, countRecords($secondary) == 1 ;
+
+
+    # check deleted from primary
+    ok 74, $primary->db_get(0, $v) != 0;
+    ok 75, countRecords($primary) == 1 ;
+
+}
+
+{
+    # db->associate -- primary hash, secondary recno
+
+    sub sec_key4
+    {
+        #print "in sec_key4\n";
+        my $pkey = shift ;
+        my $pdata = shift ;
+
+       $_[0] = length $pdata ;
+        return 0;
+    }
+
+    my ($Dfile1, $Dfile2);
+    my $lex = new LexFile $Dfile1, $Dfile2 ;
+    my %hash ;
+    my $status;
+    my ($k, $v, $pk) = ('','','');
+
+    # create primary database
+    ok 76, my $primary = new BerkeleyDB::Hash -Filename => $Dfile1, 
+				     -Flags    => DB_CREATE ;
+
+    # create secondary database
+    ok 77, my $secondary = new BerkeleyDB::Recno -Filename => $Dfile2, 
+                     #-Property => DB_DUP,
+				     -Flags    => DB_CREATE ;
+
+    # associate primary with secondary
+    ok 78, $primary->associate($secondary, \&sec_key4) == 0;
+
+    # add data to the primary
+    my %data =  (
+		"red"	=> "flag",
+		"green"	=> "house",
+		"blue"	=> "sea",
+		) ;
+
+    my $ret = 0 ;
+    while (($k, $v) = each %data) {
+        my $r = $primary->db_put($k, $v) ;
+	#print "put $r $BerkeleyDB::Error\n";
+        $ret += $r;
+    }
+    ok 79, $ret == 0 ;
+
+    # check the records in the secondary
+    ok 80, countRecords($secondary) == 3 ;
+
+    ok 81, $secondary->db_get(0, $v) != 0;
+    ok 82, $secondary->db_get(1, $v) != 0;
+    ok 83, $secondary->db_get(2, $v) != 0;
+    ok 84, $secondary->db_get(3, $v) == 0;
+    ok 85, $v eq "sea";
+
+    ok 86, $secondary->db_get(4, $v) == 0;
+    ok 87, $v eq "flag";
+
+    ok 88, $secondary->db_get(5, $v) == 0;
+    ok 89, $v eq "house";
+
+    # pget to primary database is illegal
+    ok 90, $primary->db_pget(0, $pk, $v) != 0 ;
+
+    # pget to secondary database is ok
+    ok 91, $secondary->db_pget(4, $pk, $v) == 0 ;
+    ok 92, $pk eq 'red'
+        or warn "# $pk\n";;
+    ok 93, $v  eq 'flag';
+
+    ok 94, my $p_cursor = $primary->db_cursor();
+    ok 95, my $s_cursor = $secondary->db_cursor();
+
+    # c_get from primary 
+    $k = 1;
+    ok 96, $p_cursor->c_get($k, $v, DB_FIRST) == 0;
+
+    # c_get from secondary
+    $k = 1;
+    ok 97, $s_cursor->c_get($k, $v, DB_FIRST) == 0;
+
+    # c_pget from primary database should fail
+    $k = 1;
+    ok 98, $p_cursor->c_pget($k, $pk, $v, DB_FIRST) != 0;
+
+    # c_pget from secondary database 
+    ok 99, $s_cursor->c_pget($k, $pk, $v, DB_FIRST) == 0;
+
+    # check put to secondary is illegal
+    ok 100, $secondary->db_put(77, "dick") != 0;
+    ok 101, countRecords($secondary) == 3 ;
+
+    # delete from primary
+    ok 102, $primary->db_del("green") == 0 ;
+    ok 103, countRecords($primary) == 2 ;
+
+    # check has been deleted in secondary
+    ok 104, $secondary->db_get(5, $v) != 0;
+    ok 105, countRecords($secondary) == 2 ;
+
+    # delete from secondary
+    ok 106, $secondary->db_del(4) == 0 ;
+    ok 107, countRecords($secondary) == 1 ;
+
+
+    # check deleted from primary
+    ok 108, $primary->db_get("red", $v) != 0;
+    ok 109, countRecords($primary) == 1 ;
+
+}
