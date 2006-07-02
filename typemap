@@ -8,6 +8,7 @@
 #
 # 
 
+SVnull*         T_SV_NULL
 void *			T_PV
 u_int			T_U_INT
 u_int32_t		T_U_INT
@@ -89,6 +90,12 @@ T_SV_REF_NULL
         }
         else
             croak(\"$var is not of type ${ntype}\")
+
+T_SV_NULL
+	if ($arg == NULL || $arg == &PL_sv_undef)
+	    $var = NULL ;
+	else
+	    $var = $arg ;
 
 T_HV_REF_NULL
 	if ($arg == &PL_sv_undef)
@@ -287,6 +294,9 @@ T_dbtdatum_btree
 	
 
 OUTPUT
+
+T_SV_NULL
+        $arg = $var;
 
 T_RAW
         sv_setiv($arg, PTR2IV($var));

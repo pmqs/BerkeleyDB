@@ -1,8 +1,14 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.29  2nd July 2006 
+
+        * Fixes for cursor get from secondary where primary os recno.
+
+        * Added db_compact
+
 0.28  11th June 2006 
 
-        * Fixes for secondary where primary os recno.
+        * Fixes for secondary where primary is recno.
 
         * GET_BOTH_RANGE wasn't working. It is now.
 

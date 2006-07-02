@@ -17,7 +17,7 @@ use Carp;
 use vars qw($VERSION @ISA @EXPORT $AUTOLOAD
 		$use_XSLoader);
 
-$VERSION = '0.28';
+$VERSION = '0.29';
 
 require Exporter;
 #require DynaLoader;

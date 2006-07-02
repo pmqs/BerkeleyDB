@@ -129,6 +129,10 @@ extern "C" {
 #  define AT_LEAST_DB_4_4
 #endif
 
+#if DB_VERSION_MAJOR > 4 || (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 5)
+#  define AT_LEAST_DB_4_5
+#endif
+
 #ifdef __cplusplus
 }
 #endif
@@ -349,6 +353,7 @@ typedef DBT 			DBTVALUE ;
 typedef void *	      		PV_or_NULL ;
 typedef PerlIO *      		IO_or_NULL ;
 typedef int			DualType ;
+typedef SV          SVnull;
 
 static void
 hash_delete(char * hash, char * key);
@@ -393,6 +398,8 @@ hash_delete(char * hash, char * key);
 
 #define my_sv_setpvn(sv, d, s) (s ? sv_setpvn(sv, d, s) : sv_setpv(sv, "") )
 
+#define GetValue_iv(h,k) (((sv = readHash(h, k)) && sv != &PL_sv_undef) \
+				? SvIV(sv) : 0)
 #define SetValue_iv(i, k) if ((sv = readHash(hash, k)) && sv != &PL_sv_undef) \
 				i = SvIV(sv)
 #define SetValue_io(i, k) if ((sv = readHash(hash, k)) && sv != &PL_sv_undef) \
@@ -1313,6 +1320,28 @@ static void
 hv_store_iv(HV * hash, char * key, IV value)
 {
     hv_store(hash, key, strlen(key), newSViv(value), 0);
+}
+
+#if 0
+static void
+hv_store_uv(HV * hash, char * key, UV value)
+{
+    hv_store(hash, key, strlen(key), newSVuv(value), 0);
+}
+#endif
+
+static void
+GetKey(BerkeleyDB_type * db, SV * sv, DBTKEY * key)
+{
+    if (db->recno_or_queue) {
+        Value = GetRecnoKey(db, SvIV(sv)) ; 
+        key->data = & Value; 
+        key->size = (int)sizeof(db_recno_t);
+    }
+    else {
+        key->data = SvPV(sv, PL_na);
+        key->size = (int)PL_na;
+    }
 }
 
 static BerkeleyDB
@@ -3055,7 +3084,7 @@ _db_cursor(db, flags=0)
 #ifdef AT_LEAST_DB_3_3
               RETVAL->associated = db->associated ;
 	      RETVAL->secondary_db  = db->secondary_db;
-              RETVAL->primary_recno_or_queue = db->recno_or_queue ;
+              RETVAL->primary_recno_or_queue = db->primary_recno_or_queue ;
 #endif
               RETVAL->prefix  = db->prefix ;
               RETVAL->hash    = db->hash ;
@@ -3127,7 +3156,7 @@ _db_join(db, cursors, flags=0)
 #ifdef AT_LEAST_DB_3_3
               RETVAL->associated = db->associated ;
 	      RETVAL->secondary_db  = db->secondary_db;
-              RETVAL->primary_recno_or_queue = db->recno_or_queue ;
+              RETVAL->primary_recno_or_queue = db->primary_recno_or_queue ;
 #endif
               RETVAL->prefix  = db->prefix ;
               RETVAL->hash    = db->hash ;
@@ -3524,6 +3553,70 @@ associate(db, secondary, callback, flags=0)
 	OUTPUT:
 	  RETVAL
 
+DualType
+compact(db, start=NULL, stop=NULL, c_data=NULL, flags=0, end=NULL)
+	BerkeleyDB::Common	db
+	SVnull*   	    start
+	SVnull*   	    stop
+	SVnull*   	    c_data
+	u_int32_t	flags
+	SVnull*   	    end 
+    INIT:
+        DBTKEY	    end_key;
+	CODE:
+    {
+#ifndef AT_LEAST_DB_4_4
+          softCrash("compact needs Berkeley DB 4.4 or later") ;
+#else
+        DBTKEY	    start_key;
+        DBTKEY	    stop_key;
+        DBTKEY*	    start_p = NULL;
+        DBTKEY*	    stop_p = NULL;
+        DBTKEY*	    end_p = NULL;
+	    DB_COMPACT cmpt;
+	    DB_COMPACT* cmpt_p = NULL;
+	    SV * sv;
+        HV* hash = NULL;
+
+        DBT_clear(start_key);
+        DBT_clear(stop_key);
+        DBT_clear(end_key);
+        Zero(&cmpt, 1, DB_COMPACT) ;
+        ckActive_Database(db->active) ;
+        saveCurrentDB(db) ;
+        if (start && SvOK(start)) {
+            start_p = &start_key;
+            DBM_ckFilter(start, filter_store_key, "filter_store_key");
+            GetKey(db, start, start_p);
+        }
+        if (stop && SvOK(stop)) {
+            stop_p = &stop_key;
+            DBM_ckFilter(stop, filter_store_key, "filter_store_key");
+            GetKey(db, stop, stop_p);
+        }
+        if (end) {
+            end_p = &end_key;
+        }
+        if (c_data && SvOK(c_data)) {
+            hash = (HV*) SvRV(c_data) ;
+            cmpt_p = & cmpt;
+            cmpt.compact_fillpercent = GetValue_iv(hash,"compact_fillpercent") ;
+            cmpt.compact_timeout = (db_timeout_t) GetValue_iv(hash, "compact_timeout"); 
+        }
+        RETVAL = (db->dbp)->compact(db->dbp, db->txn, start_p, stop_p, cmpt_p, flags, end_p);
+        if (RETVAL == 0 && hash) {
+            hv_store_iv(hash, "compact_deadlock", cmpt.compact_deadlock) ;
+            hv_store_iv(hash, "compact_levels",   cmpt.compact_levels) ;
+            hv_store_iv(hash, "compact_pages_free", cmpt.compact_pages_free) ;
+            hv_store_iv(hash, "compact_pages_examine", cmpt.compact_pages_examine) ;
+            hv_store_iv(hash, "compact_pages_truncated", cmpt.compact_pages_truncated) ;
+        }
+#endif
+    }
+	OUTPUT:
+	  RETVAL
+	  end		if (RETVAL == 0 && end) OutputValue_B(ST(5), end_key) ;
+
 
 MODULE = BerkeleyDB::Cursor              PACKAGE = BerkeleyDB::Cursor	PREFIX = cu_
 
@@ -3639,7 +3732,7 @@ DualType
 cu_c_get(db, key, data, flags=0)
     int			flags
     BerkeleyDB::Cursor	db
-    DBTKEY_Br		key 
+    DBTKEY_B		key 
     DBT_B		data 
 	INIT:
 	  Trace(("c_get db [%p] in [%p] flags [%d]\n", db->dbp, db, flags)) ;
