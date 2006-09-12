@@ -72,6 +72,8 @@ BerkeleyDB - Perl extension for Berkeley DB version 2, 3 or 4
   $hash_ref = $env->txn_stat()
   $status = $env->setmutexlocks()
   $status = $env->set_flags()
+  $status = $env->set_timeout()
+  $status = $env->lsn_reset()
 
   $txn = $env->txn_begin() ;
   $db->Txn($txn);
@@ -81,6 +83,7 @@ BerkeleyDB - Perl extension for Berkeley DB version 2, 3 or 4
   $status = $txn->txn_abort()
   $status = $txn->txn_id()
   $status = $txn->txn_discard()
+  $status = $txn->set_timeout()
 
   $status = $env->set_lg_dir();
   $status = $env->set_lg_bsize();
@@ -394,6 +397,8 @@ This option requires Berkeley DB 4.2 or better.
 
 Use the C<-SharedMemKey> option when opening the environemt to set the
 base segment ID.
+
+=item $env->set_timeout($timeout, $flags)
 
 =item $env->status()
 

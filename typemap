@@ -12,6 +12,7 @@ SVnull*         T_SV_NULL
 void *			T_PV
 u_int			T_U_INT
 u_int32_t		T_U_INT
+db_timeout_t	T_U_INT
 const char * 		T_PV_NULL
 PV_or_NULL		T_PV_NULL
 IO_or_NULL		T_IO_NULL

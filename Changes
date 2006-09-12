@@ -1,5 +1,12 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.30  11th Sept 2006 
+
+        * Fixed queue test harness for Berkeley DB 4.5 compliance
+
+        * Added $env->lsn_reset, $txn->set_timeout, $env->set_timeout &
+          $env->get_timeout, $txn->set_tx_max, $txn->get_tx_max
+
 0.29  2nd July 2006 
 
         * Fixes for cursor get from secondary where primary os recno.

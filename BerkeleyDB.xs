@@ -382,6 +382,9 @@ hash_delete(char * hash, char * key);
 #  define flagSet(bitmask)	((flags & DB_OPFLAGS_MASK) == (bitmask))
 #endif
 
+#ifndef AT_LEAST_DB_4
+typedef	int db_timeout_t ;
+#endif
 
 #define ERR_BUFF "BerkeleyDB::Error"
 
@@ -2498,6 +2501,55 @@ set_flags(env, flags, onoff)
 	OUTPUT:
 	    RETVAL
 
+int
+lsn_reset(env, file, flags)
+        BerkeleyDB::Env  env
+	char*       file
+	u_int32_t	 flags
+	INIT:
+	  ckActive_Database(env->active) ;
+	CODE:
+#ifndef AT_LEAST_DB_4_3
+	    softCrash("$env->lsn_reset needs Berkeley DB 4.3.x or better") ;
+#else
+	    RETVAL = env->Status = env->Env->lsn_reset(env->Env, file, flags);
+#endif
+	OUTPUT:
+	    RETVAL
+
+int
+set_timeout(env, timeout, flags=0)
+        BerkeleyDB::Env  env
+	db_timeout_t	 timeout
+	u_int32_t	 flags
+	INIT:
+	  ckActive_Database(env->active) ;
+	CODE:
+#ifndef AT_LEAST_DB_4
+	    softCrash("$env->set_timeout needs Berkeley DB 4.x or better") ;
+#else
+	    RETVAL = env->Status = env->Env->set_timeout(env->Env, timeout, flags);
+#endif
+	OUTPUT:
+	    RETVAL
+
+int
+get_timeout(env, timeout, flags=0)
+        BerkeleyDB::Env  env
+	db_timeout_t	 timeout = NO_INIT
+	u_int32_t	 flags
+	INIT:
+	  ckActive_Database(env->active) ;
+	CODE:
+#ifndef AT_LEAST_DB_4_2
+	    softCrash("$env->set_timeout needs Berkeley DB 4.2.x or better") ;
+#else
+	    RETVAL = env->Status = env->Env->get_timeout(env->Env, &timeout, flags);
+#endif
+	OUTPUT:
+	    RETVAL
+	    timeout
+
 
 MODULE = BerkeleyDB::Term		PACKAGE = BerkeleyDB::Term
 
@@ -3555,14 +3607,15 @@ associate(db, secondary, callback, flags=0)
 
 DualType
 compact(db, start=NULL, stop=NULL, c_data=NULL, flags=0, end=NULL)
+    PREINIT:
+        DBTKEY	    end_key;
+    INPUT:
 	BerkeleyDB::Common	db
 	SVnull*   	    start
 	SVnull*   	    stop
 	SVnull*   	    c_data
 	u_int32_t	flags
 	SVnull*   	    end 
-    INIT:
-        DBTKEY	    end_key;
 	CODE:
     {
 #ifndef AT_LEAST_DB_4_4
@@ -3952,6 +4005,53 @@ status(tid)
 	    RETVAL =  tid->Status ;
 	OUTPUT:
 	    RETVAL
+
+int
+set_timeout(txn, timeout, flags=0)
+        BerkeleyDB::Txn txn
+	db_timeout_t	 timeout
+	u_int32_t	 flags
+	INIT:
+	    ckActive_Transaction(txn->active) ;
+	CODE:
+#ifndef AT_LEAST_DB_4
+	    softCrash("$env->set_timeout needs Berkeley DB 4.x or better") ;
+#else
+	    RETVAL = txn->Status = txn->txn->set_timeout(txn->txn, timeout, flags);
+#endif
+	OUTPUT:
+	    RETVAL
+
+int
+set_tx_max(txn, max)
+        BerkeleyDB::Txn txn
+	u_int32_t	 max
+	INIT:
+	    ckActive_Transaction(txn->active) ;
+	CODE:
+#ifndef AT_LEAST_DB_2_3
+	    softCrash("$env->set_tx_max needs Berkeley DB 2_3.x or better") ;
+#else
+	    RETVAL = txn->Status = txn->txn->set_tx_max(txn->txn, max);
+#endif
+	OUTPUT:
+	    RETVAL
+
+int
+get_tx_max(txn, max)
+        BerkeleyDB::Txn txn
+	u_int32_t	 max = NO_INIT
+	INIT:
+	    ckActive_Transaction(txn->active) ;
+	CODE:
+#ifndef AT_LEAST_DB_2_3
+	    softCrash("$env->get_tx_max needs Berkeley DB 2_3.x or better") ;
+#else
+	    RETVAL = txn->Status = txn->txn->get_tx_max(txn->txn, &max);
+#endif
+	OUTPUT:
+	    RETVAL
+	    max
 
 int
 _DESTROY(tid)

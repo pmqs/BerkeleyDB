@@ -1,12 +1,12 @@
-                                   BerkeleyDB
+                                BerkeleyDB
 
-                                  Version 0.29
+                               Version 0.30
 
-                                 2nd July 2006
+                              11th Sept 2006
 
-	Copyright (c) 1997-2006 Paul Marquess. All rights reserved. This
-	program is free software; you can redistribute it and/or modify
-	it under the same terms as Perl itself.
+     Copyright (c) 1997-2006 Paul Marquess. All rights reserved. This
+      program is free software; you can redistribute it and/or modify
+                  it under the same terms as Perl itself.
 
 
 DESCRIPTION
