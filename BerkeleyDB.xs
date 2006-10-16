@@ -382,6 +382,12 @@ hash_delete(char * hash, char * key);
 #  define flagSet(bitmask)	((flags & DB_OPFLAGS_MASK) == (bitmask))
 #endif
 
+#ifdef DB_GET_BOTH_RANGE
+#  define flagSetBoth() (flagSet(DB_GET_BOTH) || flagSet(DB_GET_BOTH_RANGE))
+#else
+#  define flagSetBoth() (flagSet(DB_GET_BOTH))
+#endif                            
+
 #ifndef AT_LEAST_DB_4
 typedef	int db_timeout_t ;
 #endif
@@ -534,6 +540,7 @@ typedef	int db_timeout_t ;
 #define dieIfEnvOpened(e, m) if (e->opened) softCrash("Cannot call method BerkeleyDB::Env::%s after environment has been opened", m);	
 
 #define isSTDOUT_ERR(f) ((f) == stdout || (f) == stderr)
+
 
 /* Internal Global Data */
 static db_recno_t Value ;

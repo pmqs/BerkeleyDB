@@ -186,12 +186,12 @@ part of an absolute path.
     ...
 
     $db1 = new BerkeleyDB::Hash
-	     -Filename = "fred.db",
+	     -Filename => "fred.db",
 	     -Env => $env
     ...
 
     $db2 = new BerkeleyDB::Hash
-	     -Filename = "/other/joe.db",
+	     -Filename => "/other/joe.db",
 	     -Env => $env
     ...
 
