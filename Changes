@@ -1,5 +1,10 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.33  17th January 2008 
+
+        * Added failchk, set_isalive, lock_stat_print & mutex_stat_print.
+          Patch provided by Thomas Busch.
+
 0.32  10th July 2007 
 
         * Updates to support Berkeley DB 4.6
