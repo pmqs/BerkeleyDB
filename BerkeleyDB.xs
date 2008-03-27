@@ -1999,7 +1999,7 @@ _db_appinit(self, ref, errfile=NULL)
 	    if (enc_passwd)
 	        softCrash("-Encrypt needs Berkeley DB 4.x or better") ;
 #endif /* ! AT_LEAST_DB_4_1 */
-#ifndef _WIN32
+#ifdef _WIN32
 		if (thread_count)
 			softCrash("-ThreadCount not supported on Windows") ;
 #endif /* ! AT_LEAST_DB_4_4 */
