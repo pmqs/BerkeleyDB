@@ -1,5 +1,18 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.35  22nd September 2008 
+
+        * Added a combination of independent patches from Claes Jakobsson
+          and Yuval Kogman (#38896 rt.cpan.org) to allow multi-key return
+          from a secondard database.
+
+        * Added support for sequences. Initial patch from  Claes Jakobsson.
+
+        * Get associate to use a transaction if one is specified.
+          #5855 from rt.cpan.org
+
+        * Finish transition of test harness to use Test::More
+
 0.34  27th March 2008 
 
         * Updates to support building with Berkeley DB version 4.7

@@ -12,15 +12,7 @@ BEGIN {
 use lib 't';
 use BerkeleyDB; 
 use Test::More;
-use util (1);
-
-#BEGIN 
-#{
-#    if ($BerkeleyDB::db_version < 3) {
-#        print "1..0 # Skipping test, this needs Berkeley DB 3.x or better\n" ;
-#        exit 0 ;
-#    }
-#}
+use util ;
 
 plan(skip_all => "this needs Berkeley DB 3.x or better\n" )
     if $BerkeleyDB::db_version < 3;

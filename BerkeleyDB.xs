@@ -133,6 +133,10 @@ extern "C" {
 #  define AT_LEAST_DB_4_5
 #endif
 
+#if DB_VERSION_MAJOR > 4 || (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 6)
+#  define AT_LEAST_DB_4_6
+#endif
+
 #ifdef __cplusplus
 }
 #endif
@@ -242,6 +246,9 @@ typedef struct {
         DBC *   	cursor ;
 	DB_TXN *	txn ;
 	int		open_cursors ;
+#ifdef AT_LEAST_DB_4_3
+	int		open_sequences ;
+#endif
 	u_int32_t	partial ;
 	u_int32_t	dlen ;
 	u_int32_t	doff ;
@@ -310,6 +317,18 @@ typedef struct {
 typedef DB_TXN                BerkeleyDB_Txn_type ;
 #endif
 
+#ifdef AT_LEAST_DB_4_3
+typedef struct {
+    int active;
+    BerkeleyDB_type *db;
+    DB_SEQUENCE     *seq;
+} BerkeleyDB_Sequence_type;
+#else
+typedef int BerkeleyDB_Sequence_type;
+typedef SV* db_seq_t;
+#endif
+
+
 typedef BerkeleyDB_ENV_type *	BerkeleyDB__Env ;
 typedef BerkeleyDB_ENV_type *	BerkeleyDB__Env__Raw ;
 typedef BerkeleyDB_ENV_type *	BerkeleyDB__Env__Inner ;
@@ -335,6 +354,11 @@ typedef BerkeleyDB_TxnMgr_type * BerkeleyDB__TxnMgr__Inner ;
 typedef BerkeleyDB_Txn_type *	BerkeleyDB__Txn ;
 typedef BerkeleyDB_Txn_type *	BerkeleyDB__Txn__Raw ;
 typedef BerkeleyDB_Txn_type *	BerkeleyDB__Txn__Inner ;
+#ifdef AT_LEAST_DB_4_3
+typedef BerkeleyDB_Sequence_type * 	BerkeleyDB__Sequence ;
+#else
+typedef int * 	BerkeleyDB__Sequence ;
+#endif
 #if 0
 typedef DB_LOG *      		BerkeleyDB__Log ;
 typedef DB_LOCKTAB *  		BerkeleyDB__Lock ;
@@ -345,6 +369,7 @@ typedef DBT 			DBT_B ;
 typedef DBT 			DBTKEY_B ;
 typedef DBT 			DBTKEY_Br ;
 typedef DBT 			DBTKEY_Bpr ;
+typedef DBT 			DBTKEY_seq ;
 typedef DBT 			DBTVALUE ;
 typedef void *	      		PV_or_NULL ;
 typedef PerlIO *      		IO_or_NULL ;
@@ -471,6 +496,41 @@ typedef	int db_timeout_t ;
           }                                                     \
         }
 
+#ifdef AT_LEAST_DB_4_3
+
+#define InputKey_seq(arg, var)  \
+	{   \
+	    SV* my_sv = arg ;   \
+	    /* DBM_ckFilter(my_sv, filter_store_key, "filter_store_key"); */ \
+	    DBT_clear(var) ;    \
+        SvGETMAGIC(arg) ;   \
+	    if (seq->db->recno_or_queue) {  \
+	        Value = GetRecnoKey(seq->db, SvIV(my_sv)) ;     \
+	        var.data = & Value;     \
+	        var.size = (int)sizeof(db_recno_t); \
+	    }   \
+	    else {  \
+            STRLEN len; \
+	        var.data = SvPV(my_sv, len);    \
+	        var.size = (int)len;    \
+	    }   \
+	}
+
+#define OutputKey_seq(arg, name)                                    \
+        { if (RETVAL == 0) 					\
+          {                                                     \
+                if (!seq->db->recno_or_queue) {                     	\
+                    my_sv_setpvn(arg, name.data, name.size);    \
+                }                                               \
+                else                                            \
+                    sv_setiv(arg, (I32)*(I32*)name.data - RECNO_BASE);   \
+          }                                                     \
+        }
+#else
+#define InputKey_seq(arg, var)
+#define OutputKey_seq(arg, name) 
+#endif
+
 #define OutputKey_B(arg, name)                                  \
         { if (RETVAL == 0) 					\
           {                                                     \
@@ -532,6 +592,11 @@ typedef	int db_timeout_t ;
 #define ckActive_Transaction(a) ckActive(a, "Transaction")
 #define ckActive_Database(a) 	ckActive(a, "Database")
 #define ckActive_Cursor(a) 	ckActive(a, "Cursor")
+#ifdef AT_LEAST_DB_4_3
+#define ckActive_Sequence(a) 	ckActive(a, "Sequence")
+#else
+#define ckActive_Sequence(a) 	
+#endif
 
 #define dieIfEnvOpened(e, m) if (e->opened) softCrash("Cannot call method BerkeleyDB::Env::%s after environment has been opened", m);	
 
@@ -1171,9 +1236,12 @@ associate_cb(DB_callback const DBT * pkey, const DBT * pdata, DBT * skey)
     /* char *sk_dat ; */
     int retval ;
     int count ;
+    int i ;
     SV * skey_SV ;
     STRLEN skey_len;
     char * skey_ptr ;
+    AV * skey_AV;
+    DBT * tkey;
 
     Trace(("In associate_cb \n")) ;
     if (getCurrentDB->associated == NULL){
@@ -1224,13 +1292,60 @@ associate_cb(DB_callback const DBT * pkey, const DBT * pdata, DBT * skey)
     /* retrieve the secondary key */
     DBT_clear(*skey);
 
-    skey_ptr = SvPV(skey_SV, skey_len);
     skey->flags = DB_DBT_APPMALLOC;
-    /* skey->size = SvCUR(skey_SV); */
-    /* skey->data = (char*)safemalloc(skey->size); */
-    skey->size = skey_len;
-    skey->data = (char*)safemalloc(skey_len);
-    memcpy(skey->data, skey_ptr, skey_len);
+
+#ifdef AT_LEAST_DB_4_6
+    if ( SvROK(skey_SV) ) {
+        SV *rv = SvRV(skey_SV);
+
+        if ( SvTYPE(rv) == SVt_PVAV ) {
+            AV *av = (AV *)rv;
+            SV **svs = AvARRAY(av);
+            I32 len = av_len(av) + 1;
+            I32 i;
+            DBT *dbts;
+
+            if ( len == 0 ) {
+                retval = DB_DONOTINDEX;
+            } else if ( len == 1 ) {
+                skey_ptr = SvPV(svs[0], skey_len);
+                skey->size = skey_len;
+                skey->data = (char*)safemalloc(skey_len);
+                memcpy(skey->data, skey_ptr, skey_len);
+                Trace(("key is %d -- %.*s\n", skey->size, skey->size, skey->data));
+            } else {
+                skey->flags |= DB_DBT_MULTIPLE ;
+
+                /* FIXME this will leak if safemalloc fails later... do we care? */
+                dbts = (DBT *) safemalloc(sizeof(DBT) * len);
+                skey->size = len;
+                skey->data = (char *)dbts;
+
+                for ( i = 0; i < skey->size; i ++ ) {
+                    skey_ptr = SvPV(svs[i], skey_len);
+
+                    dbts[i].flags = DB_DBT_APPMALLOC;
+                    dbts[i].size = skey_len;
+                    dbts[i].data = (char *)safemalloc(skey_len);
+                    memcpy(dbts[i].data, skey_ptr, skey_len);
+
+                    Trace(("key is %d -- %.*s\n", dbts[i].size, dbts[i].size, dbts[i].data));
+                }
+                Trace(("mkey has %d subkeys\n", skey->size));
+            }
+        } else {
+            croak("Not an array reference");
+        }
+    } else 
+#endif
+    {
+        skey_ptr = SvPV(skey_SV, skey_len);
+        /* skey->size = SvCUR(skey_SV); */
+        /* skey->data = (char*)safemalloc(skey->size); */
+        skey->size = skey_len;
+        skey->data = (char*)safemalloc(skey_len);
+        memcpy(skey->data, skey_ptr, skey_len);
+    }
     Trace(("key is %d -- %.*s\n", skey->size, skey->size, skey->data));
 
     FREETMPS ;
@@ -3338,6 +3453,11 @@ db_close(db,flags=0)
 	    if (db->open_cursors)
 		softCrash("attempted to close a database with %d open cursor(s)",
 				db->open_cursors) ;
+#ifdef AT_LEAST_DB_4_3
+	    if (db->open_sequences)
+		softCrash("attempted to close a database with %d open sequence(s)",
+				db->open_sequences) ;
+#endif /* AT_LEAST_DB_4_3 */
 #endif /* STRICT_CLOSE */
 	    RETVAL =  db->Status = ((db->dbp)->close)(db->dbp, flags) ;
 	    if (db->parent_env && db->parent_env->open_dbs)
@@ -3874,7 +3994,7 @@ truncate(db, countp, flags=0)
 
 #ifdef AT_LEAST_DB_4_1
 #  define db_associate(db, sec, cb, flags)\
-	(db->Status = ((db->dbp)->associate)(db->dbp, NULL, sec->dbp, &cb, flags))
+	(db->Status = ((db->dbp)->associate)(db->dbp, db->txn, sec->dbp, &cb, flags))
 #else
 #  define db_associate(db, sec, cb, flags)\
 	(db->Status = ((db->dbp)->associate)(db->dbp, sec->dbp, &cb, flags))
@@ -4586,6 +4706,248 @@ FETCHSIZE(db)
             RETVAL = GetArrayLength(db) ;
         OUTPUT:
             RETVAL
+
+                
+MODULE = BerkeleyDB::Common  PACKAGE = BerkeleyDB::Common
+
+BerkeleyDB::Sequence
+db_create_sequence(db, flags=0)
+    BerkeleyDB::Common  db
+    u_int32_t		flags
+    PREINIT:
+      dMY_CXT;
+    CODE:
+    {
+#ifndef AT_LEAST_DB_4_3
+	    softCrash("$seq->create_sequence needs Berkeley DB 4.3.x or better") ;
+#else
+        DB_SEQUENCE *	seq ;
+        saveCurrentDB(db);
+        RETVAL = NULL;
+        if (db_sequence_create(&seq, db->dbp, flags) == 0)
+        {
+            ZMALLOC(RETVAL, BerkeleyDB_Sequence_type);
+            RETVAL->db = db;
+            RETVAL->seq = seq;
+            RETVAL->active = TRUE;
+            ++ db->open_sequences ;
+        }
+#endif
+    }
+    OUTPUT:
+      RETVAL
+
+       
+MODULE = BerkeleyDB::Sequence            PACKAGE = BerkeleyDB::Sequence PREFIX = seq_
+ 
+DualType
+open(seq, key, flags=0)
+    BerkeleyDB::Sequence seq
+    DBTKEY_seq		 key
+    u_int32_t            flags
+    PREINIT:
+        dMY_CXT;
+    INIT:
+        ckActive_Sequence(seq->active) ;
+    CODE:
+#ifndef AT_LEAST_DB_4_3
+	    softCrash("$seq->create_sequence needs Berkeley DB 4.3.x or better") ;
+#else
+        RETVAL = seq->seq->open(seq->seq, seq->db->txn, &key, flags);
+#endif
+    OUTPUT:
+        RETVAL
+
+DualType
+close(seq,flags=0)
+    BerkeleyDB::Sequence seq;
+    u_int32_t            flags;
+    PREINIT:
+        dMY_CXT;
+    INIT:
+        ckActive_Sequence(seq->active) ;
+    CODE:
+#ifndef AT_LEAST_DB_4_3
+	    softCrash("$seq->close needs Berkeley DB 4.3.x or better") ;
+#else
+        RETVAL = 0;    
+        if (seq->active) {
+            -- seq->db->open_sequences;
+            RETVAL = seq->seq->close(seq->seq, flags);
+        }
+        seq->active = FALSE;
+#endif
+    OUTPUT:
+        RETVAL
+        
+DualType
+remove(seq,flags=0)
+    BerkeleyDB::Sequence seq;
+    u_int32_t            flags;
+    PREINIT:
+        dMY_CXT;
+    INIT:
+        ckActive_Sequence(seq->active) ;
+    CODE:
+#ifndef AT_LEAST_DB_4_3
+	    softCrash("$seq->remove needs Berkeley DB 4.3.x or better") ;
+#else
+        RETVAL = 0;    
+        if (seq->active)
+            RETVAL = seq->seq->remove(seq->seq, seq->db->txn, flags);
+        seq->active = FALSE;
+#endif
+    OUTPUT:
+        RETVAL
+        
+void
+DESTROY(seq)
+    BerkeleyDB::Sequence seq
+    PREINIT:
+        dMY_CXT;
+    CODE:
+#ifdef AT_LEAST_DB_4_3
+        if (seq->active)
+            seq->seq->close(seq->seq, 0);
+        Safefree(seq);
+#endif
+
+DualType
+get(seq, element, delta=1, flags=0)
+    BerkeleyDB::Sequence seq;
+    IV                   delta;
+    db_seq_t             element = NO_INIT
+    u_int32_t            flags;
+    PREINIT:
+        dMY_CXT;
+    INIT:
+        ckActive_Sequence(seq->active) ;
+    CODE:
+#ifndef AT_LEAST_DB_4_3
+	    softCrash("$seq->get needs Berkeley DB 4.3.x or better") ;
+#else
+        RETVAL = seq->seq->get(seq->seq, seq->db->txn, delta, &element, flags);
+#endif
+    OUTPUT:
+        RETVAL
+        element    
+        
+DualType
+get_key(seq, key)
+    BerkeleyDB::Sequence seq;
+    DBTKEY_seq		 key = NO_INIT
+    PREINIT:
+        dMY_CXT;
+    INIT:
+        ckActive_Sequence(seq->active) ;
+    CODE:
+#ifndef AT_LEAST_DB_4_3
+	    softCrash("$seq->get_key needs Berkeley DB 4.3.x or better") ;
+#else
+        DBT_clear(key);
+        RETVAL = seq->seq->get_key(seq->seq, &key);
+#endif
+    OUTPUT:
+        RETVAL
+        key    
+        
+DualType
+initial_value(seq, low, high=0)
+    BerkeleyDB::Sequence seq;
+    int low
+    int high
+    PREINIT:
+        dMY_CXT;
+    INIT:
+        ckActive_Sequence(seq->active) ;
+    CODE:
+#ifndef AT_LEAST_DB_4_3
+	    softCrash("$seq->initial_value needs Berkeley DB 4.3.x or better") ;
+#else
+        RETVAL = seq->seq->initial_value(seq->seq, (db_seq_t)(high << 32 + low));
+#endif
+    OUTPUT:
+        RETVAL
+        
+DualType
+set_cachesize(seq, size)
+    BerkeleyDB::Sequence seq;
+    int32_t size
+    PREINIT:
+        dMY_CXT;
+    INIT:
+        ckActive_Sequence(seq->active) ;
+    CODE:
+#ifndef AT_LEAST_DB_4_3
+	    softCrash("$seq->set_cachesize needs Berkeley DB 4.3.x or better") ;
+#else
+        RETVAL = seq->seq->set_cachesize(seq->seq, size);
+#endif
+    OUTPUT:
+        RETVAL
+        
+DualType
+get_cachesize(seq, size)
+    BerkeleyDB::Sequence seq;
+    int32_t size = NO_INIT
+    PREINIT:
+        dMY_CXT;
+    INIT:
+        ckActive_Sequence(seq->active) ;
+    CODE:
+#ifndef AT_LEAST_DB_4_3
+	    softCrash("$seq->get_cachesize needs Berkeley DB 4.3.x or better") ;
+#else
+        RETVAL = seq->seq->get_cachesize(seq->seq, &size);
+#endif
+    OUTPUT:
+        RETVAL
+        size    
+
+DualType
+set_flags(seq, flags)
+    BerkeleyDB::Sequence seq;
+    u_int32_t flags
+    PREINIT:
+        dMY_CXT;
+    INIT:
+        ckActive_Sequence(seq->active) ;
+    CODE:
+#ifndef AT_LEAST_DB_4_3
+	    softCrash("$seq->set_flags needs Berkeley DB 4.3.x or better") ;
+#else
+        RETVAL = seq->seq->set_flags(seq->seq, flags);
+#endif
+    OUTPUT:
+        RETVAL
+        
+DualType
+get_flags(seq, flags)
+    BerkeleyDB::Sequence seq;
+    u_int32_t flags = NO_INIT
+    PREINIT:
+        dMY_CXT;
+    INIT:
+        ckActive_Sequence(seq->active) ;
+    CODE:
+#ifndef AT_LEAST_DB_4_3
+	    softCrash("$seq->get_flags needs Berkeley DB 4.3.x or better") ;
+#else
+        RETVAL = seq->seq->get_flags(seq->seq, &flags);
+#endif
+    OUTPUT:
+        RETVAL
+        flags    
+    
+DualType
+set_range(seq)
+    BerkeleyDB::Sequence seq;
+        NOT_IMPLEMENTED_YET
+
+DualType
+stat(seq)
+    BerkeleyDB::Sequence seq;
+        NOT_IMPLEMENTED_YET
 
 
 MODULE = BerkeleyDB        PACKAGE = BerkeleyDB
