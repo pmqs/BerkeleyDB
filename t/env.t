@@ -14,7 +14,7 @@ use util ;
 
 use Test::More ;
 
-plan tests => 53;    
+plan tests => 53;
 
 my $Dfile = "dbhash.tmp";
 

@@ -137,6 +137,10 @@ extern "C" {
 #  define AT_LEAST_DB_4_6
 #endif
 
+#if DB_VERSION_MAJOR > 4 || (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR >= 7)
+#  define AT_LEAST_DB_4_7
+#endif
+
 #ifdef __cplusplus
 }
 #endif
@@ -2367,6 +2371,44 @@ log_archive(env, flags=0)
 	  }
 #endif
 	}
+
+DualType
+log_set_config(env, flags=0, onoff=0)
+	BerkeleyDB::Env		env
+	u_int32_t		flags
+	int			onoff
+	PREINIT:
+	  dMY_CXT;
+	CODE:
+	{
+#ifndef AT_LEAST_DB_4_7
+          softCrash("log_set_config needs at least Berkeley DB 4.7.x");
+#else
+	  RETVAL = env->Status = env->Env->log_set_config(env->Env, flags, onoff) ;
+#endif
+	}
+	OUTPUT:
+	  RETVAL
+
+DualType
+log_get_config(env, flags, onoff)
+	BerkeleyDB::Env		env
+	u_int32_t		flags
+	int			    onoff=NO_INIT
+	PREINIT:
+	  dMY_CXT;
+	CODE:
+	{
+#ifndef AT_LEAST_DB_4_7
+      softCrash("log_get_config needs at least Berkeley DB 4.7.x");
+#else
+	  RETVAL = env->Status = env->Env->log_get_config(env->Env, flags, &onoff) ;
+#endif
+	}
+	OUTPUT:
+	  RETVAL
+      onoff
+
 
 BerkeleyDB::Txn::Raw
 _txn_begin(env, pid=NULL, flags=0)

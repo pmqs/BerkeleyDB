@@ -1,5 +1,10 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.36  30th September 2008 
+
+        * Added support for $ENV->log_get_config and $ENV->log_set_config.
+          Patch supplied by Yuval Kogman (#39651 rt.cpan.org)
+
 0.35  22nd September 2008 
 
         * Added a combination of independent patches from Claes Jakobsson

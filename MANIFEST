@@ -27,6 +27,7 @@ t/db-3.3.t
 t/db-4.x.t
 t/db-4.4.t
 t/db-4.6.t
+t/db-4.7.t
 t/destroy.t
 t/encrypt.t
 t/env.t
