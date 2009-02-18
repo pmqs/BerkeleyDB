@@ -1,5 +1,11 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.37  18th February 2009 
+
+        * Included CDS section to the pod.
+
+        * Various documentation patches from RT#42243
+
 0.36  30th September 2008 
 
         * Added support for $ENV->log_get_config and $ENV->log_set_config.
