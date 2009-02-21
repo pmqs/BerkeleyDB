@@ -1892,7 +1892,7 @@ without your application having to do anything. There are a couple of
 exceptions you need to be aware of though - these will be discussed in
 L<Safely Updating Records> and L<Implicit Cursors> below.
 
-A Berkeley DB Cursor (created with C<< $db->db_cursor>>) will by hold a
+A Berkeley DB Cursor (created with C<< $db->db_cursor >>) will by hold a
 lock on the database until it is either explicitly closed or destroyed.
 This means the lock has the potential to be long lived. 
 

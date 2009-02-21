@@ -1,5 +1,9 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.38  21st February 2009 
+
+        * Fixed typo in BerkleyDB.pod that broke t/pod.t
+
 0.37  18th February 2009 
 
         * Included CDS section to the pod.

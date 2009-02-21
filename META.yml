@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                BerkeleyDB
-version:             0.37
+version:             0.38
 abstract:            Perl extension for Berkeley DB version 2, 3 or 4
 license:             perl
 author:              
