@@ -156,6 +156,7 @@ with the C<Flags> parameter, described below.
              [ -CacheSize    => $number, ]
              [ -Config       => { name => value, name => value }, ]
              [ -ErrFile      => filename, ]
+             [ -MsgFile      => filename, ]
              [ -ErrPrefix    => "string", ]
              [ -Flags        => number, ]
              [ -SetFlags     => bitmask, ]
@@ -436,15 +437,30 @@ initialized with it.
 
 This option requires Berkeley DB 4.4 or better.
 
+=item $env->stat_print
+
+Prints statistical information. 
+
+If the C<MsgFile> option is specified the output will be sent to the
+file. Otherwise output is sent to standard output.
+
+This option requires Berkeley DB 4.3 or better.
+
 =item $env->lock_stat_print
 
 Prints locking subsystem statistics.
+
+If the C<MsgFile> option is specified the output will be sent to the
+file. Otherwise output is sent to standard output.
 
 This option requires Berkeley DB 4.3 or better.
 
 =item $env->mutex_stat_print
 
 Prints mutex subsystem statistics.
+
+If the C<MsgFile> option is specified the output will be sent to the
+file. Otherwise output is sent to standard output.
 
 This option requires Berkeley DB 4.4 or better.
 
@@ -850,6 +866,11 @@ L<"Changing the sort order"> for an example.
     	-DupCompare => \&compare,
 	...
 
+=item set_bt_compress
+
+Enabled compression of the btree data. The callback interface is not
+supported at present. Need Berkeley DB 4.8 or better.
+
 =back
 
 =head2 Methods
@@ -1216,6 +1237,15 @@ B<all> key/value pairs with key C<$key>.
 
 The B<$flags> parameter is optional and is currently unused.
 
+=head2 $status = $env->stat_print([$flags])
+
+Prints statistical information. 
+
+If the C<MsgFile> option is specified the output will be sent to the
+file. Otherwise output is sent to standard output.
+
+This option requires Berkeley DB 4.3 or better.
+
 =head2 $status = $db->db_sync()
 
 If any parts of the database are in memory, write them to the database.
@@ -1365,6 +1395,33 @@ Data may be retrieved fro the secondary database using C<db_pget> to also
 obtain the primary key.
 
 Secondary databased are maintained automatically.
+
+=head2  $status = $db->associate_foreign($secondary, callback, $flags)
+
+Associate a foreign key database C<$db> with the secondary DB
+C<$secondary>.
+
+The second parameter must be a reference to a sub or C<undef>. 
+
+The C<$flags> parameter must be either C<DB_FOREIGN_CASCADE>, 
+C<DB_FOREIGN_ABORT> or C<DB_FOREIGN_NULLIFY>. 
+
+When the flags parameter is C<DB_FOREIGN_NULLIFY> the second parameter is a
+reference to a sub of the form
+
+    sub foreign_cb
+    {
+        my $key = \$_[0];
+        my $value = \$_[1];
+        my $foreignkey = \$_[2];
+        my $changed = \$_[3] ;
+
+        # for ... set $$value and set $$changed to 1
+
+        return 0;
+    }
+
+    $foreign_db->associate_foreign($secondary, \&foreign_cb, DB_FOREIGN_NULLIFY);
 
 =head1 CURSORS
 

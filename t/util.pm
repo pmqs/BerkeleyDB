@@ -177,6 +177,16 @@ sub docat_del_sort
     return $result;
 }   
 
+sub readFile
+{
+    my $file = shift;
+    local $/ = undef;
+    open(RD,$file) || die "Cannot open $file:$!";
+    my $result = <RD>;
+    close(RD);
+    return $result;
+}
+
 sub writeFile
 {
     my $name = shift ;

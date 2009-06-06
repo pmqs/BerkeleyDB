@@ -38,7 +38,7 @@ my $version_major  = 0;
     # Check for invalid parameters
     my $env ;
     eval ' $env = new BerkeleyDB::Env( -Stupid => 3) ; ' ;
-    ok $@ =~ /unknown key value\(s\) Stupid/  ;
+    ok $@ =~ /unknown key value\(s\) Stupid/, "Unknown key"  ;
 
     eval ' $env = new BerkeleyDB::Env( -Bad => 2, -Home => "/tmp", -Stupid => 3) ; ' ;
     ok $@ =~ /unknown key value\(s\) (Bad,? |Stupid,? ){2}/  ;
@@ -78,7 +78,7 @@ my $version_major  = 0;
     my $env = new BerkeleyDB::Env -Home => $home, @StdErrFile,
 			          -Flags => DB_INIT_LOCK ;
     ok ! $env ;
-    ok $! != 0 || $^E != 0 ;
+    ok $! != 0 || $^E != 0, "got error" ;
 
     rmtree $home ;
 }

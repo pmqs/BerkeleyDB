@@ -1,5 +1,23 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.39  6th June 2009 
+
+        * Added support for BDB 4.8
+          - associate_foreign 
+          - set_bt_compress (no callbacks as yet).
+
+        * Also added interface to 
+          - ENV->stat_print
+          - ENV->txn_stat_print
+
+        * Oldest Perl supported is now 5.005
+
+        * Fixed issue db_stat when it returned a null pointer.
+          (#46312 rt.cpan.org)
+
+        * Fixed issue with DNM Filters & UTF8 support.
+          Patch supplied by Torsten Foertsch.
+
 0.38  21st February 2009 
 
         * Fixed typo in BerkleyDB.pod that broke t/pod.t

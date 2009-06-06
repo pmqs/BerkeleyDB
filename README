@@ -1,8 +1,8 @@
                                 BerkeleyDB
 
-                               Version 0.38
+                               Version 0.39
 
-                            21st February 2009
+                               6th June 2009
                               
 
      Copyright (c) 1997-2009 Paul Marquess. All rights reserved. This
@@ -35,7 +35,7 @@ installed on your system:
       directory where you have untarred this module is NOT a network
       drive, e.g. NFS or AFS.
 
-    * Perl 5.004_04 or greater.
+    * Perl 5.00 or greater.
 
     * Berkeley DB Version 2.6.4 or greater
 
