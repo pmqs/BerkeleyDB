@@ -2,7 +2,7 @@
 package BerkeleyDB;
 
 
-#     Copyright (c) 1997-2009 Paul Marquess. All rights reserved.
+#     Copyright (c) 1997-2010 Paul Marquess. All rights reserved.
 #     This program is free software; you can redistribute it and/or
 #     modify it under the same terms as Perl itself.
 #
@@ -17,7 +17,7 @@ use Carp;
 use vars qw($VERSION @ISA @EXPORT $AUTOLOAD
 		$use_XSLoader);
 
-$VERSION = '0.39';
+$VERSION = '0.40';
 
 require Exporter;
 #require DynaLoader;
@@ -807,6 +807,11 @@ sub new
 					SetFlags     	=> 0,
 					Cachesize     	=> 0,
 					LockDetect     	=> 0,
+					TxMax     	=> 0,
+					LogConfig     	=> 0,
+					MaxLockers     	=> 0,
+					MaxLocks     	=> 0,
+					MaxObjects     	=> 0,
 					Verbose		=> 0,
 					Config		=> undef,
 					Encrypt		=> undef,

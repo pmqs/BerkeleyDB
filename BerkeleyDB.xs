@@ -2346,6 +2346,11 @@ _db_appinit(self, ref, errfile=NULL)
 	    int		setflags = 0 ;
 	    int		cachesize = 0 ;
 	    int		lk_detect = 0 ;
+            int		tx_max = 0 ;
+            int		log_config = 0 ;
+            int		max_lockers = 0 ;
+            int		max_locks = 0 ;
+            int		max_objects = 0 ;
 	    long	shm_key = 0 ;
 	    char*	data_dir = 0;
 	    char*	log_dir = 0;
@@ -2368,6 +2373,11 @@ _db_appinit(self, ref, errfile=NULL)
 	    SetValue_pv(server,    "Server", char *) ;
 	    SetValue_iv(cachesize, "Cachesize") ;
 	    SetValue_iv(lk_detect, "LockDetect") ;
+	    SetValue_iv(tx_max,    "TxMax") ;
+	    SetValue_iv(log_config,"LogConfig") ;
+	    SetValue_iv(max_lockers,"MaxLockers") ;
+	    SetValue_iv(max_locks, "MaxLocks") ;
+	    SetValue_iv(max_objects,"MaxObjects") ;
 	    SetValue_iv(shm_key,   "SharedMemKey") ;
 		SetValue_iv(thread_count,   "ThreadCount") ;
 	    SetValue_pv(data_dir,   "DB_DATA_DIR", char*) ;
@@ -2384,6 +2394,14 @@ _db_appinit(self, ref, errfile=NULL)
 	    if (server)
 	        softCrash("-Server needs Berkeley DB 3.1 or better") ;
 #endif /* ! AT_LEAST_DB_3_1 */
+#ifndef AT_LEAST_DB_3_2
+	    if (max_lockers)
+	        softCrash("-MaxLockers needs Berkeley DB 3.2 or better") ;
+	    if (max_locks)
+	        softCrash("-MaxLocks needs Berkeley DB 3.2 or better") ;
+	    if (max_objects)
+	        softCrash("-MaxObjects needs Berkeley DB 3.2 or better") ;
+#endif /* ! AT_LEAST_DB_3_2 */
 #ifndef AT_LEAST_DB_4_1
 	    if (enc_passwd)
 	        softCrash("-Encrypt needs Berkeley DB 4.x or better") ;
@@ -2400,6 +2418,10 @@ _db_appinit(self, ref, errfile=NULL)
 		if (thread_count)
 			softCrash("-ThreadCount needs Berkeley DB 4.4 or better") ;
 #endif /* ! AT_LEAST_DB_4_4 */
+#ifndef AT_LEAST_DB_4_7
+		if (log_config)
+			softCrash("-LogConfig needs Berkeley DB 4.7 or better") ;
+#endif /* ! AT_LEAST_DB_4_7 */
 	    Trace(("_db_appinit(config=[%d], home=[%s],errprefix=[%s],flags=[%d]\n",
 			config, home, errprefix, flags)) ;
 #ifdef TRACE
@@ -2510,6 +2532,38 @@ _db_appinit(self, ref, errfile=NULL)
 	      Trace(("set_lk_detect [%d] returned %s\n",
 	              lk_detect, my_db_strerror(status)));
 	  }
+
+	  if (status == 0 && tx_max) {
+	      status = env->set_tx_max(env, tx_max) ;
+	      Trace(("set_tx_max [%d] returned %s\n",
+	              tx_max, my_db_strerror(status)));
+	  }
+#ifdef AT_LEAST_DB_4_7
+	  if (status == 0 && log_config) {
+	      status = env->log_set_config(env, log_config, 1) ;
+	      Trace(("log_set_config [%d] returned %s\n",
+	              log_config, my_db_strerror(status)));
+	  }
+#endif /* AT_LEAST_DB_4_7 */
+#ifdef AT_LEAST_DB_3_2
+	  if (status == 0 && max_lockers) {
+	      status = env->set_lk_max_lockers(env, max_lockers) ;
+	      Trace(("set_lk_max_lockers [%d] returned %s\n",
+	              max_lockers, my_db_strerror(status)));
+	  }
+
+	  if (status == 0 && max_locks) {
+	      status = env->set_lk_max_locks(env, max_locks) ;
+	      Trace(("set_lk_max_locks [%d] returned %s\n",
+	              max_locks, my_db_strerror(status)));
+	  }
+
+	  if (status == 0 && max_objects) {
+	      status = env->set_lk_max_objects(env, max_objects) ;
+	      Trace(("set_lk_max_objects [%d] returned %s\n",
+	              max_objects, my_db_strerror(status)));
+	  }
+#endif /* AT_LEAST_DB_3_2 */
 #ifdef AT_LEAST_DB_4_1
 	  /* set encryption */
 	  if (enc_passwd && status == 0)
@@ -4932,35 +4986,36 @@ set_timeout(txn, timeout, flags=0)
 	    RETVAL
 
 int
-set_tx_max(txn, max)
-        BerkeleyDB::Txn txn
+set_tx_max(env, max)
+        BerkeleyDB::Env env
 	u_int32_t	 max
 	PREINIT:
 	  dMY_CXT;
 	INIT:
-	    ckActive_Transaction(txn->active) ;
+	    ckActive_Database(env->active) ;
 	CODE:
 #ifndef AT_LEAST_DB_2_3
 	    softCrash("$env->set_tx_max needs Berkeley DB 2_3.x or better") ;
 #else
-	    RETVAL = txn->Status = txn->txn->set_tx_max(txn->txn, max);
+            dieIfEnvOpened(env, "set_tx_max");
+	    RETVAL = env->Status = env->Env->set_tx_max(env->Env, max);
 #endif
 	OUTPUT:
 	    RETVAL
 
 int
-get_tx_max(txn, max)
-        BerkeleyDB::Txn txn
+get_tx_max(env, max)
+        BerkeleyDB::Env env
 	u_int32_t	 max = NO_INIT
 	PREINIT:
 	  dMY_CXT;
 	INIT:
-	    ckActive_Transaction(txn->active) ;
+	    ckActive_Database(env->active) ;
 	CODE:
 #ifndef AT_LEAST_DB_2_3
 	    softCrash("$env->get_tx_max needs Berkeley DB 2_3.x or better") ;
 #else
-	    RETVAL = txn->Status = txn->txn->get_tx_max(txn->txn, &max);
+	    RETVAL = env->Status = env->Env->get_tx_max(env->Env, &max);
 #endif
 	OUTPUT:
 	    RETVAL
@@ -5223,7 +5278,7 @@ close(seq,flags=0)
         RETVAL = 0;    
         if (seq->active) {
             -- seq->db->open_sequences;
-            RETVAL = seq->seq->close(seq->seq, flags);
+            RETVAL = (seq->seq->close)(seq->seq, flags);
         }
         seq->active = FALSE;
 #endif
@@ -5258,7 +5313,7 @@ DESTROY(seq)
     CODE:
 #ifdef AT_LEAST_DB_4_3
         if (seq->active)
-            seq->seq->close(seq->seq, 0);
+            (seq->seq->close)(seq->seq, 0);
         Safefree(seq);
 #endif
 
@@ -5415,7 +5470,7 @@ BOOT:
     (void)db_version(&Major, &Minor, &Patch) ;
     /* Check that the versions of db.h and libdb.a are the same */
     if (Major != DB_VERSION_MAJOR || Minor != DB_VERSION_MINOR
-                || Patch != DB_VERSION_PATCH)
+		|| Patch != DB_VERSION_PATCH)
         croak("\nBerkeleyDB needs compatible versions of libdb & db.h\n\tyou have db.h version %d.%d.%d and libdb version %d.%d.%d\n",
                 DB_VERSION_MAJOR, DB_VERSION_MINOR, DB_VERSION_PATCH,
                 Major, Minor, Patch) ;
