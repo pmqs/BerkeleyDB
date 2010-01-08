@@ -1,5 +1,10 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.41  8th January 2010
+
+        * Silence "UNIVERSAL->import is deprecated" in perl 5.11
+          RT# 53518
+
 0.40  7th January 2010
 
         * Added support for set_tx_max, log_set_config, set_lk_max_lockers,

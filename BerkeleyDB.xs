@@ -6,7 +6,7 @@
 
  All comments/suggestions/problems are welcome
 
-     Copyright (c) 1997-2009 Paul Marquess. All rights reserved.
+     Copyright (c) 1997-2010 Paul Marquess. All rights reserved.
      This program is free software; you can redistribute it and/or
      modify it under the same terms as Perl itself.
 
@@ -1717,8 +1717,14 @@ readHash(HV * hash, char * key)
 {
     SV **       svp;
     svp = hv_fetch(hash, key, strlen(key), FALSE);
-    if (svp && SvOK(*svp))
-        return *svp ;
+
+    if (svp) {
+        if (SvGMAGICAL(*svp))
+            mg_get(*svp);
+        if (SvOK(*svp))
+            return *svp;
+    }
+
     return NULL ;
 }
 
