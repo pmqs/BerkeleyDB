@@ -4452,7 +4452,7 @@ _Txn(db, txn=NULL)
 DualType
 truncate(db, countp, flags=0)
 	BerkeleyDB::Common	db
-	u_int32_t		countp
+	u_int32_t		countp = NO_INIT
 	u_int32_t		flags
 	PREINIT:
 	  dMY_CXT;

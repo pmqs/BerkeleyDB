@@ -17,7 +17,7 @@ use Carp;
 use vars qw($VERSION @ISA @EXPORT $AUTOLOAD
 		$use_XSLoader);
 
-$VERSION = '0.41';
+$VERSION = '0.42';
 
 require Exporter;
 #require DynaLoader;
@@ -1365,7 +1365,7 @@ sub DELETE
     $self->db_del($key) ;
 }
 
-sub CLEAR
+sub CLEAR_old
 {
     my $self = shift ;
     my ($key, $value) = (0, 0) ;
@@ -1373,6 +1373,14 @@ sub CLEAR
     while ($cursor->c_get($key, $value, BerkeleyDB::DB_PREV()) == 0) 
 	{ $cursor->c_del() }
 }
+
+sub CLEAR_new
+{
+    my $self = shift ;
+    $self->truncate(my $count);
+}
+
+*CLEAR = $BerkeleyDB::db_version < 4 ? \&CLEAR_old : \&CLEAR_new ;
 
 #sub DESTROY
 #{
@@ -1583,6 +1591,11 @@ sub DESTROY
 {
     my $self = shift ;
     $self->_DESTROY() ;
+}
+sub Env
+{
+    my $self = shift ;
+    $self->[1] ;
 }
 
 sub Txn

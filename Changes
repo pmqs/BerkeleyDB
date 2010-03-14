@@ -1,5 +1,13 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.42  13th March 2010
+
+        * Added $db->Env method to retrieve the environment object from a
+          database object.
+
+        * Get the tied interface to use truncate in the CLEAR method if
+          using a new enough version of Berkeley DB.
+
 0.41  8th January 2010
 
         * Silence "UNIVERSAL->import is deprecated" in perl 5.11

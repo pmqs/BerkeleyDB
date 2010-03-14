@@ -32,6 +32,7 @@ BerkeleyDB - Perl extension for Berkeley DB version 2, 3 or 4
   keys %hash ;
   values %hash ;
 
+  $env = $db->Env()
   $status = $db->db_get()
   $status = $db->db_put() ;
   $status = $db->db_del() ;
@@ -1193,6 +1194,11 @@ All the database interfaces support the common set of methods defined
 below.
 
 All the methods below return 0 to indicate success.
+
+=head2 $env = $db->Env();
+
+Returns the environment object the database is associated with or C<undef>
+when no environment was used when opening the database.
 
 =head2 $status = $db->db_get($key, $value [, $flags])
 
