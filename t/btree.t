@@ -7,7 +7,7 @@ use BerkeleyDB;
 use util ;
 use Test::More;
 
-plan tests => 246;
+plan tests => 250;
 
 my $Dfile = "dbhash.tmp";
 my $Dfile2 = "dbhash2.tmp";
@@ -105,6 +105,8 @@ umask(0) ;
 				    -Flags    => DB_CREATE ;
 
     isa_ok $db->Env, 'BerkeleyDB::Env';
+    $db->Env->errPrefix("abc");
+    is $db->Env->errPrefix("abc"), 'abc';
     # Add a k/v pair
     my $value ;
     ok $db->db_put("some key", "some value") == 0 ;
@@ -194,6 +196,7 @@ umask(0) ;
     ok tie %hash, 'BerkeleyDB::Btree', -Filename => $Dfile,
                                       -Flags    => DB_CREATE ;
 
+    is((tied %hash)->Env, undef);
     # check "each" with an empty database
     my $count = 0 ;
     while (my ($k, $v) = each %hash) {
@@ -637,6 +640,9 @@ umask(0) ;
 					       -Env 	 => $env,
 					       -Txn	 => $txn ;
 
+    isa_ok((tied %hash)->Env, 'BerkeleyDB::Env');
+    (tied %hash)->Env->errPrefix("abc");
+    is((tied %hash)->Env->errPrefix("abc"), 'abc');
     ok ((my $Z = $txn->txn_commit()) == 0) ;
     ok $txn = $env->txn_begin() ;
     $db1->Txn($txn);

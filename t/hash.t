@@ -9,7 +9,7 @@ use BerkeleyDB;
 use util ;
 use Test::More;
 
-plan tests =>  214;
+plan tests =>  216;
 
 my $Dfile = "dbhash.tmp";
 my $Dfile2 = "dbhash2.tmp";
@@ -446,7 +446,10 @@ umask(0) ;
 					       	-Env 	   => $env,
 					    	-Txn	   => $txn  ;
 
-    
+    isa_ok((tied %hash)->Env, 'BerkeleyDB::Env');
+    (tied %hash)->Env->errPrefix("abc");
+    is((tied %hash)->Env->errPrefix("abc"), 'abc');
+
     ok $txn->txn_commit() == 0 ;
     ok $txn = $env->txn_begin() ;
     $db1->Txn($txn);

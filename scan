@@ -17,6 +17,7 @@ my $ignore_re = '^(' . join("|",
 		MP
 		TXN
                 DB_TXN_GETPGNOS
+                DB_TXN_BACKWARD_ALLOC
 	)) . ')' ;
 
 my %ignore_def = map {$_, 1} qw() ;
@@ -26,6 +27,7 @@ my %ignore_def = map {$_, 1} qw() ;
 my %ignore_exact_enum = map { $_ => 1}
 	qw(
                 DB_TXN_GETPGNOS
+                DB_TXN_BACKWARD_ALLOC
                 );
 
 my $filler = ' ' x 26 ;

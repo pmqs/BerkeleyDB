@@ -351,6 +351,8 @@ B<DB_RECOVER>
 
 
 
+B<DB_PRIVATE>
+
 B<DB_RECOVER_FATAL>
 
 B<DB_THREAD>
@@ -1701,11 +1703,11 @@ operation.
 
 To commit a transaction call the C<commit> method on it:
 
-	$txn->commit;
+	$txn->txn_commit;
 
 and to roll back call abort:
 
-	$txn->abort
+	$txn->txn_abort
 
 After committing or aborting a child transaction you need to set the active
 transaction again using C<Txn>.

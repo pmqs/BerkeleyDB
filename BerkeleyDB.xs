@@ -149,6 +149,10 @@ extern "C" {
 #  define AT_LEAST_DB_4_8
 #endif
 
+#if DB_VERSION_MAJOR > 5 || (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR >= 1)
+#  define AT_LEAST_DB_5_1
+#endif
+
 #ifdef __cplusplus
 }
 #endif
@@ -1485,7 +1489,7 @@ typedef int (*foreign_cb_type)(DB *, const DBT *, DBT *, const DBT *, int *) ;
 #ifdef AT_LEAST_DB_4_8
 
 static int
-associate_foreign_cb(DB* db, const DBT * key, DBT * data, DBT * foreignkey, int* changed)
+associate_foreign_cb(DB* db, const DBT * key, DBT * data, const DBT * foreignkey, int* changed)
 {
 #ifdef dTHX
     dTHX;
@@ -1501,6 +1505,7 @@ associate_foreign_cb(DB* db, const DBT * key, DBT * data, DBT * foreignkey, int*
     char * skey_ptr ;
     AV * skey_AV;
     DBT * tkey;
+    SV* data_sv ;
 
     Trace(("In associate_foreign_cb \n")) ;
     if (getCurrentDB->associated_foreign == NULL){
@@ -1535,7 +1540,7 @@ associate_foreign_cb(DB* db, const DBT * key, DBT * data, DBT * foreignkey, int*
     EXTEND(SP,4) ;
 
     PUSHs(sv_2mortal(newSVpvn(k_dat,key->size)));
-    SV* data_sv = newSVpv(d_dat, data->size);
+    data_sv = newSVpv(d_dat, data->size);
     PUSHs(sv_2mortal(data_sv));
     PUSHs(sv_2mortal(newSVpvn(f_dat,foreignkey->size)));
     PUSHs(sv_2mortal(changed_SV));
@@ -1574,7 +1579,7 @@ associate_foreign_cb(DB* db, const DBT * key, DBT * data, DBT * foreignkey, int*
 }
 
 static int
-associate_foreign_cb_recno(DB* db, const DBT * key, DBT * data, DBT * foreignkey, int* changed)
+associate_foreign_cb_recno(DB* db, const DBT * key, DBT * data, const DBT * foreignkey, int* changed)
 {
 #ifdef dTHX
     dTHX;
@@ -1590,6 +1595,7 @@ associate_foreign_cb_recno(DB* db, const DBT * key, DBT * data, DBT * foreignkey
     char * skey_ptr ;
     AV * skey_AV;
     DBT * tkey;
+    SV* data_sv ;
 
     Trace(("In associate_foreign_cb \n")) ;
     if (getCurrentDB->associated_foreign == NULL){
@@ -1624,7 +1630,7 @@ associate_foreign_cb_recno(DB* db, const DBT * key, DBT * data, DBT * foreignkey
     EXTEND(SP,4) ;
 
     PUSHs(sv_2mortal(newSVpvn(k_dat,key->size)));
-    SV* data_sv = newSVpv(d_dat, data->size);
+    data_sv = newSVpv(d_dat, data->size);
     PUSHs(sv_2mortal(data_sv));
     PUSHs(sv_2mortal(newSVpvn(f_dat,foreignkey->size)));
     PUSHs(sv_2mortal(changed_SV));
@@ -2397,8 +2403,10 @@ _db_appinit(self, ref, errfile=NULL)
 #ifndef AT_LEAST_DB_3_1
 	    if (shm_key)
 	        softCrash("-SharedMemKey needs Berkeley DB 3.1 or better") ;
+#endif /* ! AT_LEAST_DB_3_1 */
+#if ! defined(AT_LEAST_DB_3_1) || defined(AT_LEAST_DB_5_1)
 	    if (server)
-	        softCrash("-Server needs Berkeley DB 3.1 or better") ;
+	        softCrash("-Server only supported Berkeley DB 3.1 to 5.1") ;
 #endif /* ! AT_LEAST_DB_3_1 */
 #ifndef AT_LEAST_DB_3_2
 	    if (max_lockers)
@@ -2492,8 +2500,12 @@ _db_appinit(self, ref, errfile=NULL)
 #ifndef AT_LEAST_DB_3_1
 #    define DB_CLIENT	0
 #endif
-#ifdef AT_LEAST_DB_4_2
+#ifdef AT_LEAST_DB_5_1
+#    define DB_CLIENT	0
+#else
+#  ifdef AT_LEAST_DB_4_2
 #    define DB_CLIENT	DB_RPCCLIENT
+#  endif
 #endif
 	  status = db_env_create(&RETVAL->Env, server ? DB_CLIENT : 0) ;
 	  Trace(("db_env_create flags = %d returned %s\n", flags,
@@ -2580,6 +2592,7 @@ _db_appinit(self, ref, errfile=NULL)
 	  					my_db_strerror(status))) ;
 	  }
 #endif	  
+#if ! defined(AT_LEAST_DB_5_1)
 #ifdef AT_LEAST_DB_4
 	  /* set the server */
 	  if (server && status == 0)
@@ -2598,6 +2611,7 @@ _db_appinit(self, ref, errfile=NULL)
 	  					my_db_strerror(status))) ;
 	  }
 #  endif
+#endif
 #endif
 #ifdef AT_LEAST_DB_3_2
 	  if (setflags && status == 0)

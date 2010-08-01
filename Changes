@@ -1,5 +1,16 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.43  1st August 2010
+
+        * Changes to build with BDB 5.1
+          - Dropped support for Server option when creating an environment.
+
+        * Documantation updates.
+          RT# 59202
+
+        * Fixed compilation error with MS Visual Studio 2005
+          RT# 59924
+
 0.42  13th March 2010
 
         * Added $db->Env method to retrieve the environment object from a
