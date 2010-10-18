@@ -14,7 +14,7 @@ BEGIN {
     plan(skip_all => "this needs BerkeleyDB 4.6.x or better" )
         if $BerkeleyDB::db_version < 4.6;
 
-    plan tests => 63;    
+    plan tests => 66;    
 }
 
 umask(0);
@@ -209,6 +209,13 @@ umask(0);
     ok $k eq 'flag';
     ok $pk eq 'red';
     ok $v eq 'flag';
+
+    # c_pget with DB_GET_BOTH from secondary database
+    $k = 'house';
+    $pk = 'green';
+    ok $s_cursor->c_pget($k, $pk, $v, DB_GET_BOTH) == 0;
+    ok $k eq 'house';
+    ok $v eq 'house';
 
     # check put to secondary is illegal
     ok $secondary->db_put("tom", "dick") != 0;

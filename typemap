@@ -263,6 +263,8 @@ T_dbtkeydatum_btree_r
 
 T_dbtkeydatum_btree_pr
 	{
+      if(flagSet(DB_GET_BOTH))
+      {
 	    SV* my_sv = $arg ;
 	    DBM_ckFilter(my_sv, filter_store_key, \"filter_store_key\");
 	    DBT_clear($var) ;
@@ -278,6 +280,11 @@ T_dbtkeydatum_btree_pr
 	        $var.data = SvPV(my_sv, len);
 	        $var.size = (int)len;
 	    }
+      }
+      else
+      {
+       DBT_clear($var) ;
+      }
 	}
 
 T_dbtdatum

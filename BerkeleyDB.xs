@@ -3226,6 +3226,25 @@ lsn_reset(env, file, flags)
 	    RETVAL
 
 int
+lock_detect(env, atype=DB_LOCK_DEFAULT, flags=0)
+   BerkeleyDB::Env  env
+   u_int32_t  atype
+   u_int32_t    flags
+   PREINIT:
+       dMY_CXT;
+   INIT:
+       ckActive_Database(env->active) ;
+   CODE:
+#ifndef AT_LEAST_DB_2_2
+	    softCrash("$env->lock_detect needs Berkeley DB 2.2.x or better") ;
+#else
+       RETVAL = env->Status = env->Env->lock_detect(env->Env,flags,atype,NULL);
+#endif
+   OUTPUT:
+       RETVAL
+
+
+int
 set_timeout(env, timeout, flags=0)
         BerkeleyDB::Env  env
 	db_timeout_t	 timeout
@@ -4328,6 +4347,29 @@ db_get(db, key, data, flags=0)
 	  RETVAL
 	  key	if (writeToKey()) OutputKey(ST(1), key) ;
 	  data
+ 
+#define db_exists(db, key, flags)   \
+	(db->Status = ((db->dbp)->exists)(db->dbp, db->txn, &key, flags))
+DualType
+db_exists(db, key, flags=0)
+	u_int		flags
+	BerkeleyDB::Common	db
+	DBTKEY_B	key
+	PREINIT:
+	  dMY_CXT;
+	CODE:
+#ifndef AT_LEAST_DB_4_6
+          softCrash("db_exists needs at least Berkeley DB 4.6");
+#else
+	  ckActive_Database(db->active) ;
+	  saveCurrentDB(db) ;
+	  Trace(("db_exists db[%p] in [%p] txn[%p] key [%.*s] flags[%d]\n", db->dbp, db, db->txn, key.size, key.data, flags)) ;
+	  RETVAL = db_exists(db, key, flags);
+	  Trace(("  RETVAL %d\n", RETVAL));
+#endif
+	OUTPUT:
+	  RETVAL
+
 
 #define db_pget(db, key, pkey, data, flags)   \
 	(db->Status = ((db->dbp)->pget)(db->dbp, db->txn, &key, &pkey, &data, flags))
@@ -4769,7 +4811,7 @@ cu_c_pget(db, key, pkey, data, flags=0)
     int			flags
     BerkeleyDB::Cursor	db
     DBTKEY_B		key
-    DBTKEY_Bpr		pkey = NO_INIT
+    DBTKEY_Bpr		pkey 
     DBT_B		data
 	PREINIT:
 	  dMY_CXT;
@@ -4781,13 +4823,13 @@ cu_c_pget(db, key, pkey, data, flags=0)
 	  saveCurrentDB(db->parent_db);
 	  ckActive_Cursor(db->active) ;
 	  SetPartial(data,db) ;
-	  DBT_clear(pkey);
+	  //DBT_clear(pkey);
 	  RETVAL = cu_c_pget(db, key, pkey, data, flags);
 	  Trace(("c_pget end\n")) ;
 #endif
 	OUTPUT:
 	  RETVAL
-	  key
+	  key if (writeToKey()) OutputKey(ST(1), key) ;
 	  pkey
 	  data		
 
