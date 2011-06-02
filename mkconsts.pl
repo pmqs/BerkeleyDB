@@ -9,6 +9,7 @@ use constant IGNORE => 'ignore' ;
 %constants = (
 
 
+
 	#########
 	# 2.0.3
 	#########
@@ -866,7 +867,7 @@ use constant IGNORE => 'ignore' ;
 	MP_DUMMY                   => IGNORE,
 
 	#########
-	# 4.8.9
+	# 4.8.24
 	#########
 
 	DBC_BULK                   => IGNORE,
@@ -900,7 +901,7 @@ use constant IGNORE => 'ignore' ;
 	DB_VERIFY_PARTITION        => DEFINE,
 
 	#########
-	# 5.0.21
+	# 5.0.6
 	#########
 
 	DBC_FAMILY                 => IGNORE,
@@ -915,10 +916,8 @@ use constant IGNORE => 'ignore' ;
 	DB_LOG_VERIFY_ERR          => DEFINE,
 	DB_LOG_VERIFY_FORWARD      => DEFINE,
 	DB_LOG_VERIFY_INTERR       => DEFINE,
-	DB_LOG_VERIFY_PARTIAL      => DEFINE,
 	DB_LOG_VERIFY_VERBOSE      => DEFINE,
 	DB_LOG_VERIFY_WARNING      => DEFINE,
-	DB_NOERROR                 => DEFINE,
 	DB_REPMGR_CONF_ELECTIONS   => DEFINE,
 	DB_REPMGR_ISPEER           => DEFINE,
 	DB_REP_CONF_AUTOINIT       => DEFINE,
@@ -934,23 +933,23 @@ use constant IGNORE => 'ignore' ;
 	TXN_READONLY               => IGNORE,
 
 	# enum log_rec_type_t
-	LOGREC_Done                => '5.0.21',
-	LOGREC_ARG                 => '5.0.21',
-	LOGREC_HDR                 => '5.0.21',
-	LOGREC_DATA                => '5.0.21',
-	LOGREC_DB                  => '5.0.21',
-	LOGREC_DBOP                => '5.0.21',
-	LOGREC_DBT                 => '5.0.21',
-	LOGREC_LOCKS               => '5.0.21',
-	LOGREC_OP                  => '5.0.21',
-	LOGREC_PGDBT               => '5.0.21',
-	LOGREC_PGDDBT              => '5.0.21',
-	LOGREC_PGLIST              => '5.0.21',
-	LOGREC_POINTER             => '5.0.21',
-	LOGREC_TIME                => '5.0.21',
+	LOGREC_Done                => '5.0.6',
+	LOGREC_ARG                 => '5.0.6',
+	LOGREC_HDR                 => '5.0.6',
+	LOGREC_DATA                => '5.0.6',
+	LOGREC_DB                  => '5.0.6',
+	LOGREC_DBOP                => '5.0.6',
+	LOGREC_DBT                 => '5.0.6',
+	LOGREC_LOCKS               => '5.0.6',
+	LOGREC_OP                  => '5.0.6',
+	LOGREC_PGDBT               => '5.0.6',
+	LOGREC_PGDDBT              => '5.0.6',
+	LOGREC_PGLIST              => '5.0.6',
+	LOGREC_POINTER             => '5.0.6',
+	LOGREC_TIME                => '5.0.6',
 
 	# enum db_recops
-	DB_TXN_LOG_VERIFY          => '5.0.21',
+	DB_TXN_LOG_VERIFY          => '5.0.6',
 
 	#########
 	# 5.1.3
@@ -964,9 +963,75 @@ use constant IGNORE => 'ignore' ;
 	DB_HOTBACKUP_IN_PROGRESS   => DEFINE,
 	DB_LOCK_CHECK              => DEFINE,
 	DB_LOG_NO_DATA             => DEFINE,
+	DB_LOG_VERIFY_PARTIAL      => DEFINE,
+	DB_NOERROR                 => DEFINE,
 	DB_REPMGR_ACKS_ALL_AVAILABLE => DEFINE,
 	DB_TXN_BULK                => DEFINE,
 	TXN_BULK                   => IGNORE,
+
+	#########
+	# 5.1.18
+	#########
+
+	DB_ENV_NOFLUSH             => DEFINE,
+	DB_NOFLUSH                 => DEFINE,
+	DB_NO_CHECKPOINT           => DEFINE,
+
+	#########
+	# 5.1.25
+	#########
+
+	DBC_ERROR                  => IGNORE,
+
+	#########
+	# 5.2.10
+	#########
+
+	DB_ALIGN8                  => IGNORE,
+	DB_BOOTSTRAP_HELPER        => DEFINE,
+	DB_DBT_READONLY            => IGNORE,
+	DB_EID_MASTER              => DEFINE,
+	DB_EVENT_REP_CONNECT_BROKEN => DEFINE,
+	DB_EVENT_REP_CONNECT_ESTD  => DEFINE,
+	DB_EVENT_REP_CONNECT_TRY_FAILED => DEFINE,
+	DB_EVENT_REP_INIT_DONE     => DEFINE,
+	DB_EVENT_REP_LOCAL_SITE_REMOVED => DEFINE,
+	DB_EVENT_REP_SITE_ADDED    => DEFINE,
+	DB_EVENT_REP_SITE_REMOVED  => DEFINE,
+	DB_FAILCHK_ISALIVE         => DEFINE,
+	DB_GROUP_CREATOR           => DEFINE,
+	DB_HEAPMAGIC               => DEFINE,
+	DB_HEAPOLDVER              => DEFINE,
+	DB_HEAPVERSION             => DEFINE,
+	DB_HEAP_FULL               => DEFINE,
+	DB_HEAP_RID_SZ             => DEFINE,
+	DB_INIT_MUTEX              => DEFINE,
+	DB_INTERNAL_DB             => DEFINE,
+	DB_LEGACY                  => DEFINE,
+	DB_LOCAL_SITE              => DEFINE,
+	DB_OK_HEAP                 => DEFINE,
+	DB_REPMGR_NEED_RESPONSE    => DEFINE,
+	DB_STAT_ALLOC              => DEFINE,
+	DB_STAT_SUMMARY            => DEFINE,
+	TXN_NEED_ABORT             => IGNORE,
+	TXN_XA_ACTIVE              => IGNORE,
+	TXN_XA_IDLE                => IGNORE,
+	TXN_XA_ROLLEDBACK          => IGNORE,
+	TXN_XA_THREAD_ASSOCIATED   => IGNORE,
+	TXN_XA_THREAD_NOTA         => IGNORE,
+	TXN_XA_THREAD_SUSPENDED    => IGNORE,
+	TXN_XA_THREAD_UNASSOCIATED => IGNORE,
+
+	# enum DBTYPE
+	DB_HEAP                    => '5.2.10',
+
+	# enum DB_MEM_CONFIG
+	DB_MEM_LOCK                => '5.2.10',
+	DB_MEM_LOCKOBJECT          => '5.2.10',
+	DB_MEM_LOCKER              => '5.2.10',
+	DB_MEM_LOGID               => '5.2.10',
+	DB_MEM_TRANSACTION         => '5.2.10',
+	DB_MEM_THREAD              => '5.2.10',
 	) ;
 
 sub enum_Macro

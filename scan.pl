@@ -16,8 +16,9 @@ my $ignore_re = '^(' . join("|",
 		DB_TSL
 		MP
 		TXN
-                DB_TXN_GETPGNOS
-                DB_TXN_BACKWARD_ALLOC
+        DB_TXN_GETPGNOS
+        DB_TXN_BACKWARD_ALLOC
+        DB_ALIGN8
 	)) . ')' ;
 
 my %ignore_def = map {$_, 1} qw() ;

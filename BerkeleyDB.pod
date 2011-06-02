@@ -1,6 +1,6 @@
 =head1 NAME
 
-BerkeleyDB - Perl extension for Berkeley DB version 2, 3 or 4
+BerkeleyDB - Perl extension for Berkeley DB version 2, 3, 4 or 5
 
 =head1 SYNOPSIS
 
@@ -19,6 +19,8 @@ BerkeleyDB - Perl extension for Berkeley DB version 2, 3 or 4
 
   $db  = tie @array, 'BerkeleyDB::Queue', [OPTIONS] ;
   $db  = new BerkeleyDB::Queue [OPTIONS] ;
+
+  $db  = new BerkeleyDB::Heap [OPTIONS] ;
 
   $db  = new BerkeleyDB::Unknown [OPTIONS] ;
 
@@ -552,6 +554,10 @@ TODO.
 
 
 =item B<BerkeleyDB::Queue>
+
+TODO.
+
+=item B<BerkeleyDB::Heap>
 
 TODO.
 
@@ -1280,6 +1286,31 @@ and this
                 [ -Len             => number,]
                 [ -Pad             => byte,]
 
+
+=head1 BerkeleyDB::Heap
+
+Equivalent to calling B<db_create> followed by B<DB-E<gt>open> with
+type B<DB_HEAP> in Berkeley DB 5.2.x or greater. This database format
+isn't available if you use an older version of Berkeley DB.
+
+One form of constructor is supported:
+
+    $db = new BerkeleyDB::Heap
+                [ -Filename      => "filename", ]
+                [ -Subname       => "sub-database name", ]
+                [ -Flags         => flags,]
+                [ -Property      => flags,]
+                [ -Mode          => number,]
+                [ -Cachesize     => number,]
+                [ -Lorder        => number,]
+                [ -Pagesize      => number,]
+                [ -Env           => $env,]
+                [ -Txn           => $txn,]
+                [ -Encrypt       => { Password => "string",
+	                              Flags    => number }, ],
+                # BerkeleyDB::Heap specific
+                [ -HeapSize      => number, ]
+                [ -HeapSizeGb    => number, ]
 
 =head1 BerkeleyDB::Unknown
 
