@@ -14,7 +14,7 @@ plan(skip_all => "Heap needs Berkeley DB 5.2.x or better\n" )
 plan(skip_all => "Heap suport not available\n" )
     if ! BerkeleyDB::has_heap() ;
 
-plan tests => 108;
+plan tests => 68;
 
 my $Dfile = "dbhash.tmp";
 my $Dfile2 = "dbhash2.tmp";
@@ -208,66 +208,15 @@ umask(0) ;
     ok $cursor->c_get($k, $v, DB_GET_BOTH) == 0, "c_get BOTH" ;
 
     ($k, $v) = ($keys{"house"}, "door") ;
-    ok $cursor->c_get($k, $v, DB_GET_BOTH) == DB_NOTFOUND ;
+    ok $cursor->c_get($k, $v, DB_GET_BOTH) == DB_NOTFOUND, "DB_NOTFOUND" ;
 
     ($k, $v) = ("black", "house") ;
-    ok $cursor->c_get($k, $v, DB_GET_BOTH) == DB_NOTFOUND ;
+    ok $cursor->c_get($k, $v, DB_GET_BOTH) == DB_NOTFOUND, "DB_NOTFOUND" ;
 
 }
  
 
 
-if(0)
-{
-    # get_dup etc
-    my $lex = new LexFile $Dfile;
-    my %hh ;
-
-    ok my $YY = tie %hh, "BerkeleyDB::Heap", -Filename => $Dfile, 
-				     -DupCompare   => sub { $_[0] cmp $_[1] },
-				     -Property  => DB_DUP,
-				     -Flags    => DB_CREATE ;
-
-    $hh{'Wall'} = 'Larry' ;
-    $hh{'Wall'} = 'Stone' ; # Note the duplicate key
-    $hh{'Wall'} = 'Brick' ; # Note the duplicate key
-    $hh{'Smith'} = 'John' ;
-    $hh{'mouse'} = 'mickey' ;
-    
-    # first work in scalar context
-    ok scalar $YY->get_dup('Unknown') == 0 ;
-    ok scalar $YY->get_dup('Smith') == 1 ;
-    ok scalar $YY->get_dup('Wall') == 3 ;
-    
-    # now in list context
-    my @unknown = $YY->get_dup('Unknown') ;
-    ok "@unknown" eq "" ;
-    
-    my @smith = $YY->get_dup('Smith') ;
-    ok "@smith" eq "John" ;
-    
-    {
-    my @wall = $YY->get_dup('Wall') ;
-    my %wall ;
-    @wall{@wall} = @wall ;
-    ok (@wall == 3 && $wall{'Larry'} && $wall{'Stone'} && $wall{'Brick'});
-    }
-    
-    # hash
-    my %unknown = $YY->get_dup('Unknown', 1) ;
-    ok keys %unknown == 0 ;
-    
-    my %smith = $YY->get_dup('Smith', 1) ;
-    ok keys %smith == 1 && $smith{'John'} ;
-    
-    my %wall = $YY->get_dup('Wall', 1) ;
-    ok keys %wall == 3 && $wall{'Larry'} == 1 && $wall{'Stone'} == 1 
-    		&& $wall{'Brick'} == 1 ;
-    
-    undef $YY ;
-    untie %hh ;
-
-}
 
 {
     # in-memory file
@@ -277,16 +226,18 @@ if(0)
     my $fd ;
     my $value ;
     #ok my $db = tie %hash, 'BerkeleyDB::Heap' ;
-    ok my $db = new BerkeleyDB::Heap 
+    my $db = new BerkeleyDB::Heap 
 				     -Flags    => DB_CREATE ;
 
+    isa_ok $db, 'BerkeleyDB::Heap' ;
     my $key;
     ok $db->db_put($key, "some value", DB_APPEND) == 0  ;
     ok $db->db_get($key, $value) == 0 ;
-    ok $value eq "some value" ;
+    ok $value eq "some value", "some value" ;
 
 }
  
+if (0)
 {
     # partial
     # check works via API
@@ -294,7 +245,7 @@ if(0)
     my $lex = new LexFile $Dfile ;
     my $value ;
     ok my $db = new BerkeleyDB::Heap -Filename => $Dfile,
-                                       -Flags    => DB_CREATE ;
+                                     -Flags    => DB_CREATE ;
 
     # create some data
     my $red;
@@ -318,7 +269,7 @@ if(0)
         $ret += $db->db_put($key, $v, DB_APPEND) ;
         ${ $keys{$k} } = $key;
     }
-    ok $ret == 0 ;
+    ok $ret == 0, "ret 0" ;
 
 
     # do a partial get
@@ -332,7 +283,7 @@ if(0)
     ($pon, $off, $len) = $db->partial_set(3,2) ;
     ok $pon ;
     ok $off == 0 ;
-    ok $len == 2 ;
+    ok $len == 2, "len 2" ;
     ok $db->db_get($red, $value) == 0 && $value eq "t" ;
     ok $db->db_get($green, $value) == 0 && $value eq "se" ;
     ok $db->db_get($blue, $value) == 0 && $value eq "" ;
@@ -340,7 +291,7 @@ if(0)
     # switch of partial mode
     ($pon, $off, $len) = $db->partial_clear() ;
     ok $pon ;
-    ok $off == 3 ;
+    ok $off == 3, "off 3" ;
     ok $len == 2 ;
     ok $db->db_get($red, $value) == 0 && $value eq "boat" ;
     ok $db->db_get($green, $value) == 0 && $value eq "house" ;
@@ -357,7 +308,7 @@ if(0)
     ($pon, $off, $len) = $db->partial_clear() ;
     ok $pon ;
     ok $off == 0 ;
-    ok $len == 2 ;
+    ok $len == 2, "len 2" ;
     ok $db->db_get($red, $value) == 0 && $value eq "at" ;
     ok $db->db_get($green, $value) == 0 && $value eq "ABuse" ;
     ok $db->db_get($blue, $value) == 0 && $value eq "XYZa" ;
@@ -369,15 +320,15 @@ if(0)
     ok $off == 0 ;
     ok $len == 0 ;
     ok $db->db_put($red, "PPP") == 0 ;
-    ok $db->db_put($green, "Q") == 0 ;
-    ok $db->db_put($blue, "XYZ") == 0 ;
+    ok $db->db_put($green, "Q") == 0, "Q" ;
+    ok $db->db_put($blue, "XYZ") == 0, "XYZ" ; # <<<<<<<<<<<<<<
     ok $db->db_put($new, "TU") == 0 ;
 
     $db->partial_clear() ;
     ok $db->db_get($red, $value) == 0 && $value eq "at\0PPP" ;
     ok $db->db_get($green, $value) == 0 && $value eq "ABuQ" ;
     ok $db->db_get($blue, $value) == 0 && $value eq "XYZXYZ" ;
-    ok $db->db_get($new, $value) == 0 && $value eq "KLMTU" ;
+    ok $db->db_get($new, $value) == 0 && $value eq "KLMTU", "KLMTU" ;
 }
 
 
