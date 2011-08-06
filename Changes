@@ -1,5 +1,12 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.49  6th August 2011
+
+        * Documentation updated courtesy of Mike Caron
+
+        * croak if attempt to freeze berkeleydb object
+          [RT #69985]
+
 0.48  18th June 2011
 
         * Fixed test harness issue with Heap.t

@@ -17,7 +17,7 @@ use Carp;
 use vars qw($VERSION @ISA @EXPORT $AUTOLOAD
 		$use_XSLoader);
 
-$VERSION = '0.48';
+$VERSION = '0.49';
 
 require Exporter;
 #require DynaLoader;
@@ -988,6 +988,18 @@ sub DESTROY
     $self->_DESTROY() ;
 }
 
+sub STORABLE_freeze
+{
+    my $type = ref shift;
+    croak "Cannot freeze $type object\n";
+}
+
+sub STORABLE_thaw
+{
+    my $type = ref shift;
+    croak "Cannot thaw $type object\n";
+}
+
 package BerkeleyDB::Hash ;
 
 use vars qw(@ISA) ;
@@ -1740,6 +1752,19 @@ package BerkeleyDB::Common ;
 
 
 use Carp ;
+
+
+sub STORABLE_freeze
+{
+    my $type = ref shift;
+    croak "Cannot freeze $type object\n";
+}
+
+sub STORABLE_thaw
+{
+    my $type = ref shift;
+    croak "Cannot thaw $type object\n";
+}
 
 sub DESTROY
 {
