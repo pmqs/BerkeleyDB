@@ -6,7 +6,7 @@
 
  All comments/suggestions/problems are welcome
 
-     Copyright (c) 1997-2011 Paul Marquess. All rights reserved.
+     Copyright (c) 1997-2012 Paul Marquess. All rights reserved.
      This program is free software; you can redistribute it and/or
      modify it under the same terms as Perl itself.
 
@@ -960,9 +960,11 @@ softCrash(const char *pat, ...)
 static I32
 GetArrayLength(BerkeleyDB db)
 {
+    I32		RETVAL = 0 ;
+#ifndef AT_LEAST_DB_3_1
     DBT		key ;
     DBT		value ;
-    int		RETVAL = 0 ;
+
     DBC *   	cursor ;
 
     DBT_clear(key) ;
@@ -980,9 +982,56 @@ GetArrayLength(BerkeleyDB db)
             RETVAL = 0 ;
         cursor->c_close(cursor) ;
     }
-
     Trace(("GetArrayLength got %d\n", RETVAL)) ;
     return ((I32)RETVAL) ;
+
+#else
+    DB_BTREE_STAT *	stat ;
+#ifdef AT_LEAST_DB_4_3
+    db->Status = ((db->dbp)->stat)(db->dbp, db->txn, &stat, 0) ;
+#else        
+#ifdef AT_LEAST_DB_3_3
+    db->Status = ((db->dbp)->stat)(db->dbp, &stat, 0) ;
+#else
+    db->Status = ((db->dbp)->stat)(db->dbp, &stat, safemalloc, 0) ;
+#endif
+#endif
+    if (db->Status == 0)
+    {
+        RETVAL = (I32)stat->bt_nkeys ;
+    }
+
+    Trace(("GetArrayLength got %d\n", stat->bt_nkeys)) ;
+    return (RETVAL);
+
+#endif
+}
+
+static I32
+GetQueueLength(BerkeleyDB db)
+{
+#ifndef AT_LEAST_DB_3_3
+    return 0;
+#else
+    I32		RETVAL = 0 ;
+    DB_QUEUE_STAT *	stat ;
+#ifdef AT_LEAST_DB_4_3
+    db->Status = ((db->dbp)->stat)(db->dbp, db->txn, &stat, 0) ;
+#else        
+#ifdef AT_LEAST_DB_3_3
+    db->Status = ((db->dbp)->stat)(db->dbp, &stat, 0) ;
+#else
+    db->Status = ((db->dbp)->stat)(db->dbp, &stat, safemalloc, 0) ;
+#endif
+#endif
+    if (db->Status == 0)
+    {
+        RETVAL = (I32)stat->qs_nkeys ;
+    }
+
+    Trace(("GetQueueLength got %d\n", stat->qs_nkeys)) ;
+    return (RETVAL);
+#endif
 }
 
 #if 0
@@ -5368,7 +5417,7 @@ NEXTKEY(db, key)
 	    OutputKey(ST(0), key)
         }
 
-MODULE = BerkeleyDB::_tiedArray        PACKAGE = BerkeleyDB::_tiedArray
+MODULE = BerkeleyDB::Recno        PACKAGE = BerkeleyDB::Recno
 
 I32
 FETCHSIZE(db)
@@ -5378,6 +5427,19 @@ FETCHSIZE(db)
         CODE:
             saveCurrentDB(db) ;
             RETVAL = GetArrayLength(db) ;
+        OUTPUT:
+            RETVAL
+
+MODULE = BerkeleyDB::Queue        PACKAGE = BerkeleyDB::Queue
+
+I32
+FETCHSIZE(db)
+        BerkeleyDB::Common         db
+	PREINIT:
+	  dMY_CXT;
+        CODE:
+            saveCurrentDB(db) ;
+            RETVAL = GetQueueLength(db) ;
         OUTPUT:
             RETVAL
 
