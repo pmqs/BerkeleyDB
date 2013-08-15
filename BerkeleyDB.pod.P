@@ -319,7 +319,7 @@ The code below shows an example of how it can be used.
 
 =item -ErrFile
 
-Expects a filename or filenhandle. Any errors generated internally by
+Expects a filename or filehandle. Any errors generated internally by
 Berkeley DB will be logged to this file. A useful debug setting is to
 open environments with either
 
@@ -495,7 +495,7 @@ Berkeley DB environment into C<$id>. Returns 0 on success.
 
 This option requires Berkeley DB 4.2 or better.
 
-Use the C<-SharedMemKey> option when opening the environemt to set the
+Use the C<-SharedMemKey> option when opening the environmet to set the
 base segment ID.
 
 =item $env->set_isalive()
@@ -520,7 +520,7 @@ determines a thread of control exited with an unresolved transaction, the
 transaction will be aborted.
 
 Applications calling the $env->failchk method must have already called the
-$env->set_isalive method, on the same DB environement, and must have
+$env->set_isalive method, on the same DB environment, and must have
 configured their database environment using the -ThreadCount flag. The
 ThreadCount flag cannot be used on an environment that wasn't previously
 initialized with it.
@@ -1465,7 +1465,7 @@ Removes a CDS lock. The destruction of the CDS lock object automatically
 calls this method.
 
 Note that if multiple CDS lock objects are created, the underlying write
-lock will not be released until all CDS lock objects are either explictly
+lock will not be released until all CDS lock objects are either explicitly
 unlocked with this method, or the CDS lock objects have been destroyed.
 
 =head2 $ref = $db->db_stat()
@@ -1489,7 +1489,7 @@ Returns the status of the last C<$db> method called.
 
 =head2 $status = $db->truncate($count)
 
-Truncates the datatabase and returns the number or records deleted
+Truncates the database and returns the number or records deleted
 in C<$count>.
 
 =head2  $status = $db->compact($start, $stop, $c_data, $flags, $end);
@@ -1497,7 +1497,7 @@ in C<$count>.
 Compacts the database C<$db>. 
 
 All the parameters are optional - if only want to make use of some of them,
-use C<undef> for those you don't want.  Trailing unusused parameters can be
+use C<undef> for those you don't want.  Trailing unused parameters can be
 omitted. For example, if you only want to use the C<$c_data> parameter to
 set the C<compact_fillpercent>, write you code like this
 

@@ -895,7 +895,7 @@ close_everything(void)
             db = * (BerkeleyDB__DbStream*) hv_iterkey(he, &len) ;
             Trace(("  Closing DbStream [%p] in [%p] Active [%d]\n", db->stream, db, db->active));
             if (db->active) {
-                db->stream->close(db->stream, 0);
+                (db->stream->close)(db->stream, 0);
                 ++ closed ;
             }
             db->active = FALSE ;
@@ -5425,7 +5425,7 @@ close(dbstream, flags=0)
 #ifndef AT_LEAST_DB_6_0
 	    softCrash("$dbstream->close needs Berkeley DB 6.0 or better") ;
 #else
-        RETVAL = dbstream->stream->close(dbstream->stream, flags);
+        RETVAL = (dbstream->stream->close)(dbstream->stream, flags);
         dbstream->active = FALSE;
         hash_delete("BerkeleyDB::Term::DbStream", (char *)dbstream) ;
 #endif
@@ -5450,7 +5450,7 @@ read(db, data, offset, size, flags=0)
 #else
         data.data = Sv_Grow(ST(1), size);
         data.ulen = size > data.ulen ? size : data.ulen ;
-        RETVAL = db->stream->read(db->stream, &data, offset, size, flags);
+        RETVAL = (db->stream->read)(db->stream, &data, offset, size, flags);
 	    Trace(("stream->read [%s]\n", my_db_strerror(db->Status)));
 #endif
     OUTPUT:
@@ -5471,7 +5471,7 @@ write(db, data, offset=0, flags=0)
 #ifndef AT_LEAST_DB_6_0
 	    softCrash("$dbstream->write needs Berkeley DB 6.0 or better") ;
 #else
-        RETVAL = db->stream->write(db->stream, &data, offset, flags);
+        RETVAL = (db->stream->write)(db->stream, &data, offset, flags);
 #endif
     OUTPUT:
         RETVAL

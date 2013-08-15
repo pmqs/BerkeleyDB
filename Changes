@@ -1,5 +1,13 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.53  14th August 2013
+
+        * BerkeleyDB-0.52 fails to build on 5.18.1RC3
+          [RT #87771]
+
+        * typo fixes
+          [RT #86705]
+
 0.52  7th May 2013
 
         * Updates for BDB 6.0 - Added Blob support
