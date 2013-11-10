@@ -17,11 +17,9 @@ use Carp;
 use vars qw($VERSION @ISA @EXPORT $AUTOLOAD
 		$use_XSLoader);
 
-$VERSION = '0.53';
+$VERSION = '0.54';
 
 require Exporter;
-#require DynaLoader;
-require AutoLoader;
 
 BEGIN {
     $use_XSLoader = 1 ;
@@ -2065,7 +2063,8 @@ sub cds_unlock
         if ($Count{"$db"} == 0)
         {
             $Object{"$db"}->c_close() ;
-            undef $Object{"$db"};
+            delete $Object{"$db"};
+            delete $Count{"$db"};
         }
 
         return 1 ;
@@ -2092,7 +2091,6 @@ package BerkeleyDB ;
 
 
 
-# Autoload methods go after =cut, and are processed by the autosplit program.
 
 1;
 __END__

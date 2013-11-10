@@ -1,5 +1,10 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.54  9th November 2013
+
+        * memory leak in CDS locking routines
+          [RT #90134]
+
 0.53  14th August 2013
 
         * BerkeleyDB-0.52 fails to build on 5.18.1RC3
@@ -121,6 +126,9 @@ Revision history for Perl extension BerkeleyDB.
 
         * Fixed issue db_stat when it returned a null pointer.
           (#46312 rt.cpan.org)
+
+        * set_msgfile API
+          (#46313)
 
         * Fixed issue with DNM Filters & UTF8 support.
           Patch supplied by Torsten Foertsch.
