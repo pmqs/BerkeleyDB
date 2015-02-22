@@ -1,5 +1,9 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.55  30 March 2014
+
+        * Monor updates for BDB 6.1 
+
 0.54  9th November 2013
 
         * memory leak in CDS locking routines

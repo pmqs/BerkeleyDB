@@ -8,7 +8,6 @@ use constant IGNORE => 'ignore' ;
 
 %constants = (
 
-
 	#########
 	# 2.0.3
 	#########
@@ -1062,7 +1061,7 @@ use constant IGNORE => 'ignore' ;
 	DB_BACKUP_WRITE_DIRECT     => '5.3.15',
 
 	#########
-	# 6.0.4
+	# 6.0.19
 	#########
 
 	DB_DBT_BLOB                => IGNORE,
@@ -1075,6 +1074,32 @@ use constant IGNORE => 'ignore' ;
 	DB_STREAM_SYNC_WRITE       => DEFINE,
 	DB_STREAM_WRITE            => DEFINE,
 	DB_VERB_MVCC               => DEFINE,
+
+	#########
+	# 6.0.30
+	#########
+
+
+	# enum log_rec_type_t
+	LOGREC_LONGARG             => '6.0.30',
+
+	#########
+	# 6.1.10
+	#########
+
+	DB_EVENT_FAILCHK_PANIC     => DEFINE,
+	DB_EVENT_MUTEX_DIED        => DEFINE,
+	DB_EVENT_REP_INQUEUE_FULL  => DEFINE,
+	DB_EXIT_FAILCHK            => DEFINE,
+	DB_EXIT_FILE_EXISTS        => DEFINE,
+	DB_FAILURE_SYMPTOM_SIZE    => DEFINE,
+	DB_LOG_NOSYNC              => DEFINE,
+	DB_MUTEX_DESCRIBE_STRLEN   => DEFINE,
+	DB_MUTEX_OWNER_DEAD        => DEFINE,
+	DB_REPMGR_CONF_PREFMAS_CLIENT => DEFINE,
+	DB_REPMGR_CONF_PREFMAS_MASTER => DEFINE,
+	DB_REP_CONF_ELECT_LOGLENGTH => DEFINE,
+	DB_SET_MUTEX_FAILCHK_TIMEOUT => DEFINE,
 	) ;
 
 sub enum_Macro
