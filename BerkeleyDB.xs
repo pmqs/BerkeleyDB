@@ -6,7 +6,7 @@
 
  All comments/suggestions/problems are welcome
 
-     Copyright (c) 1997-2013 Paul Marquess. All rights reserved.
+     Copyright (c) 1997-2016 Paul Marquess. All rights reserved.
      This program is free software; you can redistribute it and/or
      modify it under the same terms as Perl itself.
 
@@ -68,7 +68,7 @@ extern "C" {
 #undef __attribute__
 
 #ifdef USE_PERLIO
-#    define GetFILEptr(sv) PerlIO_findFILE(IoIFP(sv_2io(sv)))
+#    define GetFILEptr(sv) PerlIO_exportFILE(IoIFP(sv_2io(sv)), NULL)
 #else
 #    define GetFILEptr(sv) IoIFP(sv_2io(sv))
 #endif
@@ -171,6 +171,10 @@ extern "C" {
 
 #if DB_VERSION_MAJOR >= 6 
 #  define AT_LEAST_DB_6_0
+#endif
+
+#if DB_VERSION_MAJOR > 6 || (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR >= 2)
+#  define AT_LEAST_DB_6_2
 #endif
 
 #ifdef __cplusplus
@@ -3692,7 +3696,53 @@ get_blob_dir(env, dir)
         RETVAL
         dir
 
-        
+DualType
+set_region_dir(env, dir)
+	BerkeleyDB::Env	env
+	const char* dir 
+	PREINIT:
+	  dMY_CXT;
+    CODE:
+#ifndef AT_LEAST_DB_6_2
+	    softCrash("$env->set_region_dir needs Berkeley DB 6.2 or better") ;
+#else
+        RETVAL = env->Env->set_region_dir(env->Env, dir);
+#endif
+    OUTPUT:
+        RETVAL
+
+DualType
+get_region_dir(env, dir)
+	BerkeleyDB::Env	env
+	char* dir = NO_INIT
+	PREINIT:
+	  dMY_CXT;
+    CODE:
+#ifndef AT_LEAST_DB_6_2
+	    softCrash("$env->get_region_dir needs Berkeley DB 6.2 or better") ;
+#else
+        RETVAL = env->Env->get_region_dir(env->Env, (const char**)&dir);
+#endif
+    OUTPUT:
+        RETVAL
+        dir
+
+DualType
+get_slice_count(env, count)
+	BerkeleyDB::Env	env
+	u_int32_t count = NO_INIT
+	PREINIT:
+	  dMY_CXT;
+    CODE:
+#ifndef AT_LEAST_DB_6_2
+	    softCrash("$env->get_slice_count needs Berkeley DB 6.2 or better") ;
+#else
+        RETVAL = env->Env->get_slice_count(env->Env, &count);
+#endif
+    OUTPUT:
+        RETVAL
+        count
+
 
 MODULE = BerkeleyDB::Term		PACKAGE = BerkeleyDB::Term
 

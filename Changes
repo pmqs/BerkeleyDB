@@ -1,8 +1,15 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.56  5 January 2016
+
+        * Updates for BDB 6.2
+
 0.55  30 March 2014
 
-        * Monor updates for BDB 6.1 
+        * Error opening ErrFile with PerlIO_findFILE
+          [RT =#101883]
+
+        * Minor updates for BDB 6.1 
 
 0.54  9th November 2013
 

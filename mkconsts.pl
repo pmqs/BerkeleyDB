@@ -1084,6 +1084,12 @@ use constant IGNORE => 'ignore' ;
 	LOGREC_LONGARG             => '6.0.30',
 
 	#########
+	# 6.0.35
+	#########
+
+	DB_NOINTMP                 => DEFINE,
+
+	#########
 	# 6.1.10
 	#########
 
@@ -1100,6 +1106,27 @@ use constant IGNORE => 'ignore' ;
 	DB_REPMGR_CONF_PREFMAS_MASTER => DEFINE,
 	DB_REP_CONF_ELECT_LOGLENGTH => DEFINE,
 	DB_SET_MUTEX_FAILCHK_TIMEOUT => DEFINE,
+
+	#########
+	# 6.1.19
+	#########
+
+	DB_FORCESYNCENV            => DEFINE,
+	DB_META_CHKSUM_FAIL        => DEFINE,
+
+	#########
+	# 6.2.7
+	#########
+
+	DB2_AM_MPOOL_OPENED        => DEFINE,
+	DB_OFF_T_MAX               => DEFINE,
+	DB_REPMGR_CONF_FORWARD_WRITES => DEFINE,
+	DB_REP_WRITE_FORWARD_TIMEOUT => DEFINE,
+	DB_SLICED                  => DEFINE,
+	DB_SLICE_CORRUPT           => DEFINE,
+	DB_SLICE_INCONSISTENT      => DEFINE,
+	DB_VERB_SLICE              => DEFINE,
+
 	) ;
 
 sub enum_Macro
