@@ -24,7 +24,7 @@ static int
 constant_6 (pTHX_ const char *name, IV *iv_return) {
   /* When generated this function returned values for the list of names given
      here.  However, subsequent manual editing may have added or removed some.
-     DB_DUP DB_PAD DB_RMW DB_SET */
+     DB_DUP DB_PAD DB_RMW DB_SET SELECT */
   /* Offset 3 gives the best switch position.  */
   switch (name[3]) {
   case 'D':
@@ -32,6 +32,20 @@ constant_6 (pTHX_ const char *name, IV *iv_return) {
     /*                  ^        */
 #ifdef DB_DUP
       *iv_return = DB_DUP;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'E':
+    if (memEQ(name, "SELECT", 6)) {
+    /*                  ^        */
+#if (DB_VERSION_MAJOR > 6) || \
+    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR > 3) || \
+    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR == 3 && \
+     DB_VERSION_PATCH >= 10)
+      *iv_return = SELECT;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -111,7 +125,7 @@ constant_7 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \
-     DB_VERSION_PATCH >= 14)
+     DB_VERSION_PATCH >= 10)
       *iv_return = DB_HEAP;
       return PERL_constant_ISIV;
 #else
@@ -319,7 +333,7 @@ constant_9 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \
-     DB_VERSION_PATCH >= 6)
+     DB_VERSION_PATCH >= 21)
       *iv_return = LOGREC_DB;
       return PERL_constant_ISIV;
 #else
@@ -424,7 +438,7 @@ constant_9 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \
-     DB_VERSION_PATCH >= 6)
+     DB_VERSION_PATCH >= 21)
       *iv_return = LOGREC_OP;
       return PERL_constant_ISIV;
 #else
@@ -504,12 +518,12 @@ static int
 constant_10 (pTHX_ const char *name, IV *iv_return) {
   /* When generated this function returned values for the list of names given
      here.  However, subsequent manual editing may have added or removed some.
-     DB_CONSUME DB_CURRENT DB_DELETED DB_DUPSORT DB_ENCRYPT DB_ENV_CDB
-     DB_ENV_TXN DB_FAILCHK DB_INORDER DB_JOINENV DB_KEYLAST DB_NOERROR
-     DB_NOFLUSH DB_NOINTMP DB_NOPANIC DB_OK_HASH DB_OK_HEAP DB_PRIVATE
-     DB_PR_PAGE DB_RECOVER DB_SALVAGE DB_SEQ_DEC DB_SEQ_INC DB_SET_LTE
-     DB_TIMEOUT DB_TXN_CKP DB_UNKNOWN DB_UPGRADE LOGREC_ARG LOGREC_DBT
-     LOGREC_HDR */
+     DB_CONSUME DB_CONVERT DB_CURRENT DB_DELETED DB_DUPSORT DB_ENCRYPT
+     DB_ENV_CDB DB_ENV_TXN DB_FAILCHK DB_INORDER DB_JOINENV DB_KEYLAST
+     DB_NOERROR DB_NOFLUSH DB_NOINTMP DB_NOPANIC DB_OK_HASH DB_OK_HEAP
+     DB_PRIVATE DB_PR_PAGE DB_RECOVER DB_SALVAGE DB_SEQ_DEC DB_SEQ_INC
+     DB_SET_LTE DB_TIMEOUT DB_TXN_CKP DB_UNKNOWN DB_UPGRADE HAVE_EPOLL
+     LOGREC_ARG LOGREC_DBT LOGREC_HDR */
   /* Offset 8 gives the best switch position.  */
   switch (name[8]) {
   case 'A':
@@ -529,7 +543,7 @@ constant_10 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \
-     DB_VERSION_PATCH >= 6)
+     DB_VERSION_PATCH >= 21)
       *iv_return = LOGREC_DBT;
       return PERL_constant_ISIV;
 #else
@@ -561,7 +575,7 @@ constant_10 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \
-     DB_VERSION_PATCH >= 6)
+     DB_VERSION_PATCH >= 21)
       *iv_return = LOGREC_HDR;
       return PERL_constant_ISIV;
 #else
@@ -660,6 +674,17 @@ constant_10 (pTHX_ const char *name, IV *iv_return) {
 #endif
     }
     break;
+  case 'L':
+    if (memEQ(name, "HAVE_EPOLL", 10)) {
+    /*                       ^        */
+#ifdef HAVE_EPOLL
+      *iv_return = HAVE_EPOLL;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
   case 'M':
     if (memEQ(name, "DB_CONSUME", 10)) {
     /*                       ^        */
@@ -732,6 +757,15 @@ constant_10 (pTHX_ const char *name, IV *iv_return) {
     }
     break;
   case 'R':
+    if (memEQ(name, "DB_CONVERT", 10)) {
+    /*                       ^        */
+#ifdef DB_CONVERT
+      *iv_return = DB_CONVERT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     if (memEQ(name, "DB_DUPSORT", 10)) {
     /*                       ^        */
 #ifdef DB_DUPSORT
@@ -746,7 +780,7 @@ constant_10 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \
-     DB_VERSION_PATCH >= 6)
+     DB_VERSION_PATCH >= 21)
       *iv_return = LOGREC_ARG;
       return PERL_constant_ISIV;
 #else
@@ -901,7 +935,7 @@ constant_11 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \
-     DB_VERSION_PATCH >= 6)
+     DB_VERSION_PATCH >= 21)
       *iv_return = LOGREC_DATA;
       return PERL_constant_ISIV;
 #else
@@ -924,7 +958,7 @@ constant_11 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \
-     DB_VERSION_PATCH >= 6)
+     DB_VERSION_PATCH >= 21)
       *iv_return = LOGREC_DBOP;
       return PERL_constant_ISIV;
 #else
@@ -1122,7 +1156,7 @@ constant_11 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \
-     DB_VERSION_PATCH >= 6)
+     DB_VERSION_PATCH >= 21)
       *iv_return = LOGREC_TIME;
       return PERL_constant_ISIV;
 #else
@@ -1221,7 +1255,7 @@ constant_11 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \
-     DB_VERSION_PATCH >= 14)
+     DB_VERSION_PATCH >= 10)
       *iv_return = DB_MEM_LOCK;
       return PERL_constant_ISIV;
 #else
@@ -1425,7 +1459,7 @@ constant_11 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \
-     DB_VERSION_PATCH >= 6)
+     DB_VERSION_PATCH >= 21)
       *iv_return = LOGREC_Done;
       return PERL_constant_ISIV;
 #else
@@ -1699,7 +1733,7 @@ constant_12 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \
-     DB_VERSION_PATCH >= 14)
+     DB_VERSION_PATCH >= 10)
       *iv_return = DB_MEM_LOGID;
       return PERL_constant_ISIV;
 #else
@@ -1856,7 +1890,7 @@ constant_12 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \
-     DB_VERSION_PATCH >= 6)
+     DB_VERSION_PATCH >= 21)
       *iv_return = LOGREC_LOCKS;
       return PERL_constant_ISIV;
 #else
@@ -1868,7 +1902,7 @@ constant_12 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \
-     DB_VERSION_PATCH >= 6)
+     DB_VERSION_PATCH >= 21)
       *iv_return = LOGREC_PGDBT;
       return PERL_constant_ISIV;
 #else
@@ -2146,7 +2180,7 @@ constant_13 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \
-     DB_VERSION_PATCH >= 6)
+     DB_VERSION_PATCH >= 21)
       *iv_return = LOGREC_PGDDBT;
       return PERL_constant_ISIV;
 #else
@@ -2158,7 +2192,7 @@ constant_13 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \
-     DB_VERSION_PATCH >= 6)
+     DB_VERSION_PATCH >= 21)
       *iv_return = LOGREC_PGLIST;
       return PERL_constant_ISIV;
 #else
@@ -2333,7 +2367,7 @@ constant_13 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \
-     DB_VERSION_PATCH >= 14)
+     DB_VERSION_PATCH >= 10)
       *iv_return = DB_MEM_LOCKER;
       return PERL_constant_ISIV;
 #else
@@ -2345,7 +2379,7 @@ constant_13 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \
-     DB_VERSION_PATCH >= 14)
+     DB_VERSION_PATCH >= 10)
       *iv_return = DB_MEM_THREAD;
       return PERL_constant_ISIV;
 #else
@@ -2703,11 +2737,11 @@ constant_14 (pTHX_ const char *name, IV *iv_return) {
      DB_MAX_RECORDS DB_MPOOL_CLEAN DB_MPOOL_DIRTY DB_NOOVERWRITE DB_NOSERVER_ID
      DB_ODDFILESIZE DB_OLD_VERSION DB_OPEN_CALLED DB_RECORDCOUNT DB_RECORD_LOCK
      DB_REGION_ANON DB_REGION_INIT DB_REGION_NAME DB_RENAMEMAGIC DB_REPMGR_PEER
-     DB_REP_BULKOVF DB_REP_EGENCHG DB_REP_LOCKOUT DB_REP_NEWSITE DB_REP_NOTPERM
-     DB_REP_UNAVAIL DB_REVSPLITOFF DB_RUNRECOVERY DB_SEQ_WRAPPED DB_SET_TXN_NOW
-     DB_SHALLOW_DUP DB_STREAM_READ DB_ST_IS_RECNO DB_ST_TOPLEVEL DB_USE_ENVIRON
-     DB_VERB_BACKUP DB_WRITECURSOR DB_XIDDATASIZE LOGREC_LONGARG LOGREC_POINTER
-     */
+     DB_REP_BULKOVF DB_REP_EGENCHG DB_REP_INELECT DB_REP_LOCKOUT DB_REP_NEWSITE
+     DB_REP_NOTPERM DB_REP_UNAVAIL DB_REVSPLITOFF DB_RUNRECOVERY DB_SEQ_WRAPPED
+     DB_SET_TXN_NOW DB_SHALLOW_DUP DB_STREAM_READ DB_ST_IS_RECNO DB_ST_TOPLEVEL
+     DB_USE_ENVIRON DB_VERB_BACKUP DB_WRITECURSOR DB_XIDDATASIZE LOGREC_LONGARG
+     LOGREC_POINTER */
   /* Offset 10 gives the best switch position.  */
   switch (name[10]) {
   case 'A':
@@ -3029,6 +3063,15 @@ constant_14 (pTHX_ const char *name, IV *iv_return) {
       return PERL_constant_NOTDEF;
 #endif
     }
+    if (memEQ(name, "DB_REP_INELECT", 14)) {
+    /*                         ^          */
+#ifdef DB_REP_INELECT
+      *iv_return = DB_REP_INELECT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     break;
   case 'M':
     if (memEQ(name, "DB_ARCH_REMOVE", 14)) {
@@ -3092,7 +3135,7 @@ constant_14 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \
-     DB_VERSION_PATCH >= 6)
+     DB_VERSION_PATCH >= 21)
       *iv_return = LOGREC_POINTER;
       return PERL_constant_ISIV;
 #else
@@ -3402,18 +3445,33 @@ constant_15 (pTHX_ const char *name, IV *iv_return) {
      DB_ENV_DSYNC_DB DB_ENV_LOCKDOWN DB_ENV_YIELDCPU DB_EXIT_FAILCHK
      DB_FORCESYNCENV DB_GET_BOTH_LTE DB_IGNORE_LEASE DB_LOCK_DEFAULT
      DB_LOCK_INHERIT DB_LOCK_NOTHELD DB_LOCK_PUT_ALL DB_LOCK_PUT_OBJ
-     DB_LOCK_TIMEOUT DB_LOCK_UPGRADE DB_LOG_INMEMORY DB_LOG_WRNOSYNC
-     DB_MPOOL_CREATE DB_MPOOL_EXTENT DB_MPOOL_NOFILE DB_MPOOL_NOLOCK
-     DB_MPOOL_UNLINK DB_MULTIPLE_KEY DB_MULTIVERSION DB_MUTEX_LOCKED
-     DB_MUTEX_SHARED DB_MUTEX_THREAD DB_OPFLAGS_MASK DB_ORDERCHKONLY
-     DB_PRIORITY_LOW DB_REGION_MAGIC DB_REP_ANYWHERE DB_REP_ELECTION
-     DB_REP_LOGREADY DB_REP_LOGSONLY DB_REP_NOBUFFER DB_REP_OUTDATED
-     DB_REP_PAGEDONE DB_STAT_NOERROR DB_STAT_SUMMARY DB_STREAM_WRITE
-     DB_ST_OVFL_LEAF DB_SURPRISE_KID DB_TEST_POSTLOG DB_TEST_PREOPEN
-     DB_TEST_RECYCLE DB_TXN_LOCK_2PL DB_TXN_LOG_MASK DB_TXN_LOG_REDO
+     DB_LOCK_TIMEOUT DB_LOCK_UPGRADE DB_LOG_EXT_FILE DB_LOG_INMEMORY
+     DB_LOG_WRNOSYNC DB_MEM_DATABASE DB_MEM_REP_SITE DB_MPOOL_CREATE
+     DB_MPOOL_EXTENT DB_MPOOL_NOFILE DB_MPOOL_NOLOCK DB_MPOOL_UNLINK
+     DB_MULTIPLE_KEY DB_MULTIVERSION DB_MUTEX_LOCKED DB_MUTEX_SHARED
+     DB_MUTEX_THREAD DB_OPFLAGS_MASK DB_ORDERCHKONLY DB_PRIORITY_LOW
+     DB_REGION_MAGIC DB_REP_ANYWHERE DB_REP_ELECTION DB_REP_LOGREADY
+     DB_REP_LOGSONLY DB_REP_NOBUFFER DB_REP_OUTDATED DB_REP_PAGEDONE
+     DB_STAT_NOERROR DB_STAT_SUMMARY DB_STREAM_WRITE DB_ST_OVFL_LEAF
+     DB_SURPRISE_KID DB_TEST_POSTLOG DB_TEST_PREOPEN DB_TEST_RECYCLE
+     DB_TXN_DISPATCH DB_TXN_LOCK_2PL DB_TXN_LOG_MASK DB_TXN_LOG_REDO
      DB_TXN_LOG_UNDO DB_TXN_SNAPSHOT DB_VERB_FILEOPS DB_VERIFY_FATAL */
   /* Offset 10 gives the best switch position.  */
   switch (name[10]) {
+  case 'A':
+    if (memEQ(name, "DB_MEM_DATABASE", 15)) {
+    /*                         ^           */
+#if (DB_VERSION_MAJOR > 6) || \
+    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR > 3) || \
+    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR == 3 && \
+     DB_VERSION_PATCH >= 10)
+      *iv_return = DB_MEM_DATABASE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
   case 'C':
     if (memEQ(name, "DB_BACKUP_CLEAN", 15)) {
     /*                         ^           */
@@ -3778,6 +3836,15 @@ constant_15 (pTHX_ const char *name, IV *iv_return) {
     }
     break;
   case 'P':
+    if (memEQ(name, "DB_TXN_DISPATCH", 15)) {
+    /*                         ^           */
+#ifdef DB_TXN_DISPATCH
+      *iv_return = DB_TXN_DISPATCH;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     if (memEQ(name, "DB_TXN_SNAPSHOT", 15)) {
     /*                         ^           */
 #ifdef DB_TXN_SNAPSHOT
@@ -3960,6 +4027,27 @@ constant_15 (pTHX_ const char *name, IV *iv_return) {
     /*                         ^           */
 #ifdef DB_CONSUME_WAIT
       *iv_return = DB_CONSUME_WAIT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_LOG_EXT_FILE", 15)) {
+    /*                         ^           */
+#ifdef DB_LOG_EXT_FILE
+      *iv_return = DB_LOG_EXT_FILE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_MEM_REP_SITE", 15)) {
+    /*                         ^           */
+#if (DB_VERSION_MAJOR > 6) || \
+    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR > 3) || \
+    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR == 3 && \
+     DB_VERSION_PATCH >= 10)
+      *iv_return = DB_MEM_REP_SITE;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -4800,7 +4888,7 @@ constant_17 (pTHX_ const char *name, IV *iv_return, const char **pv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \
-     DB_VERSION_PATCH >= 14)
+     DB_VERSION_PATCH >= 10)
       *iv_return = DB_MEM_LOCKOBJECT;
       return PERL_constant_ISIV;
 #else
@@ -4912,7 +5000,7 @@ constant_17 (pTHX_ const char *name, IV *iv_return, const char **pv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \
-     DB_VERSION_PATCH >= 6)
+     DB_VERSION_PATCH >= 21)
       *iv_return = DB_TXN_LOG_VERIFY;
       return PERL_constant_ISIV;
 #else
@@ -5142,7 +5230,7 @@ constant_18 (pTHX_ const char *name, IV *iv_return) {
 #if (DB_VERSION_MAJOR > 5) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \
     (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \
-     DB_VERSION_PATCH >= 14)
+     DB_VERSION_PATCH >= 10)
       *iv_return = DB_MEM_TRANSACTION;
       return PERL_constant_ISIV;
 #else
@@ -6255,7 +6343,8 @@ constant_21 (pTHX_ const char *name, IV *iv_return) {
      DB_LOG_VERIFY_FORWARD DB_LOG_VERIFY_PARTIAL DB_LOG_VERIFY_VERBOSE
      DB_LOG_VERIFY_WARNING DB_MUTEX_LOGICAL_LOCK DB_MUTEX_PROCESS_ONLY
      DB_PRIORITY_UNCHANGED DB_PRIORITY_VERY_HIGH DB_REPMGR_ACKS_QUORUM
-     DB_REP_ELECTION_RETRY DB_REP_HEARTBEAT_SEND DB_SLICE_INCONSISTENT */
+     DB_REPMGR_ISELECTABLE DB_REP_ELECTION_RETRY DB_REP_HEARTBEAT_SEND
+     DB_SYSTEM_MEM_MISSING */
   /* Offset 15 gives the best switch position.  */
   switch (name[15]) {
   case 'A':
@@ -6272,6 +6361,17 @@ constant_21 (pTHX_ const char *name, IV *iv_return) {
     /*                              ^            */
 #ifdef DB_LOG_VERIFY_WARNING
       *iv_return = DB_LOG_VERIFY_WARNING;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'C':
+    if (memEQ(name, "DB_REPMGR_ISELECTABLE", 21)) {
+    /*                              ^            */
+#ifdef DB_REPMGR_ISELECTABLE
+      *iv_return = DB_REPMGR_ISELECTABLE;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -6315,10 +6415,10 @@ constant_21 (pTHX_ const char *name, IV *iv_return) {
     }
     break;
   case 'I':
-    if (memEQ(name, "DB_SLICE_INCONSISTENT", 21)) {
+    if (memEQ(name, "DB_SYSTEM_MEM_MISSING", 21)) {
     /*                              ^            */
-#ifdef DB_SLICE_INCONSISTENT
-      *iv_return = DB_SLICE_INCONSISTENT;
+#ifdef DB_SYSTEM_MEM_MISSING
+      *iv_return = DB_SYSTEM_MEM_MISSING;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -6439,8 +6539,9 @@ constant_22 (pTHX_ const char *name, IV *iv_return, const char **pv_return) {
      DB_ASSOC_IMMUTABLE_KEY DB_BACKUP_WRITE_DIRECT DB_ENV_RPCCLIENT_GIVEN
      DB_ENV_TIME_NOTGRANTED DB_ENV_TXN_NOT_DURABLE DB_EVENT_FAILCHK_PANIC
      DB_EVENT_NO_SUCH_EVENT DB_EVENT_REP_DUPMASTER DB_EVENT_REP_INIT_DONE
-     DB_EVENT_REP_NEWMASTER DB_LOGVERSION_LATCHING DB_REPMGR_DISCONNECTED
-     DB_REP_CONF_NOAUTOINIT DB_TXN_LOCK_OPTIMISTIC DB_VERSION_FULL_STRING */
+     DB_EVENT_REP_NEWMASTER DB_LOGVERSION_LATCHING DB_MEM_DATABASE_LENGTH
+     DB_REPMGR_DISCONNECTED DB_REP_CONF_NOAUTOINIT DB_TXN_LOCK_OPTIMISTIC
+     DB_VERSION_FULL_STRING */
   /* Offset 15 gives the best switch position.  */
   switch (name[15]) {
   case 'A':
@@ -6597,6 +6698,18 @@ constant_22 (pTHX_ const char *name, IV *iv_return, const char **pv_return) {
       return PERL_constant_NOTDEF;
 #endif
     }
+    if (memEQ(name, "DB_MEM_DATABASE_LENGTH", 22)) {
+    /*                              ^             */
+#if (DB_VERSION_MAJOR > 6) || \
+    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR > 3) || \
+    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR == 3 && \
+     DB_VERSION_PATCH >= 10)
+      *iv_return = DB_MEM_DATABASE_LENGTH;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     if (memEQ(name, "DB_VERSION_FULL_STRING", 22)) {
     /*                              ^             */
 #ifdef DB_VERSION_FULL_STRING
@@ -6616,14 +6729,26 @@ constant_23 (pTHX_ const char *name, IV *iv_return) {
   /* When generated this function returned values for the list of names given
      here.  However, subsequent manual editing may have added or removed some.
      DB_ENV_DATABASE_LOCKING DB_ENV_TXN_WRITE_NOSYNC DB_EVENT_REP_SITE_ADDED
-     DB_FAILURE_SYMPTOM_SIZE DB_REPMGR_ACKS_ONE_PEER DB_REPMGR_NEED_RESPONSE
-     DB_REP_CHECKPOINT_DELAY DB_REP_CONF_DELAYCLIENT DB_REP_CONNECTION_RETRY
-     DB_REP_DEFAULT_PRIORITY DB_REP_ELECTION_TIMEOUT DB_VERB_REPMGR_CONNFAIL */
-  /* Offset 12 gives the best switch position.  */
-  switch (name[12]) {
+     DB_FAILURE_SYMPTOM_SIZE DB_MEM_EXTFILE_DATABASE DB_REGION_MAGIC_RECOVER
+     DB_REPMGR_ACKS_ONE_PEER DB_REPMGR_NEED_RESPONSE DB_REP_CHECKPOINT_DELAY
+     DB_REP_CONF_DELAYCLIENT DB_REP_CONNECTION_RETRY DB_REP_DEFAULT_PRIORITY
+     DB_REP_ELECTION_TIMEOUT DB_VERB_REPMGR_CONNFAIL */
+  /* Offset 11 gives the best switch position.  */
+  switch (name[11]) {
   case 'A':
+    if (memEQ(name, "DB_REGION_MAGIC_RECOVER", 23)) {
+    /*                          ^                  */
+#ifdef DB_REGION_MAGIC_RECOVER
+      *iv_return = DB_REGION_MAGIC_RECOVER;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'B':
     if (memEQ(name, "DB_ENV_DATABASE_LOCKING", 23)) {
-    /*                           ^                 */
+    /*                          ^                  */
 #ifdef DB_ENV_DATABASE_LOCKING
       *iv_return = DB_ENV_DATABASE_LOCKING;
       return PERL_constant_ISIV;
@@ -6633,63 +6758,8 @@ constant_23 (pTHX_ const char *name, IV *iv_return) {
     }
     break;
   case 'C':
-    if (memEQ(name, "DB_REP_CONNECTION_RETRY", 23)) {
-    /*                           ^                 */
-#ifdef DB_REP_CONNECTION_RETRY
-      *iv_return = DB_REP_CONNECTION_RETRY;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'D':
-    if (memEQ(name, "DB_REP_CONF_DELAYCLIENT", 23)) {
-    /*                           ^                 */
-#ifdef DB_REP_CONF_DELAYCLIENT
-      *iv_return = DB_REP_CONF_DELAYCLIENT;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'E':
-    if (memEQ(name, "DB_REPMGR_NEED_RESPONSE", 23)) {
-    /*                           ^                 */
-#ifdef DB_REPMGR_NEED_RESPONSE
-      *iv_return = DB_REPMGR_NEED_RESPONSE;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'G':
-    if (memEQ(name, "DB_VERB_REPMGR_CONNFAIL", 23)) {
-    /*                           ^                 */
-#ifdef DB_VERB_REPMGR_CONNFAIL
-      *iv_return = DB_VERB_REPMGR_CONNFAIL;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'I':
-    if (memEQ(name, "DB_REP_ELECTION_TIMEOUT", 23)) {
-    /*                           ^                 */
-#ifdef DB_REP_ELECTION_TIMEOUT
-      *iv_return = DB_REP_ELECTION_TIMEOUT;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'K':
     if (memEQ(name, "DB_REPMGR_ACKS_ONE_PEER", 23)) {
-    /*                           ^                 */
+    /*                          ^                  */
 #ifdef DB_REPMGR_ACKS_ONE_PEER
       *iv_return = DB_REPMGR_ACKS_ONE_PEER;
       return PERL_constant_ISIV;
@@ -6698,20 +6768,43 @@ constant_23 (pTHX_ const char *name, IV *iv_return) {
 #endif
     }
     break;
-  case 'L':
-    if (memEQ(name, "DB_REP_DEFAULT_PRIORITY", 23)) {
-    /*                           ^                 */
-#ifdef DB_REP_DEFAULT_PRIORITY
-      *iv_return = DB_REP_DEFAULT_PRIORITY;
+  case 'E':
+    if (memEQ(name, "DB_REPMGR_NEED_RESPONSE", 23)) {
+    /*                          ^                  */
+#ifdef DB_REPMGR_NEED_RESPONSE
+      *iv_return = DB_REPMGR_NEED_RESPONSE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DB_REP_CONNECTION_RETRY", 23)) {
+    /*                          ^                  */
+#ifdef DB_REP_CONNECTION_RETRY
+      *iv_return = DB_REP_CONNECTION_RETRY;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
     break;
-  case 'P':
+  case 'I':
+    if (memEQ(name, "DB_MEM_EXTFILE_DATABASE", 23)) {
+    /*                          ^                  */
+#if (DB_VERSION_MAJOR > 6) || \
+    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR > 3) || \
+    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR == 3 && \
+     DB_VERSION_PATCH >= 10)
+      *iv_return = DB_MEM_EXTFILE_DATABASE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'K':
     if (memEQ(name, "DB_REP_CHECKPOINT_DELAY", 23)) {
-    /*                           ^                 */
+    /*                          ^                  */
 #ifdef DB_REP_CHECKPOINT_DELAY
       *iv_return = DB_REP_CHECKPOINT_DELAY;
       return PERL_constant_ISIV;
@@ -6720,20 +6813,31 @@ constant_23 (pTHX_ const char *name, IV *iv_return) {
 #endif
     }
     break;
-  case 'R':
-    if (memEQ(name, "DB_ENV_TXN_WRITE_NOSYNC", 23)) {
-    /*                           ^                 */
-#ifdef DB_ENV_TXN_WRITE_NOSYNC
-      *iv_return = DB_ENV_TXN_WRITE_NOSYNC;
+  case 'M':
+    if (memEQ(name, "DB_VERB_REPMGR_CONNFAIL", 23)) {
+    /*                          ^                  */
+#ifdef DB_VERB_REPMGR_CONNFAIL
+      *iv_return = DB_VERB_REPMGR_CONNFAIL;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
     break;
-  case 'Y':
+  case 'P':
+    if (memEQ(name, "DB_EVENT_REP_SITE_ADDED", 23)) {
+    /*                          ^                  */
+#ifdef DB_EVENT_REP_SITE_ADDED
+      *iv_return = DB_EVENT_REP_SITE_ADDED;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'S':
     if (memEQ(name, "DB_FAILURE_SYMPTOM_SIZE", 23)) {
-    /*                           ^                 */
+    /*                          ^                  */
 #ifdef DB_FAILURE_SYMPTOM_SIZE
       *iv_return = DB_FAILURE_SYMPTOM_SIZE;
       return PERL_constant_ISIV;
@@ -6742,11 +6846,44 @@ constant_23 (pTHX_ const char *name, IV *iv_return) {
 #endif
     }
     break;
+  case 'T':
+    if (memEQ(name, "DB_REP_ELECTION_TIMEOUT", 23)) {
+    /*                          ^                  */
+#ifdef DB_REP_ELECTION_TIMEOUT
+      *iv_return = DB_REP_ELECTION_TIMEOUT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'U':
+    if (memEQ(name, "DB_REP_DEFAULT_PRIORITY", 23)) {
+    /*                          ^                  */
+#ifdef DB_REP_DEFAULT_PRIORITY
+      *iv_return = DB_REP_DEFAULT_PRIORITY;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'W':
+    if (memEQ(name, "DB_ENV_TXN_WRITE_NOSYNC", 23)) {
+    /*                          ^                  */
+#ifdef DB_ENV_TXN_WRITE_NOSYNC
+      *iv_return = DB_ENV_TXN_WRITE_NOSYNC;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
   case '_':
-    if (memEQ(name, "DB_EVENT_REP_SITE_ADDED", 23)) {
-    /*                           ^                 */
-#ifdef DB_EVENT_REP_SITE_ADDED
-      *iv_return = DB_EVENT_REP_SITE_ADDED;
+    if (memEQ(name, "DB_REP_CONF_DELAYCLIENT", 23)) {
+    /*                          ^                  */
+#ifdef DB_REP_CONF_DELAYCLIENT
+      *iv_return = DB_REP_CONF_DELAYCLIENT;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -6872,25 +7009,25 @@ static int
 constant_25 (pTHX_ const char *name, IV *iv_return) {
   /* When generated this function returned values for the list of names given
      here.  However, subsequent manual editing may have added or removed some.
-     DB_EVENT_REP_CONNECT_ESTD DB_EVENT_REP_INQUEUE_FULL
-     DB_EVENT_REP_JOIN_FAILURE DB_EVENT_REP_SITE_REMOVED
-     DB_INTERNAL_PERSISTENT_DB */
-  /* Offset 15 gives the best switch position.  */
-  switch (name[15]) {
-  case 'I':
-    if (memEQ(name, "DB_EVENT_REP_JOIN_FAILURE", 25)) {
-    /*                              ^                */
-#ifdef DB_EVENT_REP_JOIN_FAILURE
-      *iv_return = DB_EVENT_REP_JOIN_FAILURE;
+     DB_EVENT_REP_AUTOTAKEOVER DB_EVENT_REP_CONNECT_ESTD
+     DB_EVENT_REP_INQUEUE_FULL DB_EVENT_REP_JOIN_FAILURE
+     DB_EVENT_REP_SITE_REMOVED DB_INTERNAL_PERSISTENT_DB */
+  /* Offset 13 gives the best switch position.  */
+  switch (name[13]) {
+  case 'A':
+    if (memEQ(name, "DB_EVENT_REP_AUTOTAKEOVER", 25)) {
+    /*                            ^                  */
+#ifdef DB_EVENT_REP_AUTOTAKEOVER
+      *iv_return = DB_EVENT_REP_AUTOTAKEOVER;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
     break;
-  case 'N':
+  case 'C':
     if (memEQ(name, "DB_EVENT_REP_CONNECT_ESTD", 25)) {
-    /*                              ^                */
+    /*                            ^                  */
 #ifdef DB_EVENT_REP_CONNECT_ESTD
       *iv_return = DB_EVENT_REP_CONNECT_ESTD;
       return PERL_constant_ISIV;
@@ -6899,20 +7036,9 @@ constant_25 (pTHX_ const char *name, IV *iv_return) {
 #endif
     }
     break;
-  case 'Q':
-    if (memEQ(name, "DB_EVENT_REP_INQUEUE_FULL", 25)) {
-    /*                              ^                */
-#ifdef DB_EVENT_REP_INQUEUE_FULL
-      *iv_return = DB_EVENT_REP_INQUEUE_FULL;
-      return PERL_constant_ISIV;
-#else
-      return PERL_constant_NOTDEF;
-#endif
-    }
-    break;
-  case 'S':
+  case 'E':
     if (memEQ(name, "DB_INTERNAL_PERSISTENT_DB", 25)) {
-    /*                              ^                */
+    /*                            ^                  */
 #ifdef DB_INTERNAL_PERSISTENT_DB
       *iv_return = DB_INTERNAL_PERSISTENT_DB;
       return PERL_constant_ISIV;
@@ -6921,9 +7047,31 @@ constant_25 (pTHX_ const char *name, IV *iv_return) {
 #endif
     }
     break;
-  case 'T':
+  case 'I':
+    if (memEQ(name, "DB_EVENT_REP_INQUEUE_FULL", 25)) {
+    /*                            ^                  */
+#ifdef DB_EVENT_REP_INQUEUE_FULL
+      *iv_return = DB_EVENT_REP_INQUEUE_FULL;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'J':
+    if (memEQ(name, "DB_EVENT_REP_JOIN_FAILURE", 25)) {
+    /*                            ^                  */
+#ifdef DB_EVENT_REP_JOIN_FAILURE
+      *iv_return = DB_EVENT_REP_JOIN_FAILURE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'S':
     if (memEQ(name, "DB_EVENT_REP_SITE_REMOVED", 25)) {
-    /*                              ^                */
+    /*                            ^                  */
 #ifdef DB_EVENT_REP_SITE_REMOVED
       *iv_return = DB_EVENT_REP_SITE_REMOVED;
       return PERL_constant_ISIV;
@@ -6942,23 +7090,46 @@ constant_27 (pTHX_ const char *name, IV *iv_return) {
      here.  However, subsequent manual editing may have added or removed some.
      DB_EVENT_REP_CONNECT_BROKEN DB_EVENT_REP_MASTER_FAILURE
      DB_EVENT_REP_WOULD_ROLLBACK DB_REPMGR_CONF_2SITE_STRICT
+     DB_REPMGR_CONF_DISABLE_POLL DB_REPMGR_CONF_ENABLE_EPOLL
      DB_REP_CONF_ELECT_LOGLENGTH */
-  /* Offset 26 gives the best switch position.  */
-  switch (name[26]) {
-  case 'E':
-    if (memEQ(name, "DB_EVENT_REP_MASTER_FAILUR", 26)) {
-    /*                                         E      */
-#ifdef DB_EVENT_REP_MASTER_FAILURE
-      *iv_return = DB_EVENT_REP_MASTER_FAILURE;
+  /* Offset 19 gives the best switch position.  */
+  switch (name[19]) {
+  case 'B':
+    if (memEQ(name, "DB_REPMGR_CONF_DISABLE_POLL", 27)) {
+    /*                                  ^              */
+#ifdef DB_REPMGR_CONF_DISABLE_POLL
+      *iv_return = DB_REPMGR_CONF_DISABLE_POLL;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
 #endif
     }
     break;
-  case 'H':
-    if (memEQ(name, "DB_REP_CONF_ELECT_LOGLENGT", 26)) {
-    /*                                         H      */
+  case 'E':
+    if (memEQ(name, "DB_REPMGR_CONF_2SITE_STRICT", 27)) {
+    /*                                  ^              */
+#ifdef DB_REPMGR_CONF_2SITE_STRICT
+      *iv_return = DB_REPMGR_CONF_2SITE_STRICT;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'L':
+    if (memEQ(name, "DB_REPMGR_CONF_ENABLE_EPOLL", 27)) {
+    /*                                  ^              */
+#ifdef DB_REPMGR_CONF_ENABLE_EPOLL
+      *iv_return = DB_REPMGR_CONF_ENABLE_EPOLL;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'O':
+    if (memEQ(name, "DB_REP_CONF_ELECT_LOGLENGTH", 27)) {
+    /*                                  ^              */
 #ifdef DB_REP_CONF_ELECT_LOGLENGTH
       *iv_return = DB_REP_CONF_ELECT_LOGLENGTH;
       return PERL_constant_ISIV;
@@ -6967,9 +7138,9 @@ constant_27 (pTHX_ const char *name, IV *iv_return) {
 #endif
     }
     break;
-  case 'K':
-    if (memEQ(name, "DB_EVENT_REP_WOULD_ROLLBAC", 26)) {
-    /*                                         K      */
+  case 'R':
+    if (memEQ(name, "DB_EVENT_REP_WOULD_ROLLBACK", 27)) {
+    /*                                  ^              */
 #ifdef DB_EVENT_REP_WOULD_ROLLBACK
       *iv_return = DB_EVENT_REP_WOULD_ROLLBACK;
       return PERL_constant_ISIV;
@@ -6978,9 +7149,9 @@ constant_27 (pTHX_ const char *name, IV *iv_return) {
 #endif
     }
     break;
-  case 'N':
-    if (memEQ(name, "DB_EVENT_REP_CONNECT_BROKE", 26)) {
-    /*                                         N      */
+  case 'T':
+    if (memEQ(name, "DB_EVENT_REP_CONNECT_BROKEN", 27)) {
+    /*                                  ^              */
 #ifdef DB_EVENT_REP_CONNECT_BROKEN
       *iv_return = DB_EVENT_REP_CONNECT_BROKEN;
       return PERL_constant_ISIV;
@@ -6989,11 +7160,11 @@ constant_27 (pTHX_ const char *name, IV *iv_return) {
 #endif
     }
     break;
-  case 'T':
-    if (memEQ(name, "DB_REPMGR_CONF_2SITE_STRIC", 26)) {
-    /*                                         T      */
-#ifdef DB_REPMGR_CONF_2SITE_STRICT
-      *iv_return = DB_REPMGR_CONF_2SITE_STRICT;
+  case '_':
+    if (memEQ(name, "DB_EVENT_REP_MASTER_FAILURE", 27)) {
+    /*                                  ^              */
+#ifdef DB_EVENT_REP_MASTER_FAILURE
+      *iv_return = DB_EVENT_REP_MASTER_FAILURE;
       return PERL_constant_ISIV;
 #else
       return PERL_constant_NOTDEF;
@@ -7130,7 +7301,7 @@ constant (pTHX_ const char *name, STRLEN len, IV *iv_return, const char **pv_ret
      Regenerate these constant functions by feeding this entire source file to
      perl -x
 
-#!/linux-shared/base/perl/install/bin/perl -w
+#!/media/paul/Linux-Shared/base/perl/install/bin/perl -w
 use ExtUtils::Constant qw (constant_types C_constant XS_constant);
 
 my $types = {map {($_, 1)} qw(IV PV)};
@@ -7144,14 +7315,14 @@ my @names = (qw(DB2_AM_EXCL DB2_AM_INTEXCL DB2_AM_MPOOL_OPENED DB2_AM_NOWAIT
 	       DB_BUFFER_SMALL DB_CACHED_COUNTS DB_CDB_ALLDB DB_CHECKPOINT
 	       DB_CHKSUM DB_CHKSUM_FAIL DB_CHKSUM_SHA1 DB_CKP_INTERNAL
 	       DB_CLIENT DB_CL_WRITER DB_COMMIT DB_COMPACT_FLAGS DB_CONSUME
-	       DB_CONSUME_WAIT DB_CREATE DB_CURLSN DB_CURRENT DB_CURSOR_BULK
-	       DB_CURSOR_TRANSIENT DB_CXX_NO_EXCEPTIONS DB_DATABASE_LOCK
-	       DB_DATABASE_LOCKING DB_DEGREE_2 DB_DELETED DB_DELIMITER
-	       DB_DIRECT DB_DIRECT_DB DB_DIRECT_LOG DB_DIRTY_READ DB_DONOTINDEX
-	       DB_DSYNC_DB DB_DSYNC_LOG DB_DUP DB_DUPCURSOR DB_DUPSORT
-	       DB_DURABLE_UNKNOWN DB_EID_BROADCAST DB_EID_INVALID DB_EID_MASTER
-	       DB_ENCRYPT DB_ENCRYPT_AES DB_ENV_APPINIT DB_ENV_AUTO_COMMIT
-	       DB_ENV_CDB DB_ENV_CDB_ALLDB DB_ENV_CREATE
+	       DB_CONSUME_WAIT DB_CONVERT DB_CREATE DB_CURLSN DB_CURRENT
+	       DB_CURSOR_BULK DB_CURSOR_TRANSIENT DB_CXX_NO_EXCEPTIONS
+	       DB_DATABASE_LOCK DB_DATABASE_LOCKING DB_DEGREE_2 DB_DELETED
+	       DB_DELIMITER DB_DIRECT DB_DIRECT_DB DB_DIRECT_LOG DB_DIRTY_READ
+	       DB_DONOTINDEX DB_DSYNC_DB DB_DSYNC_LOG DB_DUP DB_DUPCURSOR
+	       DB_DUPSORT DB_DURABLE_UNKNOWN DB_EID_BROADCAST DB_EID_INVALID
+	       DB_EID_MASTER DB_ENCRYPT DB_ENCRYPT_AES DB_ENV_APPINIT
+	       DB_ENV_AUTO_COMMIT DB_ENV_CDB DB_ENV_CDB_ALLDB DB_ENV_CREATE
 	       DB_ENV_DATABASE_LOCKING DB_ENV_DBLOCAL DB_ENV_DIRECT_DB
 	       DB_ENV_DIRECT_LOG DB_ENV_DSYNC_DB DB_ENV_DSYNC_LOG
 	       DB_ENV_FAILCHK DB_ENV_FATAL DB_ENV_HOTBACKUP DB_ENV_LOCKDOWN
@@ -7168,21 +7339,22 @@ my @names = (qw(DB2_AM_EXCL DB2_AM_INTEXCL DB2_AM_MPOOL_OPENED DB2_AM_NOWAIT
 	       DB_ENV_TXN_WRITE_NOSYNC DB_ENV_USER_ALLOC DB_ENV_YIELDCPU
 	       DB_EVENT_FAILCHK_PANIC DB_EVENT_MUTEX_DIED DB_EVENT_NOT_HANDLED
 	       DB_EVENT_NO_SUCH_EVENT DB_EVENT_PANIC DB_EVENT_REG_ALIVE
-	       DB_EVENT_REG_PANIC DB_EVENT_REP_AUTOTAKEOVER_FAILED
-	       DB_EVENT_REP_CLIENT DB_EVENT_REP_CONNECT_BROKEN
-	       DB_EVENT_REP_CONNECT_ESTD DB_EVENT_REP_CONNECT_TRY_FAILED
-	       DB_EVENT_REP_DUPMASTER DB_EVENT_REP_ELECTED
-	       DB_EVENT_REP_ELECTION_FAILED DB_EVENT_REP_INIT_DONE
-	       DB_EVENT_REP_INQUEUE_FULL DB_EVENT_REP_JOIN_FAILURE
-	       DB_EVENT_REP_LOCAL_SITE_REMOVED DB_EVENT_REP_MASTER
-	       DB_EVENT_REP_MASTER_FAILURE DB_EVENT_REP_NEWMASTER
-	       DB_EVENT_REP_PERM_FAILED DB_EVENT_REP_SITE_ADDED
-	       DB_EVENT_REP_SITE_REMOVED DB_EVENT_REP_STARTUPDONE
-	       DB_EVENT_REP_WOULD_ROLLBACK DB_EVENT_WRITE_FAILED DB_EXCL
-	       DB_EXIT_FAILCHK DB_EXIT_FILE_EXISTS DB_EXTENT DB_FAILCHK
-	       DB_FAILCHK_ISALIVE DB_FAILURE_SYMPTOM_SIZE DB_FAST_STAT
-	       DB_FCNTL_LOCKING DB_FILEOPEN DB_FILE_ID_LEN DB_FIRST DB_FIXEDLEN
-	       DB_FLUSH DB_FORCE DB_FORCESYNC DB_FORCESYNCENV DB_FOREIGN_ABORT
+	       DB_EVENT_REG_PANIC DB_EVENT_REP_AUTOTAKEOVER
+	       DB_EVENT_REP_AUTOTAKEOVER_FAILED DB_EVENT_REP_CLIENT
+	       DB_EVENT_REP_CONNECT_BROKEN DB_EVENT_REP_CONNECT_ESTD
+	       DB_EVENT_REP_CONNECT_TRY_FAILED DB_EVENT_REP_DUPMASTER
+	       DB_EVENT_REP_ELECTED DB_EVENT_REP_ELECTION_FAILED
+	       DB_EVENT_REP_INIT_DONE DB_EVENT_REP_INQUEUE_FULL
+	       DB_EVENT_REP_JOIN_FAILURE DB_EVENT_REP_LOCAL_SITE_REMOVED
+	       DB_EVENT_REP_MASTER DB_EVENT_REP_MASTER_FAILURE
+	       DB_EVENT_REP_NEWMASTER DB_EVENT_REP_PERM_FAILED
+	       DB_EVENT_REP_SITE_ADDED DB_EVENT_REP_SITE_REMOVED
+	       DB_EVENT_REP_STARTUPDONE DB_EVENT_REP_WOULD_ROLLBACK
+	       DB_EVENT_WRITE_FAILED DB_EXCL DB_EXIT_FAILCHK
+	       DB_EXIT_FILE_EXISTS DB_EXTENT DB_FAILCHK DB_FAILCHK_ISALIVE
+	       DB_FAILURE_SYMPTOM_SIZE DB_FAST_STAT DB_FCNTL_LOCKING
+	       DB_FILEOPEN DB_FILE_ID_LEN DB_FIRST DB_FIXEDLEN DB_FLUSH
+	       DB_FORCE DB_FORCESYNC DB_FORCESYNCENV DB_FOREIGN_ABORT
 	       DB_FOREIGN_CASCADE DB_FOREIGN_CONFLICT DB_FOREIGN_NULLIFY
 	       DB_FREELIST_ONLY DB_FREE_SPACE DB_GETREC DB_GET_BOTH
 	       DB_GET_BOTHC DB_GET_BOTH_LTE DB_GET_BOTH_RANGE DB_GET_RECNO
@@ -7208,9 +7380,9 @@ my @names = (qw(DB2_AM_EXCL DB2_AM_INTEXCL DB2_AM_MPOOL_OPENED DB2_AM_NOWAIT
 	       DB_LOGVERSION DB_LOGVERSION_LATCHING DB_LOG_AUTOREMOVE
 	       DB_LOG_AUTO_REMOVE DB_LOG_BLOB DB_LOG_BUFFER_FULL DB_LOG_CHKPNT
 	       DB_LOG_COMMIT DB_LOG_DIRECT DB_LOG_DISK DB_LOG_DSYNC
-	       DB_LOG_INMEMORY DB_LOG_IN_MEMORY DB_LOG_LOCKED DB_LOG_NOCOPY
-	       DB_LOG_NOSYNC DB_LOG_NOT_DURABLE DB_LOG_NO_DATA DB_LOG_PERM
-	       DB_LOG_RESEND DB_LOG_SILENT_ERR DB_LOG_VERIFY_BAD
+	       DB_LOG_EXT_FILE DB_LOG_INMEMORY DB_LOG_IN_MEMORY DB_LOG_LOCKED
+	       DB_LOG_NOCOPY DB_LOG_NOSYNC DB_LOG_NOT_DURABLE DB_LOG_NO_DATA
+	       DB_LOG_PERM DB_LOG_RESEND DB_LOG_SILENT_ERR DB_LOG_VERIFY_BAD
 	       DB_LOG_VERIFY_CAF DB_LOG_VERIFY_DBFILE DB_LOG_VERIFY_ERR
 	       DB_LOG_VERIFY_FORWARD DB_LOG_VERIFY_INTERR DB_LOG_VERIFY_PARTIAL
 	       DB_LOG_VERIFY_VERBOSE DB_LOG_VERIFY_WARNING DB_LOG_WRNOSYNC
@@ -7237,58 +7409,60 @@ my @names = (qw(DB2_AM_EXCL DB2_AM_INTEXCL DB2_AM_MPOOL_OPENED DB2_AM_NOWAIT
 	       DB_QAMMAGIC DB_QAMOLDVER DB_QAMVERSION DB_RDONLY DB_RDWRMASTER
 	       DB_READ_COMMITTED DB_READ_UNCOMMITTED DB_RECNUM DB_RECORDCOUNT
 	       DB_RECORD_LOCK DB_RECOVER DB_RECOVER_FATAL DB_REGION_ANON
-	       DB_REGION_INIT DB_REGION_MAGIC DB_REGION_NAME DB_REGISTER
-	       DB_REGISTERED DB_RENAMEMAGIC DB_RENUMBER DB_REPFLAGS_MASK
-	       DB_REPMGR_ACKS_ALL DB_REPMGR_ACKS_ALL_AVAILABLE
-	       DB_REPMGR_ACKS_ALL_PEERS DB_REPMGR_ACKS_NONE DB_REPMGR_ACKS_ONE
-	       DB_REPMGR_ACKS_ONE_PEER DB_REPMGR_ACKS_QUORUM
-	       DB_REPMGR_CONF_2SITE_STRICT DB_REPMGR_CONF_ELECTIONS
-	       DB_REPMGR_CONF_FORWARD_WRITES DB_REPMGR_CONF_PREFMAS_CLIENT
-	       DB_REPMGR_CONF_PREFMAS_MASTER DB_REPMGR_CONNECTED
-	       DB_REPMGR_DISCONNECTED DB_REPMGR_ISPEER DB_REPMGR_ISVIEW
-	       DB_REPMGR_NEED_RESPONSE DB_REPMGR_PEER DB_REP_ACK_TIMEOUT
-	       DB_REP_ANYWHERE DB_REP_BULKOVF DB_REP_CHECKPOINT_DELAY
-	       DB_REP_CLIENT DB_REP_CONF_AUTOINIT DB_REP_CONF_AUTOROLLBACK
-	       DB_REP_CONF_BULK DB_REP_CONF_DELAYCLIENT
-	       DB_REP_CONF_ELECT_LOGLENGTH DB_REP_CONF_INMEM DB_REP_CONF_LEASE
-	       DB_REP_CONF_NOAUTOINIT DB_REP_CONF_NOWAIT
-	       DB_REP_CONNECTION_RETRY DB_REP_CREATE DB_REP_DEFAULT_PRIORITY
-	       DB_REP_DUPMASTER DB_REP_EGENCHG DB_REP_ELECTION
-	       DB_REP_ELECTION_RETRY DB_REP_ELECTION_TIMEOUT
+	       DB_REGION_INIT DB_REGION_MAGIC DB_REGION_MAGIC_RECOVER
+	       DB_REGION_NAME DB_REGISTER DB_REGISTERED DB_RENAMEMAGIC
+	       DB_RENUMBER DB_REPFLAGS_MASK DB_REPMGR_ACKS_ALL
+	       DB_REPMGR_ACKS_ALL_AVAILABLE DB_REPMGR_ACKS_ALL_PEERS
+	       DB_REPMGR_ACKS_NONE DB_REPMGR_ACKS_ONE DB_REPMGR_ACKS_ONE_PEER
+	       DB_REPMGR_ACKS_QUORUM DB_REPMGR_CONF_2SITE_STRICT
+	       DB_REPMGR_CONF_DISABLE_POLL DB_REPMGR_CONF_ELECTIONS
+	       DB_REPMGR_CONF_ENABLE_EPOLL DB_REPMGR_CONF_FORWARD_WRITES
+	       DB_REPMGR_CONF_PREFMAS_CLIENT DB_REPMGR_CONF_PREFMAS_MASTER
+	       DB_REPMGR_CONNECTED DB_REPMGR_DISCONNECTED DB_REPMGR_ISELECTABLE
+	       DB_REPMGR_ISPEER DB_REPMGR_ISVIEW DB_REPMGR_NEED_RESPONSE
+	       DB_REPMGR_PEER DB_REP_ACK_TIMEOUT DB_REP_ANYWHERE DB_REP_BULKOVF
+	       DB_REP_CHECKPOINT_DELAY DB_REP_CLIENT DB_REP_CONF_AUTOINIT
+	       DB_REP_CONF_AUTOROLLBACK DB_REP_CONF_BULK
+	       DB_REP_CONF_DELAYCLIENT DB_REP_CONF_ELECT_LOGLENGTH
+	       DB_REP_CONF_INMEM DB_REP_CONF_LEASE DB_REP_CONF_NOAUTOINIT
+	       DB_REP_CONF_NOWAIT DB_REP_CONNECTION_RETRY DB_REP_CREATE
+	       DB_REP_DEFAULT_PRIORITY DB_REP_DUPMASTER DB_REP_EGENCHG
+	       DB_REP_ELECTION DB_REP_ELECTION_RETRY DB_REP_ELECTION_TIMEOUT
 	       DB_REP_FULL_ELECTION DB_REP_FULL_ELECTION_TIMEOUT
 	       DB_REP_HANDLE_DEAD DB_REP_HEARTBEAT_MONITOR
 	       DB_REP_HEARTBEAT_SEND DB_REP_HOLDELECTION DB_REP_IGNORE
-	       DB_REP_ISPERM DB_REP_JOIN_FAILURE DB_REP_LEASE_EXPIRED
-	       DB_REP_LEASE_TIMEOUT DB_REP_LOCKOUT DB_REP_LOGREADY
-	       DB_REP_LOGSONLY DB_REP_MASTER DB_REP_NEWMASTER DB_REP_NEWSITE
-	       DB_REP_NOBUFFER DB_REP_NOTPERM DB_REP_OUTDATED DB_REP_PAGEDONE
-	       DB_REP_PAGELOCKED DB_REP_PERMANENT DB_REP_REREQUEST
-	       DB_REP_STARTUPDONE DB_REP_UNAVAIL DB_REP_WOULDROLLBACK
-	       DB_REP_WRITE_FORWARD_TIMEOUT DB_REVSPLITOFF DB_RMW DB_RPCCLIENT
-	       DB_RPC_SERVERPROG DB_RPC_SERVERVERS DB_RUNRECOVERY DB_SALVAGE
-	       DB_SA_SKIPFIRSTKEY DB_SA_UNKNOWNKEY DB_SECONDARY_BAD
-	       DB_SEQUENCE_OLDVER DB_SEQUENCE_VERSION DB_SEQUENTIAL DB_SEQ_DEC
-	       DB_SEQ_INC DB_SEQ_RANGE_SET DB_SEQ_WRAP DB_SEQ_WRAPPED DB_SET
-	       DB_SET_LOCK_TIMEOUT DB_SET_LTE DB_SET_MUTEX_FAILCHK_TIMEOUT
-	       DB_SET_RANGE DB_SET_RECNO DB_SET_REG_TIMEOUT DB_SET_TXN_NOW
-	       DB_SET_TXN_TIMEOUT DB_SHALLOW_DUP DB_SLICED DB_SLICE_CORRUPT
-	       DB_SLICE_INCONSISTENT DB_SNAPSHOT DB_SPARE_FLAG DB_STAT_ALL
-	       DB_STAT_ALLOC DB_STAT_CLEAR DB_STAT_LOCK_CONF
-	       DB_STAT_LOCK_LOCKERS DB_STAT_LOCK_OBJECTS DB_STAT_LOCK_PARAMS
-	       DB_STAT_MEMP_HASH DB_STAT_MEMP_NOERROR DB_STAT_NOERROR
-	       DB_STAT_SUBSYSTEM DB_STAT_SUMMARY DB_STREAM_READ
+	       DB_REP_INELECT DB_REP_ISPERM DB_REP_JOIN_FAILURE
+	       DB_REP_LEASE_EXPIRED DB_REP_LEASE_TIMEOUT DB_REP_LOCKOUT
+	       DB_REP_LOGREADY DB_REP_LOGSONLY DB_REP_MASTER DB_REP_NEWMASTER
+	       DB_REP_NEWSITE DB_REP_NOBUFFER DB_REP_NOTPERM DB_REP_OUTDATED
+	       DB_REP_PAGEDONE DB_REP_PAGELOCKED DB_REP_PERMANENT
+	       DB_REP_REREQUEST DB_REP_STARTUPDONE DB_REP_UNAVAIL
+	       DB_REP_WOULDROLLBACK DB_REP_WRITE_FORWARD_TIMEOUT DB_REVSPLITOFF
+	       DB_RMW DB_RPCCLIENT DB_RPC_SERVERPROG DB_RPC_SERVERVERS
+	       DB_RUNRECOVERY DB_SALVAGE DB_SA_SKIPFIRSTKEY DB_SA_UNKNOWNKEY
+	       DB_SECONDARY_BAD DB_SEQUENCE_OLDVER DB_SEQUENCE_VERSION
+	       DB_SEQUENTIAL DB_SEQ_DEC DB_SEQ_INC DB_SEQ_RANGE_SET DB_SEQ_WRAP
+	       DB_SEQ_WRAPPED DB_SET DB_SET_LOCK_TIMEOUT DB_SET_LTE
+	       DB_SET_MUTEX_FAILCHK_TIMEOUT DB_SET_RANGE DB_SET_RECNO
+	       DB_SET_REG_TIMEOUT DB_SET_TXN_NOW DB_SET_TXN_TIMEOUT
+	       DB_SHALLOW_DUP DB_SLICED DB_SLICE_CORRUPT DB_SNAPSHOT
+	       DB_SPARE_FLAG DB_STAT_ALL DB_STAT_ALLOC DB_STAT_CLEAR
+	       DB_STAT_LOCK_CONF DB_STAT_LOCK_LOCKERS DB_STAT_LOCK_OBJECTS
+	       DB_STAT_LOCK_PARAMS DB_STAT_MEMP_HASH DB_STAT_MEMP_NOERROR
+	       DB_STAT_NOERROR DB_STAT_SUBSYSTEM DB_STAT_SUMMARY DB_STREAM_READ
 	       DB_STREAM_SYNC_WRITE DB_STREAM_WRITE DB_ST_DUPOK DB_ST_DUPSET
 	       DB_ST_DUPSORT DB_ST_IS_RECNO DB_ST_OVFL_LEAF DB_ST_RECNUM
 	       DB_ST_RELEN DB_ST_TOPLEVEL DB_SURPRISE_KID DB_SWAPBYTES
-	       DB_SYSTEM_MEM DB_TEMPORARY DB_TEST_ELECTINIT DB_TEST_ELECTSEND
-	       DB_TEST_ELECTVOTE1 DB_TEST_ELECTVOTE2 DB_TEST_ELECTWAIT1
-	       DB_TEST_ELECTWAIT2 DB_TEST_POSTDESTROY DB_TEST_POSTLOG
-	       DB_TEST_POSTLOGMETA DB_TEST_POSTOPEN DB_TEST_POSTRENAME
-	       DB_TEST_POSTSYNC DB_TEST_PREDESTROY DB_TEST_PREOPEN
-	       DB_TEST_PRERENAME DB_TEST_RECYCLE DB_TEST_SUBDB_LOCKS DB_THREAD
-	       DB_THREADID_STRLEN DB_TIMEOUT DB_TIME_NOTGRANTED DB_TRUNCATE
-	       DB_TXNMAGIC DB_TXNVERSION DB_TXN_BULK DB_TXN_CKP DB_TXN_FAMILY
-	       DB_TXN_LOCK DB_TXN_LOCK_2PL DB_TXN_LOCK_MASK
+	       DB_SYSTEM_MEM DB_SYSTEM_MEM_MISSING DB_TEMPORARY
+	       DB_TEST_ELECTINIT DB_TEST_ELECTSEND DB_TEST_ELECTVOTE1
+	       DB_TEST_ELECTVOTE2 DB_TEST_ELECTWAIT1 DB_TEST_ELECTWAIT2
+	       DB_TEST_POSTDESTROY DB_TEST_POSTLOG DB_TEST_POSTLOGMETA
+	       DB_TEST_POSTOPEN DB_TEST_POSTRENAME DB_TEST_POSTSYNC
+	       DB_TEST_PREDESTROY DB_TEST_PREOPEN DB_TEST_PRERENAME
+	       DB_TEST_RECYCLE DB_TEST_SUBDB_LOCKS DB_THREAD DB_THREADID_STRLEN
+	       DB_TIMEOUT DB_TIME_NOTGRANTED DB_TRUNCATE DB_TXNMAGIC
+	       DB_TXNVERSION DB_TXN_BULK DB_TXN_CKP DB_TXN_DISPATCH
+	       DB_TXN_FAMILY DB_TXN_LOCK DB_TXN_LOCK_2PL DB_TXN_LOCK_MASK
 	       DB_TXN_LOCK_OPTIMIST DB_TXN_LOCK_OPTIMISTIC DB_TXN_LOG_MASK
 	       DB_TXN_LOG_REDO DB_TXN_LOG_UNDO DB_TXN_LOG_UNDOREDO
 	       DB_TXN_NOSYNC DB_TXN_NOT_DURABLE DB_TXN_NOWAIT DB_TXN_REDO
@@ -7307,14 +7481,14 @@ my @names = (qw(DB2_AM_EXCL DB2_AM_INTEXCL DB2_AM_MPOOL_OPENED DB2_AM_NOWAIT
 	       DB_VERSION_MINOR DB_VERSION_MISMATCH DB_VERSION_PATCH
 	       DB_VERSION_RELEASE DB_VRFY_FLAGMASK DB_WRITECURSOR DB_WRITELOCK
 	       DB_WRITEOPEN DB_WRNOSYNC DB_XA_CREATE DB_XIDDATASIZE DB_YIELDCPU
-	       DB_debug_FLAG DB_user_BEGIN),
+	       DB_debug_FLAG DB_user_BEGIN HAVE_EPOLL),
             {name=>"DB_BACKUP_READ_COUNT", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 3) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 3 && \\\n     DB_VERSION_PATCH >= 15)\n", "#endif\n"]},
             {name=>"DB_BACKUP_READ_SLEEP", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 3) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 3 && \\\n     DB_VERSION_PATCH >= 15)\n", "#endif\n"]},
             {name=>"DB_BACKUP_SIZE", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 3) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 3 && \\\n     DB_VERSION_PATCH >= 15)\n", "#endif\n"]},
             {name=>"DB_BACKUP_WRITE_DIRECT", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 3) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 3 && \\\n     DB_VERSION_PATCH >= 15)\n", "#endif\n"]},
             {name=>"DB_BTREE", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 2) || \\\n    (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 3)\n", "#endif\n"]},
             {name=>"DB_HASH", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 2) || \\\n    (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 3)\n", "#endif\n"]},
-            {name=>"DB_HEAP", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
+            {name=>"DB_HEAP", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \\\n     DB_VERSION_PATCH >= 10)\n", "#endif\n"]},
             {name=>"DB_LOCK_DUMP", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 2) || \\\n    (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 3)\n", "#endif\n"]},
             {name=>"DB_LOCK_GET", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 2) || \\\n    (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 3)\n", "#endif\n"]},
             {name=>"DB_LOCK_GET_TIMEOUT", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 4) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
@@ -7326,12 +7500,16 @@ my @names = (qw(DB2_AM_EXCL DB2_AM_INTEXCL DB2_AM_MPOOL_OPENED DB2_AM_NOWAIT
             {name=>"DB_LOCK_TIMEOUT", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 4) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
             {name=>"DB_LOCK_TRADE", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 4) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR > 1) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 1 && \\\n     DB_VERSION_PATCH >= 24)\n", "#endif\n"]},
             {name=>"DB_LOCK_UPGRADE_WRITE", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 4) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
-            {name=>"DB_MEM_LOCK", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
-            {name=>"DB_MEM_LOCKER", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
-            {name=>"DB_MEM_LOCKOBJECT", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
-            {name=>"DB_MEM_LOGID", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
-            {name=>"DB_MEM_THREAD", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
-            {name=>"DB_MEM_TRANSACTION", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
+            {name=>"DB_MEM_DATABASE", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 6) || \\\n    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR > 3) || \\\n    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR == 3 && \\\n     DB_VERSION_PATCH >= 10)\n", "#endif\n"]},
+            {name=>"DB_MEM_DATABASE_LENGTH", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 6) || \\\n    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR > 3) || \\\n    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR == 3 && \\\n     DB_VERSION_PATCH >= 10)\n", "#endif\n"]},
+            {name=>"DB_MEM_EXTFILE_DATABASE", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 6) || \\\n    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR > 3) || \\\n    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR == 3 && \\\n     DB_VERSION_PATCH >= 10)\n", "#endif\n"]},
+            {name=>"DB_MEM_LOCK", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \\\n     DB_VERSION_PATCH >= 10)\n", "#endif\n"]},
+            {name=>"DB_MEM_LOCKER", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \\\n     DB_VERSION_PATCH >= 10)\n", "#endif\n"]},
+            {name=>"DB_MEM_LOCKOBJECT", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \\\n     DB_VERSION_PATCH >= 10)\n", "#endif\n"]},
+            {name=>"DB_MEM_LOGID", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \\\n     DB_VERSION_PATCH >= 10)\n", "#endif\n"]},
+            {name=>"DB_MEM_REP_SITE", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 6) || \\\n    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR > 3) || \\\n    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR == 3 && \\\n     DB_VERSION_PATCH >= 10)\n", "#endif\n"]},
+            {name=>"DB_MEM_THREAD", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \\\n     DB_VERSION_PATCH >= 10)\n", "#endif\n"]},
+            {name=>"DB_MEM_TRANSACTION", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 2) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 2 && \\\n     DB_VERSION_PATCH >= 10)\n", "#endif\n"]},
             {name=>"DB_PRIORITY_DEFAULT", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 4) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR > 1) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 1 && \\\n     DB_VERSION_PATCH >= 24)\n", "#endif\n"]},
             {name=>"DB_PRIORITY_HIGH", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 4) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR > 1) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 1 && \\\n     DB_VERSION_PATCH >= 24)\n", "#endif\n"]},
             {name=>"DB_PRIORITY_LOW", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 4) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR > 1) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 1 && \\\n     DB_VERSION_PATCH >= 24)\n", "#endif\n"]},
@@ -7344,28 +7522,31 @@ my @names = (qw(DB2_AM_EXCL DB2_AM_INTEXCL DB2_AM_MPOOL_OPENED DB2_AM_NOWAIT
             {name=>"DB_TXN_APPLY", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 4) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
             {name=>"DB_TXN_BACKWARD_ROLL", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 3) || \\\n    (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR > 1) || \\\n    (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR == 1 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
             {name=>"DB_TXN_FORWARD_ROLL", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 3) || \\\n    (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR > 1) || \\\n    (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR == 1 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
-            {name=>"DB_TXN_LOG_VERIFY", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 6)\n", "#endif\n"]},
+            {name=>"DB_TXN_LOG_VERIFY", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 21)\n", "#endif\n"]},
             {name=>"DB_TXN_OPENFILES", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 3) || \\\n    (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR > 1) || \\\n    (DB_VERSION_MAJOR == 3 && DB_VERSION_MINOR == 1 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
             {name=>"DB_TXN_POPENFILES", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 4) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 14)\n", "#endif\n"]},
             {name=>"DB_TXN_PRINT", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 4) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR > 1) || \\\n    (DB_VERSION_MAJOR == 4 && DB_VERSION_MINOR == 1 && \\\n     DB_VERSION_PATCH >= 24)\n", "#endif\n"]},
             {name=>"DB_UNKNOWN", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 2) || \\\n    (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 2 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 3)\n", "#endif\n"]},
             {name=>"DB_VERSION_FULL_STRING", type=>"PV"},
             {name=>"DB_VERSION_STRING", type=>"PV"},
-            {name=>"LOGREC_ARG", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 6)\n", "#endif\n"]},
-            {name=>"LOGREC_DATA", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 6)\n", "#endif\n"]},
-            {name=>"LOGREC_DB", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 6)\n", "#endif\n"]},
-            {name=>"LOGREC_DBOP", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 6)\n", "#endif\n"]},
-            {name=>"LOGREC_DBT", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 6)\n", "#endif\n"]},
-            {name=>"LOGREC_Done", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 6)\n", "#endif\n"]},
-            {name=>"LOGREC_HDR", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 6)\n", "#endif\n"]},
-            {name=>"LOGREC_LOCKS", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 6)\n", "#endif\n"]},
+            {name=>"EPOLL", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 6) || \\\n    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR > 3) || \\\n    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR == 3 && \\\n     DB_VERSION_PATCH >= 10)\n", "#endif\n"]},
+            {name=>"LOGREC_ARG", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 21)\n", "#endif\n"]},
+            {name=>"LOGREC_DATA", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 21)\n", "#endif\n"]},
+            {name=>"LOGREC_DB", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 21)\n", "#endif\n"]},
+            {name=>"LOGREC_DBOP", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 21)\n", "#endif\n"]},
+            {name=>"LOGREC_DBT", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 21)\n", "#endif\n"]},
+            {name=>"LOGREC_Done", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 21)\n", "#endif\n"]},
+            {name=>"LOGREC_HDR", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 21)\n", "#endif\n"]},
+            {name=>"LOGREC_LOCKS", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 21)\n", "#endif\n"]},
             {name=>"LOGREC_LONGARG", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 6) || \\\n    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 30)\n", "#endif\n"]},
-            {name=>"LOGREC_OP", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 6)\n", "#endif\n"]},
-            {name=>"LOGREC_PGDBT", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 6)\n", "#endif\n"]},
-            {name=>"LOGREC_PGDDBT", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 6)\n", "#endif\n"]},
-            {name=>"LOGREC_PGLIST", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 6)\n", "#endif\n"]},
-            {name=>"LOGREC_POINTER", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 6)\n", "#endif\n"]},
-            {name=>"LOGREC_TIME", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 6)\n", "#endif\n"]});
+            {name=>"LOGREC_OP", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 21)\n", "#endif\n"]},
+            {name=>"LOGREC_PGDBT", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 21)\n", "#endif\n"]},
+            {name=>"LOGREC_PGDDBT", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 21)\n", "#endif\n"]},
+            {name=>"LOGREC_PGLIST", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 21)\n", "#endif\n"]},
+            {name=>"LOGREC_POINTER", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 21)\n", "#endif\n"]},
+            {name=>"LOGREC_TIME", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 5) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR > 0) || \\\n    (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR == 0 && \\\n     DB_VERSION_PATCH >= 21)\n", "#endif\n"]},
+            {name=>"POLL", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 6) || \\\n    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR > 3) || \\\n    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR == 3 && \\\n     DB_VERSION_PATCH >= 10)\n", "#endif\n"]},
+            {name=>"SELECT", type=>"IV", macro=>["#if (DB_VERSION_MAJOR > 6) || \\\n    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR > 3) || \\\n    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR == 3 && \\\n     DB_VERSION_PATCH >= 10)\n", "#endif\n"]});
 
 print constant_types(), "\n"; # macro defs
 foreach (C_constant ("BerkeleyDB", 'constant', 'IV', $types, undef, 3, @names) ) {
@@ -7377,6 +7558,32 @@ __END__
    */
 
   switch (len) {
+  case 4:
+    if (memEQ(name, "POLL", 4)) {
+#if (DB_VERSION_MAJOR > 6) || \
+    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR > 3) || \
+    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR == 3 && \
+     DB_VERSION_PATCH >= 10)
+      *iv_return = POLL;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 5:
+    if (memEQ(name, "EPOLL", 5)) {
+#if (DB_VERSION_MAJOR > 6) || \
+    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR > 3) || \
+    (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR == 3 && \
+     DB_VERSION_PATCH >= 10)
+      *iv_return = EPOLL;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
   case 6:
     return constant_6 (aTHX_ name, iv_return);
     break;

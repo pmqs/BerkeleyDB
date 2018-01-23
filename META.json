@@ -1,10 +1,10 @@
 {
-   "abstract" : "Perl extension for Berkeley DB version 2, 3, 4 or 5",
+   "abstract" : "Perl extension for Berkeley DB version 2, 3, 4, 5 or 6",
    "author" : [
       "Paul Marquess <pmqs@cpan.org>"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "ExtUtils::MakeMaker version 6.98, CPAN::Meta::Converter version 2.140640",
+   "generated_by" : "ExtUtils::MakeMaker version 6.6302, CPAN::Meta::Converter version 2.120630",
    "license" : [
       "perl_5"
    ],
@@ -35,5 +35,5 @@
       }
    },
    "release_status" : "stable",
-   "version" : "0.56"
+   "version" : "0.57"
 }

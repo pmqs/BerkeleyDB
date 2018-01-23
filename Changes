@@ -1,5 +1,9 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.57  23 January 2018
+
+        * Updates for BDB 6.3
+
 0.56  5 January 2016
 
         * Updates for BDB 6.2
