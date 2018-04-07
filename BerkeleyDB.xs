@@ -2619,6 +2619,7 @@ _db_appinit(self, ref, errfile=NULL)
 	    int		lk_detect = 0 ;
             int		tx_max = 0 ;
             int		log_config = 0 ;
+            int		log_filemode = 0 ;
             int		max_lockers = 0 ;
             int		max_locks = 0 ;
             int		max_objects = 0 ;
@@ -2648,6 +2649,7 @@ _db_appinit(self, ref, errfile=NULL)
 	    SetValue_iv(lk_detect, "LockDetect") ;
 	    SetValue_iv(tx_max,    "TxMax") ;
 	    SetValue_iv(log_config,"LogConfig") ;
+	    SetValue_iv(log_filemode,"LogFileMode") ;
 	    SetValue_iv(max_lockers,"MaxLockers") ;
 	    SetValue_iv(max_locks, "MaxLocks") ;
 	    SetValue_iv(max_objects,"MaxObjects") ;
@@ -2694,6 +2696,8 @@ _db_appinit(self, ref, errfile=NULL)
 #ifndef AT_LEAST_DB_4_4
 		if (thread_count)
 			softCrash("-ThreadCount needs Berkeley DB 4.4 or better") ;
+		if (log_filemode)
+			softCrash("-LogFileMode needs Berkeley DB 4.4 or better") ;
 #endif /* ! AT_LEAST_DB_4_4 */
 #ifndef AT_LEAST_DB_4_7
 		if (log_config)
@@ -2808,6 +2812,13 @@ _db_appinit(self, ref, errfile=NULL)
 			my_db_strerror(status)));
 	  }
 #endif	  
+#ifdef AT_LEAST_DB_4_4
+	  if (status == 0 && log_filemode) {
+	      status = env->set_lg_filemode(env, log_filemode) ;
+	      Trace(("set_lg_filemode [%04o] returned %s\n", log_filemode,
+			my_db_strerror(status)));
+	  }
+#endif
 	  if (status == 0 && cachesize) {
 	      status = env->set_cachesize(env, 0, cachesize, 0) ;
 	      Trace(("set_cachesize [%d] returned %s\n",
@@ -3372,6 +3383,23 @@ set_lg_bsize(env, bsize)
 	    softCrash("$env->set_lg_bsize needs Berkeley DB 3.0.55 or better") ;
 #else
 	    RETVAL = env->Status = env->Env->set_lg_bsize(env->Env, bsize);
+#endif
+	OUTPUT:
+	    RETVAL
+
+int
+set_lg_filemode(env, filemode)
+        BerkeleyDB::Env  env
+	u_int32_t	filemode 
+	PREINIT:
+	  dMY_CXT;
+	INIT:
+	  ckActive_Database(env->active) ;
+	CODE:
+#ifndef AT_LEAST_DB_4_4
+	    softCrash("$env->set_lg_filemode needs Berkeley DB 4.4 or better") ;
+#else
+	    RETVAL = env->Status = env->Env->set_lg_filemode(env->Env, filemode);
 #endif
 	OUTPUT:
 	    RETVAL

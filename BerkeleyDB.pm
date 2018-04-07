@@ -17,7 +17,7 @@ use Carp;
 use vars qw($VERSION @ISA @EXPORT $AUTOLOAD
 		$use_XSLoader);
 
-$VERSION = '0.57';
+$VERSION = '0.58';
 
 require Exporter;
 
@@ -959,6 +959,7 @@ sub new
 					LockDetect     	=> 0,
 					TxMax     	=> 0,
 					LogConfig     	=> 0,
+					LogFileMode   	=> undef,
 					MaxLockers     	=> 0,
 					MaxLocks     	=> 0,
 					MaxObjects     	=> 0,
