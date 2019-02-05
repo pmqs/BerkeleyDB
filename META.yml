@@ -2,10 +2,7 @@
 abstract: 'Perl extension for Berkeley DB version 2, 3, 4, 5 or 6'
 author:
   - 'Paul Marquess <pmqs@cpan.org>'
-build_requires:
-  ExtUtils::MakeMaker: 0
-configure_requires:
-  ExtUtils::MakeMaker: 0
+build_requires: {}
 dynamic_config: 1
 generated_by: 'ExtUtils::MakeMaker version 6.6302, CPAN::Meta::Converter version 2.120630'
 license: perl
@@ -17,5 +14,8 @@ no_index:
   directory:
     - t
     - inc
-requires: {}
+resources:
+  bugtracker: https://github.com/pmqs/BerkeleyDB/issues
+  homepage: https://github.com/pmqs/BerkeleyDB
+  repository: git://github.com/pmqs/BerkeleyDB.git
 version: 0.58

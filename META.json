@@ -19,21 +19,17 @@
          "inc"
       ]
    },
-   "prereqs" : {
-      "build" : {
-         "requires" : {
-            "ExtUtils::MakeMaker" : "0"
-         }
+   "release_status" : "stable",
+   "resources" : {
+      "bugtracker" : {
+         "web" : "https://github.com/pmqs/BerkeleyDB/issues"
       },
-      "configure" : {
-         "requires" : {
-            "ExtUtils::MakeMaker" : "0"
-         }
-      },
-      "runtime" : {
-         "requires" : {}
+      "homepage" : "https://github.com/pmqs/BerkeleyDB",
+      "repository" : {
+         "type" : "git",
+         "url" : "git://github.com/pmqs/BerkeleyDB.git",
+         "web" : "https://github.com/pmqs/BerkeleyDB"
       }
    },
-   "release_status" : "stable",
    "version" : "0.58"
 }
