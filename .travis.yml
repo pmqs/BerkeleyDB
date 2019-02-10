@@ -6,6 +6,6 @@ addons:
     packages:
       - libdb5.3-dev
 env
-  BERKELEYDB_NAME=libdb-5.3
-  BERKELEYDB_LIB=/usr/lib/x86_64-linux-gnu/
-  BERKELEYDB_INCLUDE=/usr/include
+  - BERKELEYDB_NAME=libdb-5.3
+  - BERKELEYDB_LIB=/usr/lib/x86_64-linux-gnu/
+  - BERKELEYDB_INCLUDE=/usr/include
