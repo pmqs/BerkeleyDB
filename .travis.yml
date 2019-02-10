@@ -1,0 +1,7 @@
+language: perl
+os:
+  - linux
+addons:
+  apt:
+    packages:
+      - libdb-dev
