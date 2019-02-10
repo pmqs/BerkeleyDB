@@ -4,4 +4,4 @@ os:
 addons:
   apt:
     packages:
-      - libdb-dev
+      - libdb5.3-dev
