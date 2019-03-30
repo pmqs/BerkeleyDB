@@ -173,7 +173,7 @@ extern "C" {
 #  define AT_LEAST_DB_6_0
 #endif
 
-#if DB_VERSION_MAJOR > 6 || (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR >= 2)
+#if DB_VERSION_MAJOR > 6 || (DB_VERSION_MAJOR == 6 && DB_VERSION_MINOR >= 2)
 #  define AT_LEAST_DB_6_2
 #endif
 
