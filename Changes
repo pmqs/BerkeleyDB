@@ -1,5 +1,12 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.60  30 March 2019
+        * Moved source to github https://github.com/pmqs/BerkeleyDB
+
+        * Add META_MERGE to Makefile.PL
+
+        * Added meta-json.t & meta-yaml.t
+
 0.58  23 January 2018
 
         * please expose set_lg_filemode

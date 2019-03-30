@@ -102,7 +102,6 @@ BerkeleyDB - Perl extension for Berkeley DB version 2, 3, 4, 5 or 6
   $status = $env->set_lg_dir();
   $status = $env->set_lg_bsize();
   $status = $env->set_lg_max();
-  $status = $env->set_lg_filemode($octal_mode);
 
   $status = $env->set_data_dir() ;
   $status = $env->set_tmp_dir() ;
@@ -178,7 +177,6 @@ with the C<Flags> parameter, described below.
              [ -LockDetect   => number, ]
              [ -TxMax        => number, ]
              [ -LogConfig    => number, ]
-             [ -LogFileMode  => number, ]
              [ -MaxLockers   => number, ]
              [ -MaxLocks     => number, ]
              [ -MaxObjects   => number, ]
@@ -250,11 +248,6 @@ definitely too low for programs using the MVCC capabilities.
 =item -LogConfig
 
 If present, this parameter is used to configure log options.
-
-=item -LogFileMode
-
-Overrides the file permissions on C<log.*> files with an explicit
-permission (DB 4.4 and up).
 
 =item -MaxLockers
 
@@ -2725,7 +2718,7 @@ The official web site for Berkeley DB is F<http://www.oracle.com/technology/prod
 
 =head1 COPYRIGHT
 
-Copyright (c) 1997-2018 Paul Marquess. All rights reserved. This program
+Copyright (c) 1997-2019 Paul Marquess. All rights reserved. This program
 is free software; you can redistribute it and/or modify it under the
 same terms as Perl itself.
 
