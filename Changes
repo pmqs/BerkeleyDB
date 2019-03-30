@@ -1,5 +1,12 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.61  30 March 2019
+
+        * Fix a couple of typos  
+          One's a copyright date out by 20 years.
+          The other one breaks builds with 5.2 ≤ BDB < 6.2.
+          Merge pull request #1 https://github.com/pmqs/BerkeleyDB/pull/1
+
 0.60  30 March 2019
         * Moved source to github https://github.com/pmqs/BerkeleyDB
 
