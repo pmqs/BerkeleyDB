@@ -838,6 +838,9 @@ db_strerror(int err)
 static char *
 my_db_strerror(int err)
 {
+#ifdef dTHX
+    dTHX;
+#endif
     static char buffer[1000] ;
     SV * sv = perl_get_sv(ERR_BUFF, FALSE) ;
     sprintf(buffer, "%d: %s", err, db_strerror(err)) ;
