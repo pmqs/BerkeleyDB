@@ -2382,6 +2382,8 @@ _db_remove(ref)
 	    SetValue_pv(subdb, "Subname", char *) ;
 	    SetValue_iv(flags, "Flags") ;
 	    SetValue_ov(env, "Env", BerkeleyDB__Env) ;
+		SetValue_ov(txn, "Txn", BerkeleyDB__Txn) ;
+
             if (txn) {
 #ifdef AT_LEAST_DB_4_1
                 if (!env)
