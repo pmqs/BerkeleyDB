@@ -477,7 +477,7 @@ static void
 hash_delete(char * hash, char * key);
 
 #ifdef TRACE
-#  define Trace(x)	(printf("# "), printf x)
+#  define Trace(x)	do { printf("# "); printf x; fflush(stdout); } while (0) ;
 #else
 #  define Trace(x)
 #endif
@@ -2097,7 +2097,7 @@ my_db_open(
 
     if (info->db_cachesize) {
         Status = dbp->set_cachesize(dbp, 0, info->db_cachesize, 0) ;
-	Trace(("set_cachesize [%d] returned %s\n",
+	Trace(("set_cachesize [%lu] returned %s\n",
 		info->db_cachesize, my_db_strerror(Status)));
         if (Status)
             return RETVAL ;
@@ -2113,7 +2113,7 @@ my_db_open(
 
     if (info->db_pagesize) {
         Status = dbp->set_pagesize(dbp, info->db_pagesize) ;
-	Trace(("set_pagesize [%d] returned %s\n",
+	Trace(("set_pagesize [%lu] returned %s\n",
 		info->db_pagesize, my_db_strerror(Status)));
         if (Status)
             return RETVAL ;
