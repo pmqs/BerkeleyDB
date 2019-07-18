@@ -1,4 +1,10 @@
 language: perl
+perl:
+  - 5.28.2
+  - 5.28.2-thr
+env:
+  - BERKELEYDB_DEFINE_TRACE=1
+  - BERKELEYDB_DEFINE_TRACE=0
 os:
   - linux
 addons:
