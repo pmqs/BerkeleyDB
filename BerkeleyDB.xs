@@ -511,15 +511,12 @@ typedef	int db_timeout_t ;
 #endif
 
 #ifdef AT_LEAST_DB_5_2
-
 #  define isHeapDb(db) ((db)->type == DB_HEAP)
+/* __heap_exists is not exported by db.h, so include prototype here */
+int __heap_exist __P((void));
 #else
 #  define isHeapDb(db) (0)
-
-   int __heap_exist __P((void));
 #  define DB_HEAP_RID_SZ 1
-
-
 #endif
 
 #ifndef AT_LEAST_DB_6_0
