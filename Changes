@@ -1,5 +1,11 @@
 Revision history for Perl extension BerkeleyDB.
 
+0.63  21 July 2019
+
+        * added 000preret.t 
+          Dump version info in "make test"
+          9e17580d74662b6a3186990dd3b1469df2829503
+
 0.62  20 July 2019
 
         * default to /usr/local/BerkeleyDB
