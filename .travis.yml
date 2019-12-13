@@ -1,5 +1,6 @@
 language: perl
 perl:
+  - 5.6
   - 5.28.2
   - 5.28.2-thr
 env:
@@ -11,3 +12,10 @@ addons:
   apt:
     packages:
       - libdb5.3-dev
+
+before_install:
+  - eval $(curl https://travis-perl.github.io/init) --auto --always-upgrade-modules
+  - perl -V
+  # Force latest versions of prereq modules 
+  # The cpan-install line is enough for perl >= 5.8
+  - cpan-install --update-prereqs --deps
