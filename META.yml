@@ -18,4 +18,4 @@ resources:
   bugtracker: https://github.com/pmqs/BerkeleyDB/issues
   homepage: https://github.com/pmqs/BerkeleyDB
   repository: git://github.com/pmqs/BerkeleyDB.git
-version: 0.63
+version: 0.64
