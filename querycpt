@@ -1,0 +1,119 @@
+#!env perl6
+
+use HTTP::UserAgent;
+use JSON::Fast;
+
+my $module = 'Archive-Zip';
+my $version = '1.64';
+
+my $cpanTesters = 'http://api.cpantesters.org/v3/';
+my $summary-url =  $cpanTesters ~ "summary/{$module}/{ $version }";
+my $report-url = $cpanTesters ~ "report/";
+my $user-report-url = "http://www.cpantesters.org/cpan/report/";
+
+say $summary-url;
+
+my $ua = HTTP::UserAgent.new;
+
+my $response = $ua.get: $summary-url ;
+
+if $response.is-success {
+    # say $response.content;
+} else {
+    die $response.status-line;
+}
+
+#   {
+#     "date": "2020-07-24T15:14:00Z",
+#     "reporter": "\"Slaven Rezi&#263; (SREZIC)\" <srezic@iconmobile.net (Slaven Rezic)>",
+#     "osname": "freebsd",
+#     "dist": "BerkeleyDB",
+#     "guid": "b0769d86-ae25-11e9-8dc0-e4741f24ea8f",
+#     "grade": "pass",
+#     "perl": "5.26.1",
+#     "platform": "amd64-freebsd",
+#     "osvers": "10.3-release-p11",
+#     "version": "0.63"
+#   }
+
+my $results = from-json($response.content) ;
+
+
+# for $results.list -> $r
+# {
+#     say "xx"
+# }
+# exit;
+
+# say $results.elems; exit;
+my %reference = $results.map: { $_.<guid> => $_} ;
+my @data = $results
+                # .grep( *<osname> eq 'netbsd')
+                .grep( *<grade> eq 'fail')
+                .map: { .<guid> };
+
+# say to-json @data;
+
+my %reasons;
+
+for @data -> $guid
+{
+    my $url = $report-url ~ $guid;
+    my $user-url = $user-report-url ~ $guid;
+    my $response = $ua.get: $url ;
+
+# say $response.content; exit;
+
+    my $summary = from-json($response.content) ;
+
+    # say $summary; exit;
+    # say $summary<result><output><uncategorized>;
+
+    my $text = $summary<result><output><uncategorized> // "";
+    my $osname = $summary<environment><system><osname>;
+    my $version = $summary<environment><system><osversion>;
+    $version = %reference{$guid}<osvers>;
+
+# BerkeleyDB::db_ver            $BerkeleyDB::db_ver
+
+    # say "match" if $text ~~ / "BerkeleyDB::db_ver" \s+ (\S+)/;
+    # my $bdb-version = $0 // "Unknown" ;
+    # say $bdb-version ; exit;
+
+    given $text
+    {
+        when "" { say "empty $user-url" ; exit }
+
+
+
+        # when / "at t/22_deflated_dir.t line 25" /
+        # {
+        #     %reasons{$guid} = 'Fail';
+        #     say "{ $osname } { $version }: fail line 87 ";
+        # }
+
+        when / "t/22_deflated_dir.t" .+    "Failed" /
+        {
+            %reasons{$guid} = 'Fail';
+            say "{ $osname } { $version }: fail 22_deflated_dir  $user-url";
+        }
+
+        # #  #error db.h is from Berkeley DB 1.x - need at least Berkeley DB 2.6.4
+        # when / "#error db.h is from Berkeley DB 1.x - need at least Berkeley DB 2.6.4" /
+        # {
+        #     say "$osname: Berkeley DB 1.x $user-url"
+        # }
+
+        # # error db.h is from Berkeley DB 2.0-2.5 - need at least Berkeley DB 2.6.4
+        # when / "$osname: error db.h is from Berkeley DB 2.0-2.5 - need at least Berkeley DB 2.6.4" /
+        # {
+        #     say "Have Berkeley DB 2.0-2.5 $user-url"
+        # }
+
+        # default
+        # {
+        #     say "{ $osname } { $version }  $user-url" ;
+        #     # say $text
+        # }
+    }
+}

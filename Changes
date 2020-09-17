@@ -1,6 +1,6 @@
 Revision history for Perl extension BerkeleyDB.
 
-0.64  17 September 2019
+0.64  17 September 2020
 
         * Refresh ppport.h
           2a4ebf00b93977cfbffc65ecbcc0aac4f7cbad1d
