@@ -16,6 +16,7 @@ jobs:
     strategy:
       matrix:
         perl:
+          - '5.32'
           - '5.30'
           - '5.28'
           - '5.26'
@@ -46,4 +47,3 @@ jobs:
       run: perl Makefile.PL && make
     - name: Test
       run: make test
-      
