@@ -1,13 +1,11 @@
 name: Macos build
 
 on:
-  push:
-    branches:
-      - '*'
-    tags-ignore:
-      - '*'
-  pull_request:
   workflow_dispatch:
+  push:
+  pull_request:
+  # schedule:
+  #   - cron: '01 01 * * 6'    # Run every Saturdayw_dispatch:
 
 jobs:
   build:
