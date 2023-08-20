@@ -40,7 +40,7 @@ jobs:
           wget https://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz
           tar xvf db-4.8.30.NC.tar.gz
           cd db-4.8.30.NC/build_unix
-          ../dist/configure --prefix=${{ env.berkeleydb-install }}
+          ../dist/configure --enable-posixmutexes --prefix=${{ env.berkeleydb-install }}
           make
           make install
           rm -fr ${{ env.berkeleydb-install }}/docs
