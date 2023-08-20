@@ -29,6 +29,11 @@ jobs:
           path: upstream-berkeleydb-install
           key: ${{ runner.os }}-berkeleydb
 
+      - name: Make Paths
+        run: |
+          mkdir -p ${{ env.berkeleydb-source }}
+          mkdir -p ${{ env.berkeleydb-install }}
+
       - name: Build BDB
         if: steps.cache-berkeleydb.outputs.cache-hit != 'true'
         run: |
