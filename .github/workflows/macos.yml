@@ -10,7 +10,7 @@ on:
 env:
   berkeleydb-source:      ${{ github.workspace }}/upstream-berkeleydb-source
   berkeleydb-install:     ${{ github.workspace }}/upstream-berkeleydb-install
-  berkeleydb-version:     5.3.28.NC
+  berkeleydb-version:     2.7.7
   BERKELEYDB_LIB:         ${{ github.workspace }}/upstream-berkeleydb-install/lib
   BERKELEYDB_INCLUDE:     ${{ github.workspace }}/upstream-berkeleydb-install/include
 
