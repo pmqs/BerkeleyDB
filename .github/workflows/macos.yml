@@ -7,8 +7,44 @@ on:
   # schedule:
   #   - cron: '01 01 * * 6'    # Run every Saturdayw_dispatch:
 
+env:
+  berkeleydb-source:      ${{ github.workspace }}/upstream-berkeleydb-source
+  berkeleydb-install:     ${{ github.workspace }}/upstream-berkeleydb-install
+  BERKELEYDB_LIB:         ${{ github.workspace }}/upstream-berkeleydb-install/lib
+  BERKELEYDB_INCLUDE:     ${{ github.workspace }}/upstream-berkeleydb-install/include
+
 jobs:
+
+  build-bdb:
+
+    runs-on: macos-latest
+
+    steps:
+
+      - name: Cache BDB
+        id: cache-berkeleydb
+        uses: actions/cache@v3
+        with:
+          # NOTE: path doesn't expand variables!
+          path: upstream-berkeleydb-install
+          key: ${{ runner.os }}-berkeleydb
+
+      - name: Build BDB
+        if: steps.cache-berkeleydb.outputs.cache-hit != 'true'
+        run: |
+          wget https://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz
+          tar xvf db-4.8.30.NC.tar.gz
+          cd db-4.8.30.NC/build_unix
+          ../dist/configure --prefix=${{ env.berkeleydb-install }}
+          make
+          make install
+          rm -fr ${{ env.berkeleydb-install }}/docs
+        working-directory: ${{ env.berkeleydb-source }}
+
+
   build:
+
+    needs: build-bdb
 
     runs-on: macos-latest
 
@@ -35,18 +71,25 @@ jobs:
 
     name: Perl ${{ matrix.perl }}
     steps:
+
     - uses: actions/checkout@v1
+
     - name: Setup perl
       uses: shogo82148/actions-setup-perl@v1
       with:
         perl-version: ${{ matrix.perl }}
+
     - name: Perl version
       run: perl -V
+
     - name: Install dependencies
       run: cpanm --quiet --installdeps --notest .
-    - name: Install Berkeley DB
-      run: brew install berkeley-db
+
+    # - name: Install Berkeley DB
+    #   run: brew install berkeley-db
+
     - name: Build
       run: perl Makefile.PL && make
+
     - name: Test
       run: make test
