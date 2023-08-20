@@ -10,6 +10,7 @@ on:
 env:
   berkeleydb-source:      ${{ github.workspace }}/upstream-berkeleydb-source
   berkeleydb-install:     ${{ github.workspace }}/upstream-berkeleydb-install
+  berkeleydb-version:     18.1.40
   BERKELEYDB_LIB:         ${{ github.workspace }}/upstream-berkeleydb-install/lib
   BERKELEYDB_INCLUDE:     ${{ github.workspace }}/upstream-berkeleydb-install/include
 
@@ -37,9 +38,9 @@ jobs:
       - name: Build BDB
         if: steps.cache-berkeleydb.outputs.cache-hit != 'true'
         run: |
-          wget https://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz
-          tar xvf db-4.8.30.NC.tar.gz
-          cd db-4.8.30.NC/build_unix
+          wget https://download.oracle.com/berkeley-db/db-${{ env.berkeleydb-version }}.tar.gz
+          tar xvf db-${{ env.berkeleydb-version }}.tar.gz
+          cd db-${{ env.berkeleydb-version }}/build_unix
           ../dist/configure --enable-posixmutexes --prefix=${{ env.berkeleydb-install }}
           make
           make install
