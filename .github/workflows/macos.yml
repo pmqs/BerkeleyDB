@@ -42,12 +42,12 @@ jobs:
           tar xvf db-${{ env.berkeleydb-version }}.tar.gz
           cd db-${{ env.berkeleydb-version }}/build_unix
           ../dist/configure --enable-compat185 --prefix=${{ env.berkeleydb-install }}
-          make 
+          make
           make install
           rm -fr ${{ env.berkeleydb-install }}/docs
         working-directory: ${{ env.berkeleydb-source }}
         env:
-          CFLAGS: HAVE_64BIT_TYPES=1
+          CFLAGS: -DHAVE_64BIT_TYPES=1
 
       - name: Show installed zlib files
         run: find .
