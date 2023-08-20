@@ -28,7 +28,7 @@ jobs:
         with:
           # NOTE: path doesn't expand variables!
           path: upstream-berkeleydb-install
-          key: ${{ runner.os }}-berkeleydb
+          key: ${{ runner.os }}-berkeleydb-${{ env.berkeleydb-version }}
 
       - name: Make Paths
         run: |
@@ -47,6 +47,9 @@ jobs:
           rm -fr ${{ env.berkeleydb-install }}/docs
         working-directory: ${{ env.berkeleydb-source }}
 
+      - name: Show installed zlib files
+        run: find .
+        working-directory: ${{ env.berkeleydb-install }}
 
   build:
 
@@ -79,6 +82,14 @@ jobs:
     steps:
 
     - uses: actions/checkout@v1
+
+    - name: Cache BDB ${{ env.berkeleydb-version }}
+      id: cache-berkeleydb
+      uses: actions/cache@v3
+      with:
+        # NOTE: path doesn't expand variables!
+        path: upstream-berkeleydb-install
+        key: ${{ runner.os }}-berkeleydb-${{ env.berkeleydb-version }}
 
     - name: Setup perl
       uses: shogo82148/actions-setup-perl@v1
