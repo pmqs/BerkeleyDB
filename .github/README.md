@@ -5,8 +5,8 @@
 
 This Perl module provides an interface to most of the functionality available in Berkeley DB version 2 or greater. In general it is safe to assume that the interface provided here is identical to the Berkeley DB interface. The main changes have been to make the Berkeley DB API work in a Perl way.
 
-For installation instructions see [README](README).
+For installation instructions see [README](../README).
 
-API Documentation is in [BerkeleyDB.pod](BerkeleyDB.pod).
+API Documentation is in [BerkeleyDB.pod](../BerkeleyDB.pod).
 
 
