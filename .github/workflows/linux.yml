@@ -15,6 +15,7 @@ jobs:
     strategy:
       matrix:
         perl:
+          - '5.40'
           - '5.38'
           - '5.36'
           - '5.34'
@@ -47,6 +48,8 @@ jobs:
     - name: Install Perl dependencies
       run: cpanm --quiet --installdeps --notest .
     - name: Build
-      run: perl Makefile.PL && make
+      run: |
+        flags=$( perl -MConfig -e 'print $Config::Config{ccflags}' )
+        perl Makefile.PL CCFLAGS="$flags -Werror" && make
     - name: Test
       run: make test
