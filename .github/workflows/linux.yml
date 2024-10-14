@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         perl:
-          - 'develop'
+          # - 'develop'
           - '5.40'
           - '5.38'
           - '5.36'
