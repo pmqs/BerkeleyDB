@@ -25,7 +25,8 @@
             "ExtUtils::MakeMaker": "0",
             "Test::More" : "0"
          }
-      },
+      }
+   },
 
    "release_status" : "stable",
    "resources" : {
