@@ -826,7 +826,7 @@ sub env_remove
 
     if (defined $got->{Config}) {
     	croak("Config parameter must be a hash reference")
-            if ! ref $got->{Config} eq 'HASH' ;
+            if ref $got->{Config} ne 'HASH' ;
 
         @BerkeleyDB::a = () ;
 	my $k = "" ; my $v = "" ;
@@ -994,7 +994,7 @@ sub new
     my %config ;
     if (defined $got->{Config}) {
     	croak("Config parameter must be a hash reference")
-            if ! ref $got->{Config} eq 'HASH' ;
+            if ref $got->{Config} ne 'HASH' ;
 
 	%config = %{ $got->{Config} } ;
         @BerkeleyDB::a = () ;
