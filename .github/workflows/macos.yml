@@ -95,7 +95,7 @@ jobs:
     name: Perl ${{ matrix.perl }}
     steps:
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
       with:
         path: repo
 
