@@ -21,7 +21,7 @@ BEGIN
 
     plan tests => 1 + $extra ;
 
-    use_ok('BerkeleyDB', '0.66');
+    use_ok('BerkeleyDB', '0.67');
 }
 
 if (defined $BerkeleyDB::VERSION)
