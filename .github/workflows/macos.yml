@@ -4,125 +4,58 @@ on:
   workflow_dispatch:
   push:
   pull_request:
-  # schedule:
-  #   - cron: '01 01 * * 6'    # Run every Saturday
-
-env:
-  berkeleydb-source:      ${{ github.workspace }}/upstream-berkeleydb-source
-  berkeleydb-install:     ${{ github.workspace }}/upstream-berkeleydb-install
-  berkeleydb-version:     5.3.28.NC
-  BERKELEYDB_LIB:         ${{ github.workspace }}/upstream-berkeleydb-install/lib
-  BERKELEYDB_INCLUDE:     ${{ github.workspace }}/upstream-berkeleydb-install/include
+  schedule:
+    - cron: '01 01 * * 6'    # Run every Saturday
 
 jobs:
 
-  build-bdb:
-
+  list:
+    name: list available perl versions
     runs-on: macos-latest
-
     steps:
-
-      - name: Cache BDB ${{ env.berkeleydb-version }}
-        id: cache-berkeleydb
-        uses: actions/cache@v5
-        with:
-          # NOTE: path doesn't expand variables!
-          path: upstream-berkeleydb-install
-          key: ${{ runner.os }}-berkeleydb-${{ env.berkeleydb-version }}
-
-      - name: Make Paths
+      - uses: shogo82148/actions-setup-perl@v1
+      - id: set-matrix
+        name: list available perl versions
+        shell: perl {0}
         run: |
-          mkdir -p ${{ env.berkeleydb-source }}
-          mkdir -p ${{ env.berkeleydb-install }}
+          use Actions::Core;
 
-      # - name: Install BDB ${{ env.berkeleydb-version }}
-      #   if: steps.cache-berkeleydb.outputs.cache-hit != 'true'
-      #   run: |
-      #     wget https://github.com/macports/macports-base/releases/download/v2.7.1/MacPorts-2.7.1-11-BigSur.pkg
-      #     sudo installer -pkg ./MacPorts-2.7.1-11-BigSur.pkg -target /
-      #     sudo port install db53
+          print "Version available\n";
+          my @versions = perl_versions();
+          for my $v (@versions) {
+            print "\t$v\n";
+          }
+          # Don't want anything less then 5.8
+          @versions = grep { ! /^5\.6\.*/ } @versions;
+          set_output(matrix => {perl => [@versions]});
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
 
-      - name: Build BDB ${{ env.berkeleydb-version }}
-        if: steps.cache-berkeleydb.outputs.cache-hit != 'true'
-        run: |
-          wget https://download.oracle.com/berkeley-db/db-${{ env.berkeleydb-version }}.tar.gz
-          tar xvf db-${{ env.berkeleydb-version }}.tar.gz
-          cd db-${{ env.berkeleydb-version }}/build_unix
-          ../dist/configure --enable-compat185 --prefix=${{ env.berkeleydb-install }}
-          make
-          make install
-          rm -fr ${{ env.berkeleydb-install }}/docs
-        working-directory: ${{ env.berkeleydb-source }}
-
-      - name: Show installed berkeleydb files
-        run: find .
-        working-directory: ${{ env.berkeleydb-install }}
-
-  build:
-
-    needs: build-bdb
-
+  run:
     runs-on: macos-latest
-
+    needs: list
     strategy:
-      matrix:
-        perl:
-          # - 'develop'
-          - '5.42'
-          - '5.40'
-          - '5.38'
-          - '5.36'
-          - '5.34'
-          - '5.32'
-          - '5.30'
-          - '5.28'
-          - '5.26'
-          - '5.24'
-          - '5.22'
-          - '5.20'
-          - '5.18'
-          - '5.16'
-          - '5.14'
-          - '5.12'
-          - '5.10'
-          - '5.8'
-          # - '5.6'
-
-    defaults:
-      run:
-        working-directory: repo
-
-    name: Perl ${{ matrix.perl }}
+      fail-fast: false
+      matrix: ${{fromJson(needs.list.outputs.matrix)}}
     steps:
+      - uses: actions/checkout@v6
 
-    - uses: actions/checkout@v6
-      with:
-        path: repo
+      - name: Setup perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: ${{ matrix.perl }}
 
-    - name: Cache BDB ${{ env.berkeleydb-version }}
-      id: cache-berkeleydb
-      uses: actions/cache@v5
-      with:
-        # NOTE: path doesn't expand variables!
-        path: upstream-berkeleydb-install
-        key: ${{ runner.os }}-berkeleydb-${{ env.berkeleydb-version }}
+      - name: Perl version
+        run: perl -V
 
-    - name: Setup perl
-      uses: shogo82148/actions-setup-perl@v1
-      with:
-        perl-version: ${{ matrix.perl }}
+      - name: Install dependencies
+        run: cpanm --quiet --installdeps --notest .
 
-    - name: Perl version
-      run: perl -V
+      - name: Install Berkeley DB
+        run: brew install berkeley-db
 
-    - name: Install dependencies
-      run: cpanm --quiet --installdeps --notest .
+      - name: Build
+        run: perl Makefile.PL && make
 
-    # - name: Install Berkeley DB
-    #   run: brew install berkeley-db
-
-    - name: Build
-      run: perl Makefile.PL && make
-
-    - name: Test
-      run: make test
+      - name: Test
+        run: make test
