@@ -2504,7 +2504,7 @@ Please take the time to read the Berkeley DB license and decide how it impacts y
 
 =head1 AUTHOR
 
-Paul Marquess E<lt>pmqs@cpan.orgE<gt>.
+Paul Marquess E<lt>pmqs@outlook.comE<gt>.
 
 
 =head1 SEE ALSO

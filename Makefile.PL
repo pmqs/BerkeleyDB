@@ -64,7 +64,7 @@ WriteMakefile(
         'dist'          => {COMPRESS=>'gzip', SUFFIX=>'gz'},
 	($] >= 5.005
 	    ? (ABSTRACT_FROM	=> 'BerkeleyDB.pod',
-	       AUTHOR  	=> 'Paul Marquess <pmqs@cpan.org>')
+	       AUTHOR  	=> 'Paul Marquess <pmqs@outlook.com>')
 	    : ()
 	),
     ((ExtUtils::MakeMaker->VERSION() gt '6.30')

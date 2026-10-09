@@ -2,7 +2,7 @@
 
  BerkeleyDB.xs -- Perl 5 interface to Berkeley DB version 2, 3, 4, 5 & 6
 
- written by Paul Marquess <pmqs@cpan.org>
+ written by Paul Marquess <pmqs@outlook.com>
 
  All comments/suggestions/problems are welcome
 
